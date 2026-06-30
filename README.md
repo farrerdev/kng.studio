@@ -1,4 +1,4 @@
-# KNG.studio Catalog MVP
+# kng.studio
 
 Mock customer catalog for KNG.studio homewear products.
 
