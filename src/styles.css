@@ -394,7 +394,7 @@ button {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   background: #f4eadc;
 }
@@ -417,24 +417,47 @@ button {
   border-radius: 50%;
 }
 
-.size-chart-image {
-  display: block;
+.size-chart-inline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  padding: 0;
+  padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fffaf1;
   cursor: zoom-in;
+  text-align: left;
 }
 
-.size-chart-image img {
+.size-chart-inline img {
   display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
   object-fit: cover;
   background: #f4eadc;
+}
+
+.size-chart-inline-text {
+  display: grid;
+  gap: 2px;
+}
+
+.size-chart-inline-text h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.size-chart-inline-text span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .contact-buttons {

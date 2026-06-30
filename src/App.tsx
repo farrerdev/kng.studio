@@ -26,6 +26,13 @@ import {
 } from "./services/catalogApi";
 import type { Product, ProductImage, ProductPattern, SizeId } from "./types/catalog";
 
+function formatPrice(raw: string): string {
+  const digits = raw.replace(/[^0-9]/g, "");
+  if (!digits) return raw;
+  const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return formatted + "đ";
+}
+
 type GalleryImage = ProductImage & {
   caption: string;
 };
@@ -143,7 +150,7 @@ function App() {
             <section className="size-panel" aria-labelledby="size-heading">
               <div>
                 <h2 id="size-heading">Chọn size còn hàng</h2>
-                <p>Catalog mock để khách xem form, họa tiết còn hàng và bảng size trước khi chốt đơn.</p>
+                <p>Chọn size phù hợp để xem các hoạ tiết và mẫu đang còn hàng.</p>
               </div>
             </section>
 
@@ -239,7 +246,7 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
           <section className="product-overview" aria-label={`Thông tin ${product.name}`}>
             <span className="product-material">{product.material}</span>
             <p>{product.fit}</p>
-            <strong>{product.price}</strong>
+            <strong>{formatPrice(product.price)}</strong>
           </section>
 
           <section aria-label={`Họa tiết còn hàng của ${product.name}`}>
@@ -262,7 +269,6 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
                 >
                   <img loading="lazy" src={pattern.image.src} alt={pattern.image.alt} />
                   <span>
-                    <i style={{ background: pattern.accent }} aria-hidden="true" />
                     {pattern.name}
                   </span>
                 </button>
@@ -295,12 +301,8 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
           </section>
 
           <section aria-label={`Bảng size ${product.name}`}>
-            <div className="section-title">
-              <h4>Bảng size</h4>
-              <span>Ảnh admin thêm</span>
-            </div>
             <button
-              className="size-chart-image"
+              className="size-chart-inline"
               type="button"
               onClick={() =>
                 onImageOpen({
@@ -310,6 +312,10 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
               }
             >
               <img loading="lazy" src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
+              <div className="size-chart-inline-text">
+                <h4>Bảng size</h4>
+                <span>Tap để xem lớn</span>
+              </div>
             </button>
           </section>
         </div>
@@ -448,10 +454,10 @@ function AdminPage({
       patterns: [
         {
           id: createId("pattern"),
-          name: "Họa tiết mới",
+          name: "",
           accent: "#c8b69a",
           image: createImage(createId("pattern-image"), "/images/moc-hoa-nhi.webp", "Ảnh họa tiết mới"),
-          availableSizes: ["1"],
+          availableSizes: ["1", "2"],
         },
       ],
       modelImages: [createImage(createId("model-image"), "/images/moc-model-1.webp", "Ảnh mẫu mặc")],
@@ -464,10 +470,10 @@ function AdminPage({
   const addPattern = (productId: string) => {
     const newPattern: ProductPattern = {
       id: createId("pattern"),
-      name: "Họa tiết mới",
+      name: "",
       accent: "#c8b69a",
       image: createImage(createId("pattern-image"), "/images/moc-hoa-nhi.webp", "Ảnh họa tiết mới"),
-      availableSizes: ["1"],
+      availableSizes: ["1", "2"],
     };
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
@@ -674,7 +680,7 @@ function AdminPage({
               >
                 <strong>{product.name}</strong>
                 <span>
-                  {product.price} · {product.patterns.length} họa tiết
+                  {formatPrice(product.price)} · {product.patterns.length} họa tiết
                 </span>
               </button>
             ))}
