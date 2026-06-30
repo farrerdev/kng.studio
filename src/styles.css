@@ -859,8 +859,26 @@ button {
   min-width: 0;
 }
 
+.admin-danger-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .full-width {
   width: 100%;
+}
+
+.file-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .admin-card {

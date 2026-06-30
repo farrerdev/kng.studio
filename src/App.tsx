@@ -539,7 +539,7 @@ function AdminPage({
       productTypeId: productType.id,
       name: "",
       price: productType.price,
-      fit: "Mô tả form dáng ngắn.",
+      fit: "",
       material: "Xô muslin 2 lớp",
       patterns: [
         {
@@ -550,7 +550,7 @@ function AdminPage({
           availableSizes: ["1", "2"],
         },
       ],
-      modelImages: [createImage(createId("model-image"), "/images/moc-model-1.webp", "Ảnh mẫu mặc")],
+      modelImages: [],
       sizeChartImage: createImage(createId("size-chart"), "/images/size-chart-moc.webp", "Ảnh bảng size"),
     };
     onProductsChange((currentProducts) => [...currentProducts, newProduct]);
@@ -582,13 +582,22 @@ function AdminPage({
     );
   };
 
-  const addModelImage = (productId: string) => {
-    const newImage = createImage(createId("model-image"), "/images/moc-model-1.webp", "Ảnh mẫu mặc");
+  const addModelImage = (productId: string, src: string) => {
+    const newImage = createImage(createId("model-image"), src, "Ảnh mẫu mặc");
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
         product.id === productId ? { ...product, modelImages: [...product.modelImages, newImage] } : product,
       ),
     );
+  };
+
+  const removeProduct = (product: Product) => {
+    const productTitle = getProductTitle(product, productTypes);
+    const confirmed = window.confirm(`Xóa sản phẩm "${productTitle}"? Sau khi bấm Lưu Supabase, sản phẩm này sẽ bị xóa khỏi database.`);
+    if (!confirmed) return;
+
+    onProductsChange((currentProducts) => currentProducts.filter((currentProduct) => currentProduct.id !== product.id));
+    setExpandedProductId((current) => (current === product.id ? null : current));
   };
 
   const removeModelImage = (productId: string, imageId: string) => {
@@ -875,6 +884,13 @@ function AdminPage({
 
               {isExpanded ? (
                 <div className="admin-product-body">
+                  <div className="admin-danger-row">
+                    <button className="admin-button danger" type="button" onClick={() => removeProduct(product)}>
+                      <Trash2 size={16} aria-hidden="true" />
+                      Xóa sản phẩm
+                    </button>
+                  </div>
+
                   <div className="admin-card">
                     <h3>Thông tin sản phẩm</h3>
                     <div className="admin-form-grid">
@@ -1021,10 +1037,20 @@ function AdminPage({
                         </div>
                       ))}
                     </div>
-                    <button className="admin-button small full-width" type="button" onClick={() => addModelImage(product.id)}>
+                    <label className="admin-button small full-width file-button">
                       <Plus size={16} aria-hidden="true" />
                       Thêm ảnh mẫu mặc
-                    </button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          uploadImage(file, `models/${product.id}`, (url) => addModelImage(product.id, url));
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
                   </div>
 
                   <div className="admin-card">

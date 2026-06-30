@@ -181,6 +181,10 @@ function deriveProductTypes(products: ProductRow[]): ProductType[] {
   return Array.from(productTypes.values());
 }
 
+function formatPostgrestInList(values: string[]) {
+  return `(${values.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
+}
+
 export async function saveCatalog(catalog: {
   productTypes: ProductType[];
   products: Product[];
@@ -245,6 +249,14 @@ export async function saveCatalog(catalog: {
   if (upsertProducts.error) throw upsertProducts.error;
 
   if (productIds.length > 0) {
+    const deleteRemovedProducts = await supabase.from("products").delete().not("id", "in", formatPostgrestInList(productIds));
+    if (deleteRemovedProducts.error) throw deleteRemovedProducts.error;
+  } else {
+    const deleteAllProducts = await supabase.from("products").delete().neq("id", "");
+    if (deleteAllProducts.error) throw deleteAllProducts.error;
+  }
+
+  if (productIds.length > 0) {
     const deletePatterns = await supabase.from("product_patterns").delete().in("product_id", productIds);
     if (deletePatterns.error) throw deletePatterns.error;
 
@@ -266,7 +278,7 @@ export async function saveCatalog(catalog: {
     const deleteProductTypes = await supabase
       .from("product_types")
       .delete()
-      .not("id", "in", `(${productTypeIds.join(",")})`);
+      .not("id", "in", formatPostgrestInList(productTypeIds));
     if (deleteProductTypes.error) throw deleteProductTypes.error;
   }
 
