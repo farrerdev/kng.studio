@@ -396,6 +396,8 @@ function AdminPage({
   onRefresh,
 }: AdminPageProps) {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [isProductTypesExpanded, setIsProductTypesExpanded] = useState(false);
+  const [expandedProductTypeId, setExpandedProductTypeId] = useState<string | null>(null);
   const [showStats, setShowStats] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -417,6 +419,10 @@ function AdminPage({
 
   const toggleExpandProduct = (productId: string) => {
     setExpandedProductId((current) => (current === productId ? null : productId));
+  };
+
+  const toggleExpandProductType = (productTypeId: string) => {
+    setExpandedProductTypeId((current) => (current === productTypeId ? null : productTypeId));
   };
 
   useEffect(() => {
@@ -451,6 +457,8 @@ function AdminPage({
         price: "390.000đ",
       },
     ]);
+    setIsProductTypesExpanded(true);
+    setExpandedProductTypeId(id);
   };
 
   const updateProductType = (productTypeId: string, patch: Partial<ProductType>) => {
@@ -467,6 +475,7 @@ function AdminPage({
     if (!nextProductType) return;
 
     onProductTypesChange((currentTypes) => currentTypes.filter((productType) => productType.id !== productTypeId));
+    setExpandedProductTypeId((current) => (current === productTypeId ? null : current));
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
         product.productTypeId === productTypeId
@@ -762,46 +771,85 @@ function AdminPage({
       <p className="admin-status-text">{adminMessage}</p>
 
       <div className="admin-product-list-full">
-        <section className="admin-card product-type-manager" aria-label="Quản lý loại sản phẩm">
-          <div className="admin-card-header">
-            <h3>Loại sản phẩm</h3>
-            <button className="admin-button small" type="button" onClick={addProductType}>
-              <Plus size={16} aria-hidden="true" />
-              Thêm loại
-            </button>
-          </div>
-          <div className="product-type-list">
-            {productTypes.map((productType) => (
-              <article className="product-type-row" key={productType.id}>
-                <label>
-                  <span>Loại</span>
-                  <input
-                    value={productType.name}
-                    onChange={(event) => updateProductType(productType.id, { name: event.target.value })}
-                  />
-                </label>
-                <label>
-                  <span>Giá</span>
-                  <input
-                    value={productType.price}
-                    placeholder="Ví dụ: 390.000đ"
-                    onChange={(event) =>
-                      updateProductType(productType.id, { price: formatPrice(event.target.value) })
-                    }
-                  />
-                </label>
-                <button
-                  className="icon-button danger"
-                  type="button"
-                  disabled={productTypes.length <= 1}
-                  onClick={() => removeProductType(productType.id)}
-                  aria-label={`Xóa loại ${productType.name}`}
-                >
-                  <Trash2 size={16} aria-hidden="true" />
-                </button>
-              </article>
-            ))}
-          </div>
+        <section className="product-type-manager" aria-label="Quản lý loại sản phẩm">
+          <button
+            className={isProductTypesExpanded ? "admin-product-header active" : "admin-product-header"}
+            type="button"
+            onClick={() => setIsProductTypesExpanded((current) => !current)}
+            aria-expanded={isProductTypesExpanded}
+          >
+            <div>
+              <strong>Loại sản phẩm ({productTypes.length})</strong>
+              <span>Quản lý loại và giá hiển thị cho từng sản phẩm</span>
+            </div>
+            <span className="admin-product-chevron">
+              {isProductTypesExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </span>
+          </button>
+
+          {isProductTypesExpanded ? (
+            <div className="product-type-section-body">
+              <div className="product-type-list">
+                {productTypes.map((productType) => {
+                  const isTypeExpanded = expandedProductTypeId === productType.id;
+                  return (
+                    <article className="product-type-item" key={productType.id}>
+                      <button
+                        className={isTypeExpanded ? "product-type-header active" : "product-type-header"}
+                        type="button"
+                        onClick={() => toggleExpandProductType(productType.id)}
+                        aria-expanded={isTypeExpanded}
+                      >
+                        <div>
+                          <strong>{productType.name || "Chưa đặt tên"}</strong>
+                          <span>{formatPrice(productType.price)}</span>
+                        </div>
+                        <span className="admin-product-chevron small">
+                          {isTypeExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </span>
+                      </button>
+
+                      {isTypeExpanded ? (
+                        <div className="product-type-row">
+                          <label>
+                            <span>Loại</span>
+                            <input
+                              value={productType.name}
+                              onChange={(event) => updateProductType(productType.id, { name: event.target.value })}
+                            />
+                          </label>
+                          <label>
+                            <span>Giá</span>
+                            <input
+                              value={productType.price}
+                              placeholder="Ví dụ: 390.000đ"
+                              onChange={(event) =>
+                                updateProductType(productType.id, { price: formatPrice(event.target.value) })
+                              }
+                            />
+                          </label>
+                          <button
+                            className="icon-button danger"
+                            type="button"
+                            disabled={productTypes.length <= 1}
+                            onClick={() => removeProductType(productType.id)}
+                            aria-label={`Xóa loại ${productType.name}`}
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+
+              <button className="admin-button small full-width" type="button" onClick={addProductType}>
+                <Plus size={16} aria-hidden="true" />
+                Thêm loại
+              </button>
+            </div>
+          ) : null}
         </section>
 
         {products.map((product) => {
