@@ -757,81 +757,64 @@ function AdminPage({
                 <h3>Họa tiết & tồn size</h3>
                 <button className="admin-button small" type="button" onClick={() => addPattern(selectedProduct.id)}>
                   <Plus size={16} aria-hidden="true" />
-                  Thêm họa tiết
+                  Thêm phân loại
                 </button>
               </div>
-              <div className="pattern-editor-grid">
+              <div className="pattern-row-list">
                 {selectedProduct.patterns.map((pattern) => (
-                  <article className="pattern-editor-card" key={pattern.id}>
-                    <img src={pattern.image.src} alt={pattern.image.alt} />
-                    <div className="admin-form-grid single">
-                      <label>
-                        <span>Tên họa tiết</span>
+                  <article className="pattern-row" key={pattern.id}>
+                    <label className="pattern-thumb-field" aria-label={`Upload ảnh ${pattern.name}`}>
+                      <img src={pattern.image.src} alt={pattern.image.alt} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          uploadImage(file, `patterns/${selectedProduct.id}`, (url) =>
+                            updatePattern(selectedProduct.id, pattern.id, {
+                              image: { ...pattern.image, src: url },
+                            }),
+                          );
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+
+                    <div className="pattern-row-main">
+                      <div className="pattern-name-field">
                         <input
+                          aria-label="Tên phân loại"
                           value={pattern.name}
                           onChange={(event) =>
                             updatePattern(selectedProduct.id, pattern.id, { name: event.target.value })
                           }
                         />
-                      </label>
-                      <label>
-                        <span>Ảnh họa tiết</span>
-                        <input
-                          value={pattern.image.src}
-                          onChange={(event) =>
-                            updatePattern(selectedProduct.id, pattern.id, {
-                              image: { ...pattern.image, src: event.target.value },
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Upload ảnh</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            uploadImage(file, `patterns/${selectedProduct.id}`, (url) =>
-                              updatePattern(selectedProduct.id, pattern.id, {
-                                image: { ...pattern.image, src: url },
-                              }),
-                            );
-                            event.target.value = "";
-                          }}
-                        />
-                      </label>
-                      <label>
-                        <span>Màu nhấn</span>
-                        <input
-                          type="color"
-                          value={pattern.accent}
-                          onChange={(event) =>
-                            updatePattern(selectedProduct.id, pattern.id, { accent: event.target.value })
-                          }
-                        />
-                      </label>
+                        <ChevronDown size={18} aria-hidden="true" />
+                      </div>
+
+                      <div className="pattern-size-switches" aria-label={`Tồn size ${pattern.name}`}>
+                        {sizeOptions.map((size) => (
+                          <button
+                            className={pattern.availableSizes.includes(size.id) ? "size-switch active" : "size-switch"}
+                            key={size.id}
+                            type="button"
+                            aria-pressed={pattern.availableSizes.includes(size.id)}
+                            onClick={() => togglePatternSize(selectedProduct.id, pattern, size.id)}
+                          >
+                            {size.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="admin-size-checks" aria-label={`Tồn size ${pattern.name}`}>
-                      {sizeOptions.map((size) => (
-                        <label key={size.id}>
-                          <input
-                            type="checkbox"
-                            checked={pattern.availableSizes.includes(size.id)}
-                            onChange={() => togglePatternSize(selectedProduct.id, pattern, size.id)}
-                          />
-                          <span>{size.label}</span>
-                        </label>
-                      ))}
-                    </div>
+
                     <button
-                      className="admin-button danger"
+                      className="icon-button danger pattern-delete"
                       type="button"
+                      aria-label={`Xóa ${pattern.name}`}
                       onClick={() => removePattern(selectedProduct.id, pattern.id)}
                     >
                       <Trash2 size={16} aria-hidden="true" />
-                      Xóa họa tiết
                     </button>
                   </article>
                 ))}
