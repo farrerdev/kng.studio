@@ -1,4 +1,6 @@
 import {
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   ChevronDown,
   ChevronUp,
@@ -47,6 +49,16 @@ function getProductTitle(product: Product, productTypes: ProductType[]) {
 
 function getProductPrice(product: Product, productTypes: ProductType[]) {
   return getProductType(product, productTypes)?.price ?? product.price;
+}
+
+function moveItem<T>(items: T[], fromIndex: number, direction: -1 | 1) {
+  const toIndex = fromIndex + direction;
+  if (toIndex < 0 || toIndex >= items.length) return items;
+
+  const nextItems = [...items];
+  const [item] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, item);
+  return nextItems;
 }
 
 type GalleryImage = ProductImage & {
@@ -268,8 +280,7 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
         </div>
       </button>
 
-      {!isCollapsed ? (
-        <div className="product-detail">
+      <div className="product-detail" hidden={isCollapsed}>
           <section className="product-overview" aria-label={`Thông tin ${productTitle}`}>
             {product.material.trim() ? <span className="product-material">{product.material}</span> : null}
             {product.fit.trim() ? <p>{product.fit}</p> : null}
@@ -345,8 +356,7 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
               </div>
             </button>
           </section>
-        </div>
-      ) : null}
+      </div>
     </article>
   );
 }
@@ -453,8 +463,8 @@ function AdminPage({
       ...currentTypes,
       {
         id,
-        name: "Loại mới",
-        price: "390.000đ",
+        name: "",
+        price: "",
       },
     ]);
     setIsProductTypesExpanded(true);
@@ -483,6 +493,20 @@ function AdminPage({
           : product,
       ),
     );
+  };
+
+  const reorderProductType = (productTypeId: string, direction: -1 | 1) => {
+    onProductTypesChange((currentTypes) => {
+      const index = currentTypes.findIndex((productType) => productType.id === productTypeId);
+      return index === -1 ? currentTypes : moveItem(currentTypes, index, direction);
+    });
+  };
+
+  const reorderProduct = (productId: string, direction: -1 | 1) => {
+    onProductsChange((currentProducts) => {
+      const index = currentProducts.findIndex((product) => product.id === productId);
+      return index === -1 ? currentProducts : moveItem(currentProducts, index, direction);
+    });
   };
 
   const updatePattern = (productId: string, patternId: string, patch: Partial<ProductPattern>) => {
@@ -526,8 +550,8 @@ function AdminPage({
     const id = createId("product");
     const productType = defaultProductType ?? {
       id: createId("type"),
-      name: "Loại mới",
-      price: "390.000đ",
+      name: "",
+      price: "",
     };
 
     if (!defaultProductType) {
@@ -587,6 +611,15 @@ function AdminPage({
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
         product.id === productId ? { ...product, modelImages: [...product.modelImages, newImage] } : product,
+      ),
+    );
+  };
+
+  const addModelImages = (productId: string, urls: string[]) => {
+    const newImages = urls.map((url) => createImage(createId("model-image"), url, "Ảnh mẫu mặc"));
+    onProductsChange((currentProducts) =>
+      currentProducts.map((product) =>
+        product.id === productId ? { ...product, modelImages: [...product.modelImages, ...newImages] } : product,
       ),
     );
   };
@@ -664,6 +697,25 @@ function AdminPage({
     try {
       const publicUrl = await uploadCatalogImage(file, folder);
       onUploaded(publicUrl);
+      setAdminMessage("Upload ảnh xong, bấm Lưu Supabase để ghi dữ liệu.");
+    } catch (error) {
+      setAdminMessage(error instanceof Error ? error.message : "Không upload được ảnh.");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const uploadImages = async (files: File[], folder: string, onUploaded: (urls: string[]) => void) => {
+    if (files.length === 0) return;
+
+    setIsBusy(true);
+    setAdminMessage(`Đang upload ${files.length} ảnh...`);
+    try {
+      const publicUrls: string[] = [];
+      for (const file of files) {
+        publicUrls.push(await uploadCatalogImage(file, folder));
+      }
+      onUploaded(publicUrls);
       setAdminMessage("Upload ảnh xong, bấm Lưu Supabase để ghi dữ liệu.");
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "Không upload được ảnh.");
@@ -799,7 +851,7 @@ function AdminPage({
           {isProductTypesExpanded ? (
             <div className="product-type-section-body">
               <div className="product-type-list">
-                {productTypes.map((productType) => {
+                {productTypes.map((productType, index) => {
                   const isTypeExpanded = expandedProductTypeId === productType.id;
                   return (
                     <article className="product-type-item" key={productType.id}>
@@ -837,6 +889,26 @@ function AdminPage({
                               }
                             />
                           </label>
+                          <div className="reorder-controls" aria-label="Sắp xếp loại sản phẩm">
+                            <button
+                              className="icon-button"
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => reorderProductType(productType.id, -1)}
+                              aria-label={`Đưa ${productType.name || "loại sản phẩm"} lên`}
+                            >
+                              <ArrowUp size={15} aria-hidden="true" />
+                            </button>
+                            <button
+                              className="icon-button"
+                              type="button"
+                              disabled={index === productTypes.length - 1}
+                              onClick={() => reorderProductType(productType.id, 1)}
+                              aria-label={`Đưa ${productType.name || "loại sản phẩm"} xuống`}
+                            >
+                              <ArrowDown size={15} aria-hidden="true" />
+                            </button>
+                          </div>
                           <button
                             className="icon-button danger"
                             type="button"
@@ -861,7 +933,7 @@ function AdminPage({
           ) : null}
         </section>
 
-        {products.map((product) => {
+        {products.map((product, productIndex) => {
           const isExpanded = expandedProductId === product.id;
           const productTitle = getProductTitle(product, productTypes);
           return (
@@ -885,6 +957,26 @@ function AdminPage({
               {isExpanded ? (
                 <div className="admin-product-body">
                   <div className="admin-danger-row">
+                    <div className="reorder-controls" aria-label="Sắp xếp sản phẩm">
+                      <button
+                        className="admin-button small"
+                        type="button"
+                        disabled={productIndex === 0}
+                        onClick={() => reorderProduct(product.id, -1)}
+                      >
+                        <ArrowUp size={15} aria-hidden="true" />
+                        Lên
+                      </button>
+                      <button
+                        className="admin-button small"
+                        type="button"
+                        disabled={productIndex === products.length - 1}
+                        onClick={() => reorderProduct(product.id, 1)}
+                      >
+                        <ArrowDown size={15} aria-hidden="true" />
+                        Xuống
+                      </button>
+                    </div>
                     <button className="admin-button danger" type="button" onClick={() => removeProduct(product)}>
                       <Trash2 size={16} aria-hidden="true" />
                       Xóa sản phẩm
@@ -1043,10 +1135,11 @@ function AdminPage({
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          uploadImage(file, `models/${product.id}`, (url) => addModelImage(product.id, url));
+                          const files = Array.from(event.target.files ?? []);
+                          if (files.length === 0) return;
+                          uploadImages(files, `models/${product.id}`, (urls) => addModelImages(product.id, urls));
                           event.target.value = "";
                         }}
                       />

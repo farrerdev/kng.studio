@@ -1153,7 +1153,20 @@ button {
 
 .admin-danger-row {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+.reorder-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-danger-row .reorder-controls {
+  margin-right: auto;
 }
 
 .full-width {
@@ -1249,11 +1262,15 @@ button {
 
 .product-type-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(128px, 0.46fr) 38px;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 0.46fr) auto 38px;
   align-items: end;
   gap: 10px;
   padding: 10px;
   background: rgba(255, 253, 248, 0.7);
+}
+
+.product-type-row .reorder-controls {
+  align-self: center;
 }
 
 .product-type-row label {
@@ -1897,6 +1914,19 @@ button {
     gap: 10px;
   }
 
+  .admin-danger-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-danger-row .reorder-controls {
+    margin-right: 0;
+  }
+
+  .admin-danger-row .reorder-controls .admin-button {
+    flex: 1;
+  }
+
   .product-type-row {
     grid-template-columns: 1fr 38px;
   }
@@ -1905,9 +1935,16 @@ button {
     grid-column: 1 / -1;
   }
 
+  .product-type-row .reorder-controls {
+    grid-column: 1;
+  }
+
   .product-type-row .icon-button {
-    grid-column: 2;
     width: 38px;
+  }
+
+  .product-type-row > .icon-button.danger {
+    grid-column: 2;
   }
 
   .pattern-row {
