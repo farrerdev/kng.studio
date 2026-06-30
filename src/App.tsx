@@ -8,6 +8,7 @@ import {
   Facebook,
   Image,
   Instagram,
+  LoaderCircle,
   MapPin,
   PackageCheck,
   Plus,
@@ -65,6 +66,34 @@ type GalleryImage = ProductImage & {
   caption: string;
 };
 
+type LoadingPanelProps = {
+  title: string;
+  subtitle: string;
+  variant?: "client" | "admin";
+};
+
+function LoadingPanel({ title, subtitle, variant = "client" }: LoadingPanelProps) {
+  return (
+    <section className={`loading-panel ${variant}`} aria-live="polite" aria-busy="true">
+      <div className="loading-card">
+        <span className="loading-mark" aria-hidden="true">
+          <LoaderCircle size={20} />
+        </span>
+        <div>
+          <p className="eyebrow">KNG.studio</p>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+        </div>
+        <div className="loading-lines" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
   return catalogProducts
     .map((product) => ({
@@ -85,6 +114,7 @@ function App() {
     isSupabaseConfigured ? null : fallbackCatalog.shopInfoImage,
   );
   const [catalogStatus, setCatalogStatus] = useState("Đang tải catalog...");
+  const [catalogLoadState, setCatalogLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
@@ -96,6 +126,10 @@ function App() {
   );
 
   useEffect(() => {
+    document.title = isAdminRoute ? "KNG.studio Admin" : "KNG.studio | Muslin homewear";
+  }, [isAdminRoute]);
+
+  useEffect(() => {
     let isMounted = true;
     fetchCatalog()
       .then((catalog) => {
@@ -104,6 +138,7 @@ function App() {
         setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
         setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Đã tải dữ liệu thật." : "Đang dùng mock data.");
+        setCatalogLoadState("ready");
       })
       .catch(() => {
         if (!isMounted) return;
@@ -111,6 +146,7 @@ function App() {
         setCatalogProducts(isSupabaseConfigured ? [] : fallbackCatalog.products);
         setCurrentShopInfoImage(isSupabaseConfigured ? null : fallbackCatalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Không tải được dữ liệu Supabase." : "Đang dùng mock data.");
+        setCatalogLoadState(isSupabaseConfigured ? "error" : "ready");
       });
 
     return () => {
@@ -129,6 +165,7 @@ function App() {
     return (
       <AdminPage
         catalogStatus={catalogStatus}
+        isCatalogLoading={catalogLoadState === "loading"}
         productTypes={catalogProductTypes}
         products={catalogProducts}
         shopInfoImage={currentShopInfoImage ?? fallbackCatalog.shopInfoImage}
@@ -163,7 +200,12 @@ function App() {
           </div>
         </header>
 
-        {currentShopInfoImage ? (
+        {catalogLoadState === "loading" ? (
+          <LoadingPanel
+            title="Đang chuẩn bị catalog"
+            subtitle="Shop đang tải mẫu còn hàng, bảng giá và hình ảnh mới nhất."
+          />
+        ) : currentShopInfoImage ? (
           <section className="shop-info" aria-label="Bảng giá và quy định chung">
             <h2>Bảng giá chung và quy định</h2>
             <button
@@ -181,6 +223,7 @@ function App() {
           </section>
         ) : null}
 
+        {catalogLoadState !== "loading" ? (
         <div className="catalog-layout">
           <aside className="catalog-sidebar" aria-label="Bộ lọc sản phẩm">
             <section className="size-panel">
@@ -237,6 +280,7 @@ function App() {
             )}
           </section>
         </div>
+        ) : null}
       </main>
 
       <ContactButtons />
@@ -378,6 +422,7 @@ function ContactButtons() {
 
 type AdminPageProps = {
   catalogStatus: string;
+  isCatalogLoading: boolean;
   productTypes: ProductType[];
   products: Product[];
   shopInfoImage: ProductImage;
@@ -397,6 +442,7 @@ const createImage = (id: string, src = "/images/shop-info.webp", alt = "Ảnh s�
 
 function AdminPage({
   catalogStatus,
+  isCatalogLoading,
   productTypes,
   products,
   shopInfoImage: adminShopInfoImage,
@@ -412,6 +458,7 @@ function AdminPage({
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isBusy, setIsBusy] = useState(false);
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
 
@@ -440,12 +487,16 @@ function AdminPage({
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setIsSignedIn(Boolean(data.session));
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setIsSignedIn(Boolean(data.session));
+      })
+      .finally(() => setIsAuthLoading(false));
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsSignedIn(Boolean(session));
+      setIsAuthLoading(false);
     });
 
     return () => data.subscription.unsubscribe();
@@ -735,6 +786,18 @@ function AdminPage({
             Xem mock site
           </a>
         </section>
+      </main>
+    );
+  }
+
+  if (isAuthLoading || isCatalogLoading) {
+    return (
+      <main className="admin-shell">
+        <LoadingPanel
+          title="Đang mở admin"
+          subtitle="Đang kiểm tra đăng nhập và tải dữ liệu catalog."
+          variant="admin"
+        />
       </main>
     );
   }
