@@ -1,3 +1,12 @@
+create table if not exists public.product_types (
+  id text primary key,
+  name text not null,
+  price text not null,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.products (
   id text primary key,
   name text not null,
@@ -11,6 +20,41 @@ create table if not exists public.products (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.products
+  add column if not exists product_type_id text references public.product_types(id);
+
+insert into public.product_types (id, name, price, sort_order)
+select
+  'type-' || substr(md5(
+    case
+      when strpos(name, ' - ') > 0 then btrim(split_part(name, ' - ', 1))
+      else btrim(name)
+    end || '|' || price
+  ), 1, 12),
+  case
+    when strpos(name, ' - ') > 0 then btrim(split_part(name, ' - ', 1))
+    else btrim(name)
+  end,
+  price,
+  row_number() over (order by min(sort_order), price) - 1
+from public.products
+where product_type_id is null
+group by 1, 2, 3
+on conflict (id) do nothing;
+
+update public.products
+set product_type_id = 'type-' || substr(md5(
+  case
+    when strpos(name, ' - ') > 0 then btrim(split_part(name, ' - ', 1))
+    else btrim(name)
+  end || '|' || price
+), 1, 12)
+where product_type_id is null;
+
+update public.products
+set name = btrim(substring(name from position(' - ' in name) + 3))
+where strpos(name, ' - ') > 0;
 
 create table if not exists public.product_patterns (
   id text primary key,
@@ -42,10 +86,16 @@ create table if not exists public.shop_info (
   updated_at timestamptz not null default now()
 );
 
+alter table public.product_types enable row level security;
 alter table public.products enable row level security;
 alter table public.product_patterns enable row level security;
 alter table public.product_images enable row level security;
 alter table public.shop_info enable row level security;
+
+drop policy if exists "Public can read product types" on public.product_types;
+create policy "Public can read product types"
+  on public.product_types for select
+  using (true);
 
 drop policy if exists "Public can read active products" on public.products;
 create policy "Public can read active products"
@@ -66,6 +116,12 @@ drop policy if exists "Public can read shop info" on public.shop_info;
 create policy "Public can read shop info"
   on public.shop_info for select
   using (true);
+
+drop policy if exists "Authenticated admin can manage product types" on public.product_types;
+create policy "Authenticated admin can manage product types"
+  on public.product_types for all
+  using (auth.role() = 'authenticated')
+  with check (auth.role() = 'authenticated');
 
 drop policy if exists "Authenticated admin can manage products" on public.products;
 create policy "Authenticated admin can manage products"

@@ -20,8 +20,15 @@ export type ProductPattern = {
   availableSizes: SizeId[];
 };
 
+export type ProductType = {
+  id: string;
+  name: string;
+  price: string;
+};
+
 export type Product = {
   id: string;
+  productTypeId: string;
   name: string;
   price: string;
   fit: string;

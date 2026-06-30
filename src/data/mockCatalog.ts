@@ -1,13 +1,20 @@
-import type { Product, SizeOption } from "../types/catalog";
+import type { Product, ProductType, SizeOption } from "../types/catalog";
 
 export const sizeOptions: SizeOption[] = [
   { id: "1", label: "Size 1", range: "Dưới 55kg" },
   { id: "2", label: "Size 2", range: "55 - 65kg" },
 ];
 
+export const productTypes: ProductType[] = [
+  { id: "type-set-bo", name: "Set bộ", price: "390.000đ" },
+  { id: "type-dam-ngu", name: "Đầm ngủ", price: "420.000đ" },
+  { id: "type-pajama", name: "Pajama dài", price: "460.000đ" },
+];
+
 export const products: Product[] = [
   {
     id: "moc-set",
+    productTypeId: "type-set-bo",
     name: "Mộc Set",
     price: "390.000đ",
     fit: "Form suông nhẹ, áo cổ V, quần lưng thun mềm.",
@@ -67,6 +74,7 @@ export const products: Product[] = [
   },
   {
     id: "may-dress",
+    productTypeId: "type-dam-ngu",
     name: "Mây Dress",
     price: "420.000đ",
     fit: "Đầm ngủ dáng A, tay bồng ngắn, có túi hai bên.",
@@ -115,6 +123,7 @@ export const products: Product[] = [
   },
   {
     id: "an-pajama",
+    productTypeId: "type-pajama",
     name: "An Pajama",
     price: "460.000đ",
     fit: "Pajama dài tay, cổ bẻ nhỏ, quần dài thoải mái.",

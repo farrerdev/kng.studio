@@ -25,13 +25,28 @@ import {
   saveCatalog,
   uploadCatalogImage,
 } from "./services/catalogApi";
-import type { Product, ProductImage, ProductPattern, SizeId } from "./types/catalog";
+import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "./types/catalog";
 
 function formatPrice(raw: string): string {
   const digits = raw.replace(/[^0-9]/g, "");
   if (!digits) return raw;
   const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return formatted + "đ";
+}
+
+function getProductType(product: Product, productTypes: ProductType[]) {
+  return productTypes.find((productType) => productType.id === product.productTypeId) ?? null;
+}
+
+function getProductTitle(product: Product, productTypes: ProductType[]) {
+  const productType = getProductType(product, productTypes);
+  const typeName = productType?.name.trim() || "Loại sản phẩm";
+  const productName = product.name.trim();
+  return productName ? `${typeName} - ${productName}` : typeName;
+}
+
+function getProductPrice(product: Product, productTypes: ProductType[]) {
+  return getProductType(product, productTypes)?.price ?? product.price;
 }
 
 type GalleryImage = ProductImage & {
@@ -48,6 +63,9 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
 }
 
 function App() {
+  const [catalogProductTypes, setCatalogProductTypes] = useState<ProductType[]>(
+    isSupabaseConfigured ? [] : fallbackCatalog.productTypes,
+  );
   const [catalogProducts, setCatalogProducts] = useState<Product[]>(
     isSupabaseConfigured ? [] : fallbackCatalog.products,
   );
@@ -70,12 +88,14 @@ function App() {
     fetchCatalog()
       .then((catalog) => {
         if (!isMounted) return;
+        setCatalogProductTypes(isSupabaseConfigured ? catalog.productTypes : fallbackCatalog.productTypes);
         setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
         setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Đã tải dữ liệu thật." : "Đang dùng mock data.");
       })
       .catch(() => {
         if (!isMounted) return;
+        setCatalogProductTypes(isSupabaseConfigured ? [] : fallbackCatalog.productTypes);
         setCatalogProducts(isSupabaseConfigured ? [] : fallbackCatalog.products);
         setCurrentShopInfoImage(isSupabaseConfigured ? null : fallbackCatalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Không tải được dữ liệu Supabase." : "Đang dùng mock data.");
@@ -97,11 +117,14 @@ function App() {
     return (
       <AdminPage
         catalogStatus={catalogStatus}
+        productTypes={catalogProductTypes}
         products={catalogProducts}
         shopInfoImage={currentShopInfoImage ?? fallbackCatalog.shopInfoImage}
+        onProductTypesChange={setCatalogProductTypes}
         onProductsChange={setCatalogProducts}
         onRefresh={async () => {
           const catalog = await fetchCatalog();
+          setCatalogProductTypes(isSupabaseConfigured ? catalog.productTypes : fallbackCatalog.productTypes);
           setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
           setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
         }}
@@ -190,6 +213,7 @@ function App() {
                   onImageOpen={setActiveImage}
                   onToggle={() => toggleProduct(product.id)}
                   product={product}
+                  productTypes={catalogProductTypes}
                   selectedSize={selectedSize}
                 />
               ))
@@ -225,17 +249,20 @@ function App() {
 
 type ProductCardProps = {
   product: Product;
+  productTypes: ProductType[];
   selectedSize: SizeId;
   isCollapsed: boolean;
   onToggle: () => void;
   onImageOpen: (image: GalleryImage) => void;
 };
 
-function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen }: ProductCardProps) {
+function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggle, onImageOpen }: ProductCardProps) {
+  const productTitle = getProductTitle(product, productTypes);
+
   return (
     <article className="product-card">
       <button className="product-summary" type="button" onClick={onToggle} aria-expanded={!isCollapsed}>
-        <h3>{product.name}</h3>
+        <h3>{productTitle}</h3>
         <div className="summary-side">
           <span>{isCollapsed ? <ChevronDown size={22} /> : <ChevronUp size={22} />}</span>
         </div>
@@ -243,13 +270,13 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
 
       {!isCollapsed ? (
         <div className="product-detail">
-          <section className="product-overview" aria-label={`Thông tin ${product.name}`}>
+          <section className="product-overview" aria-label={`Thông tin ${productTitle}`}>
             <span className="product-material">{product.material}</span>
             <p>{product.fit}</p>
-            <strong>{formatPrice(product.price)}</strong>
+            <strong>{formatPrice(getProductPrice(product, productTypes))}</strong>
           </section>
 
-          <section aria-label={`Họa tiết còn hàng của ${product.name}`}>
+          <section aria-label={`Họa tiết còn hàng của ${productTitle}`}>
             <div className="section-title">
               <h4>Họa tiết còn size {selectedSize}</h4>
               <span>{product.patterns.length} mẫu</span>
@@ -263,7 +290,7 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
                   onClick={() =>
                     onImageOpen({
                       ...pattern.image,
-                      caption: `${product.name} - ${pattern.name}`,
+                      caption: `${productTitle} - ${pattern.name}`,
                     })
                   }
                 >
@@ -276,7 +303,7 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
             </div>
           </section>
 
-          <section aria-label={`Ảnh mẫu mặc ${product.name}`}>
+          <section aria-label={`Ảnh mẫu mặc ${productTitle}`}>
             <div className="section-title">
               <h4>Ảnh mẫu mặc</h4>
               <span>Tap để xem lớn</span>
@@ -290,7 +317,7 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
                   onClick={() =>
                     onImageOpen({
                       ...image,
-                      caption: `${product.name} - ảnh mẫu ${index + 1}`,
+                      caption: `${productTitle} - ảnh mẫu ${index + 1}`,
                     })
                   }
                 >
@@ -300,14 +327,14 @@ function ProductCard({ product, selectedSize, isCollapsed, onToggle, onImageOpen
             </div>
           </section>
 
-          <section aria-label={`Bảng size ${product.name}`}>
+          <section aria-label={`Bảng size ${productTitle}`}>
             <button
               className="size-chart-inline"
               type="button"
               onClick={() =>
                 onImageOpen({
                   ...product.sizeChartImage,
-                  caption: `${product.name} - bảng size`,
+                  caption: `${productTitle} - bảng size`,
                 })
               }
             >
@@ -341,8 +368,10 @@ function ContactButtons() {
 
 type AdminPageProps = {
   catalogStatus: string;
+  productTypes: ProductType[];
   products: Product[];
   shopInfoImage: ProductImage;
+  onProductTypesChange: Dispatch<SetStateAction<ProductType[]>>;
   onProductsChange: Dispatch<SetStateAction<Product[]>>;
   onShopInfoImageChange: Dispatch<SetStateAction<ProductImage>>;
   onRefresh: () => Promise<void>;
@@ -358,8 +387,10 @@ const createImage = (id: string, src = "/images/shop-info.webp", alt = "Ảnh s�
 
 function AdminPage({
   catalogStatus,
+  productTypes,
   products,
   shopInfoImage: adminShopInfoImage,
+  onProductTypesChange,
   onProductsChange,
   onShopInfoImageChange,
   onRefresh,
@@ -382,6 +413,7 @@ function AdminPage({
     (total, product) => total + product.patterns.filter((pattern) => pattern.availableSizes.length > 0).length,
     0,
   );
+  const defaultProductType = productTypes[0] ?? null;
 
   const toggleExpandProduct = (productId: string) => {
     setExpandedProductId((current) => (current === productId ? null : productId));
@@ -406,6 +438,41 @@ function AdminPage({
   const updateProduct = (productId: string, patch: Partial<Product>) => {
     onProductsChange((currentProducts) =>
       currentProducts.map((product) => (product.id === productId ? { ...product, ...patch } : product)),
+    );
+  };
+
+  const addProductType = () => {
+    const id = createId("type");
+    onProductTypesChange((currentTypes) => [
+      ...currentTypes,
+      {
+        id,
+        name: "Loại mới",
+        price: "390.000đ",
+      },
+    ]);
+  };
+
+  const updateProductType = (productTypeId: string, patch: Partial<ProductType>) => {
+    onProductTypesChange((currentTypes) =>
+      currentTypes.map((productType) =>
+        productType.id === productTypeId ? { ...productType, ...patch } : productType,
+      ),
+    );
+  };
+
+  const removeProductType = (productTypeId: string) => {
+    if (productTypes.length <= 1) return;
+    const nextProductType = productTypes.find((productType) => productType.id !== productTypeId);
+    if (!nextProductType) return;
+
+    onProductTypesChange((currentTypes) => currentTypes.filter((productType) => productType.id !== productTypeId));
+    onProductsChange((currentProducts) =>
+      currentProducts.map((product) =>
+        product.productTypeId === productTypeId
+          ? { ...product, productTypeId: nextProductType.id, price: nextProductType.price }
+          : product,
+      ),
     );
   };
 
@@ -448,10 +515,21 @@ function AdminPage({
 
   const addProduct = () => {
     const id = createId("product");
+    const productType = defaultProductType ?? {
+      id: createId("type"),
+      name: "Loại mới",
+      price: "390.000đ",
+    };
+
+    if (!defaultProductType) {
+      onProductTypesChange((currentTypes) => [...currentTypes, productType]);
+    }
+
     const newProduct: Product = {
       id,
-      name: "Mẫu mới",
-      price: "390.000đ",
+      productTypeId: productType.id,
+      name: "",
+      price: productType.price,
       fit: "Mô tả form dáng ngắn.",
       material: "Xô muslin 2 lớp",
       patterns: [
@@ -537,6 +615,7 @@ function AdminPage({
     setAdminMessage("Đang lưu lên Supabase...");
     try {
       await saveCatalog({
+        productTypes,
         products,
         shopInfoImage: adminShopInfoImage,
       });
@@ -663,6 +742,11 @@ function AdminPage({
             <strong>{products.length}</strong>
           </div>
           <div>
+            <BarChart3 size={20} aria-hidden="true" />
+            <span>Loại</span>
+            <strong>{productTypes.length}</strong>
+          </div>
+          <div>
             <Image size={20} aria-hidden="true" />
             <span>Họa tiết</span>
             <strong>{patternCount}</strong>
@@ -678,8 +762,51 @@ function AdminPage({
       <p className="admin-status-text">{adminMessage}</p>
 
       <div className="admin-product-list-full">
+        <section className="admin-card product-type-manager" aria-label="Quản lý loại sản phẩm">
+          <div className="admin-card-header">
+            <h3>Loại sản phẩm</h3>
+            <button className="admin-button small" type="button" onClick={addProductType}>
+              <Plus size={16} aria-hidden="true" />
+              Thêm loại
+            </button>
+          </div>
+          <div className="product-type-list">
+            {productTypes.map((productType) => (
+              <article className="product-type-row" key={productType.id}>
+                <label>
+                  <span>Loại</span>
+                  <input
+                    value={productType.name}
+                    onChange={(event) => updateProductType(productType.id, { name: event.target.value })}
+                  />
+                </label>
+                <label>
+                  <span>Giá</span>
+                  <input
+                    value={productType.price}
+                    placeholder="Ví dụ: 390.000đ"
+                    onChange={(event) =>
+                      updateProductType(productType.id, { price: formatPrice(event.target.value) })
+                    }
+                  />
+                </label>
+                <button
+                  className="icon-button danger"
+                  type="button"
+                  disabled={productTypes.length <= 1}
+                  onClick={() => removeProductType(productType.id)}
+                  aria-label={`Xóa loại ${productType.name}`}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
         {products.map((product) => {
           const isExpanded = expandedProductId === product.id;
+          const productTitle = getProductTitle(product, productTypes);
           return (
             <article className="admin-product-item" key={product.id}>
               <button
@@ -688,9 +815,9 @@ function AdminPage({
                 onClick={() => toggleExpandProduct(product.id)}
               >
                 <div>
-                  <strong>{product.name}</strong>
+                  <strong>{productTitle}</strong>
                   <span>
-                    {formatPrice(product.price)} · {product.patterns.length} họa tiết
+                    {formatPrice(getProductPrice(product, productTypes))} · {product.patterns.length} họa tiết
                   </span>
                 </div>
                 <span className="admin-product-chevron">
@@ -704,21 +831,30 @@ function AdminPage({
                     <h3>Thông tin sản phẩm</h3>
                     <div className="admin-form-grid">
                       <label>
-                        <span>Tên mẫu</span>
-                        <input
-                          value={product.name}
-                          onChange={(event) => updateProduct(product.id, { name: event.target.value })}
-                        />
+                        <span>Loại sản phẩm</span>
+                        <select
+                          value={product.productTypeId}
+                          onChange={(event) => {
+                            const productType = productTypes.find((type) => type.id === event.target.value);
+                            updateProduct(product.id, {
+                              productTypeId: event.target.value,
+                              price: productType?.price ?? product.price,
+                            });
+                          }}
+                        >
+                          {productTypes.map((productType) => (
+                            <option value={productType.id} key={productType.id}>
+                              {productType.name} - {formatPrice(productType.price)}
+                            </option>
+                          ))}
+                        </select>
                       </label>
                       <label>
-                        <span>Giá</span>
+                        <span>Tên sản phẩm</span>
                         <input
-                          value={product.price}
-                          placeholder="Ví dụ: 390.000đ"
-                          onChange={(event) => {
-                            const formatted = formatPrice(event.target.value);
-                            updateProduct(product.id, { price: formatted });
-                          }}
+                          value={product.name}
+                          placeholder="Có thể để trống"
+                          onChange={(event) => updateProduct(product.id, { name: event.target.value })}
                         />
                       </label>
                       <label>

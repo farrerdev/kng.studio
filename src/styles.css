@@ -731,7 +731,7 @@ button {
 
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 14px;
   padding: 12px;
@@ -865,6 +865,41 @@ button {
   min-width: 0;
 }
 
+.product-type-manager {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 253, 248, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.product-type-list {
+  display: grid;
+  gap: 10px;
+}
+
+.product-type-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 0.46fr) 38px;
+  align-items: end;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(234, 223, 206, 0.72);
+  border-radius: 8px;
+  background: #fff8ee;
+}
+
+.product-type-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.product-type-row span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
 .admin-form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -897,6 +932,8 @@ button {
 
 .admin-form-grid input,
 .admin-form-grid textarea,
+.admin-form-grid select,
+.product-type-row input,
 .pattern-row-main input {
   width: 100%;
   min-width: 0;
@@ -908,6 +945,14 @@ button {
   background: #fffaf1;
   color: var(--ink);
   font: inherit;
+}
+
+.admin-form-grid select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%) right 16px center / 6px 6px no-repeat,
+    #fffaf1;
+  padding-right: 34px;
 }
 
 .admin-form-grid input[type="color"] {
@@ -1227,6 +1272,19 @@ button {
   .admin-form-grid {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .product-type-row {
+    grid-template-columns: 1fr 38px;
+  }
+
+  .product-type-row label {
+    grid-column: 1 / -1;
+  }
+
+  .product-type-row .icon-button {
+    grid-column: 2;
+    width: 38px;
   }
 
   .pattern-row {

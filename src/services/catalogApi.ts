@@ -1,21 +1,30 @@
-import { products as mockProducts } from "../data/mockCatalog";
+import { products as mockProducts, productTypes as mockProductTypes } from "../data/mockCatalog";
 import { shopInfoImage } from "../data/shopInfo";
 import { isSupabaseConfigured, supabase, supabaseConfig } from "../lib/supabase";
-import type { Product, ProductImage, ProductPattern, SizeId } from "../types/catalog";
+import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "../types/catalog";
 
 export type CatalogData = {
+  productTypes: ProductType[];
   products: Product[];
   shopInfoImage: ProductImage | null;
 };
 
 type ProductRow = {
   id: string;
+  product_type_id?: string | null;
   name: string;
   price: string;
   fit: string;
   material: string;
   size_chart_image_src: string;
   size_chart_image_alt: string;
+  sort_order: number;
+};
+
+type ProductTypeRow = {
+  id: string;
+  name: string;
+  price: string;
   sort_order: number;
 };
 
@@ -45,6 +54,7 @@ type ShopInfoRow = {
 };
 
 export const fallbackCatalog = {
+  productTypes: mockProductTypes,
   products: mockProducts,
   shopInfoImage,
 };
@@ -54,7 +64,8 @@ export async function fetchCatalog(): Promise<CatalogData> {
     return fallbackCatalog;
   }
 
-  const [productsResult, patternsResult, imagesResult, shopInfoResult] = await Promise.all([
+  const [productTypesResult, productsResult, patternsResult, imagesResult, shopInfoResult] = await Promise.all([
+    supabase.from("product_types").select("*").order("sort_order"),
     supabase.from("products").select("*").eq("active", true).order("sort_order"),
     supabase.from("product_patterns").select("*").order("sort_order"),
     supabase.from("product_images").select("*").order("sort_order"),
@@ -66,34 +77,44 @@ export async function fetchCatalog(): Promise<CatalogData> {
   if (imagesResult.error) throw imagesResult.error;
   if (shopInfoResult.error) throw shopInfoResult.error;
 
+  const productTypeRows = productTypesResult.error ? [] : ((productTypesResult.data ?? []) as ProductTypeRow[]);
   const productRows = (productsResult.data ?? []) as ProductRow[];
   const patternRows = (patternsResult.data ?? []) as PatternRow[];
   const imageRows = (imagesResult.data ?? []) as ProductImageRow[];
   const shopInfoRow = shopInfoResult.data as ShopInfoRow | null;
+  const productTypes = productTypeRows.length > 0 ? productTypeRows.map(mapProductTypeRow) : deriveProductTypes(productRows);
 
   return {
-    products: productRows.map((product) => ({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      fit: product.fit,
-      material: product.material,
-      patterns: patternRows
-        .filter((pattern) => pattern.product_id === product.id)
-        .map(mapPatternRow),
-      modelImages: imageRows
-        .filter((image) => image.product_id === product.id)
-        .map((image) => ({
-          id: image.id,
-          src: image.src,
-          alt: image.alt,
-        })),
-      sizeChartImage: {
-        id: `${product.id}-size-chart`,
-        src: product.size_chart_image_src,
-        alt: product.size_chart_image_alt,
-      },
-    })),
+    productTypes,
+    products: productRows.map((product) => {
+      const legacyTitle = splitLegacyTitle(product.name);
+      const productTypeId = product.product_type_id ?? createProductTypeId(legacyTitle.typeName, product.price);
+      const productType = productTypes.find((type) => type.id === productTypeId);
+
+      return {
+        id: product.id,
+        productTypeId,
+        name: product.product_type_id ? product.name : legacyTitle.productName,
+        price: productType?.price ?? product.price,
+        fit: product.fit,
+        material: product.material,
+        patterns: patternRows
+          .filter((pattern) => pattern.product_id === product.id)
+          .map(mapPatternRow),
+        modelImages: imageRows
+          .filter((image) => image.product_id === product.id)
+          .map((image) => ({
+            id: image.id,
+            src: image.src,
+            alt: image.alt,
+          })),
+        sizeChartImage: {
+          id: `${product.id}-size-chart`,
+          src: product.size_chart_image_src,
+          alt: product.size_chart_image_alt,
+        },
+      };
+    }),
     shopInfoImage: shopInfoRow?.image_src
       ? {
           id: shopInfoRow.id,
@@ -101,6 +122,14 @@ export async function fetchCatalog(): Promise<CatalogData> {
           alt: shopInfoRow.image_alt,
         }
       : null,
+  };
+}
+
+function mapProductTypeRow(productType: ProductTypeRow): ProductType {
+  return {
+    id: productType.id,
+    name: productType.name,
+    price: productType.price,
   };
 }
 
@@ -118,15 +147,61 @@ function mapPatternRow(pattern: PatternRow): ProductPattern {
   };
 }
 
-export async function saveCatalog(catalog: { products: Product[]; shopInfoImage: ProductImage }) {
+function createProductTypeId(name: string, price: string) {
+  const normalized = `${name}-${price}`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `type-${normalized || "default"}`.slice(0, 64);
+}
+
+function splitLegacyTitle(name: string) {
+  const [typeName, ...nameParts] = name.split(" - ");
+  return {
+    typeName: nameParts.length > 0 ? typeName.trim() || "Loại sản phẩm" : name.trim() || "Loại sản phẩm",
+    productName: nameParts.length > 0 ? nameParts.join(" - ").trim() : name,
+  };
+}
+
+function deriveProductTypes(products: ProductRow[]): ProductType[] {
+  const productTypes = new Map<string, ProductType>();
+  products.forEach((product) => {
+    const legacyTitle = splitLegacyTitle(product.name);
+    const id = createProductTypeId(legacyTitle.typeName, product.price);
+    if (!productTypes.has(id)) {
+      productTypes.set(id, {
+        id,
+        name: legacyTitle.typeName,
+        price: product.price,
+      });
+    }
+  });
+  return Array.from(productTypes.values());
+}
+
+export async function saveCatalog(catalog: {
+  productTypes: ProductType[];
+  products: Product[];
+  shopInfoImage: ProductImage;
+}) {
   if (!supabase) {
     throw new Error("Supabase is not configured.");
   }
 
+  const productTypeRows = catalog.productTypes.map((productType, index) => ({
+    id: productType.id,
+    name: productType.name,
+    price: productType.price,
+    sort_order: index,
+  }));
+
   const productRows = catalog.products.map((product, index) => ({
     id: product.id,
+    product_type_id: product.productTypeId,
     name: product.name,
-    price: product.price,
+    price: catalog.productTypes.find((productType) => productType.id === product.productTypeId)?.price ?? product.price,
     fit: product.fit,
     material: product.material,
     size_chart_image_src: product.sizeChartImage.src,
@@ -159,6 +234,12 @@ export async function saveCatalog(catalog: { products: Product[]; shopInfoImage:
   );
 
   const productIds = catalog.products.map((product) => product.id);
+  const productTypeIds = catalog.productTypes.map((productType) => productType.id);
+
+  if (productTypeRows.length > 0) {
+    const upsertProductTypes = await supabase.from("product_types").upsert(productTypeRows);
+    if (upsertProductTypes.error) throw upsertProductTypes.error;
+  }
 
   const upsertProducts = await supabase.from("products").upsert(productRows);
   if (upsertProducts.error) throw upsertProducts.error;
@@ -179,6 +260,14 @@ export async function saveCatalog(catalog: { products: Product[]; shopInfoImage:
   if (imageRows.length > 0) {
     const upsertImages = await supabase.from("product_images").upsert(imageRows);
     if (upsertImages.error) throw upsertImages.error;
+  }
+
+  if (productTypeIds.length > 0) {
+    const deleteProductTypes = await supabase
+      .from("product_types")
+      .delete()
+      .not("id", "in", `(${productTypeIds.join(",")})`);
+    if (deleteProductTypes.error) throw deleteProductTypes.error;
   }
 
   const upsertShopInfo = await supabase.from("shop_info").upsert({
