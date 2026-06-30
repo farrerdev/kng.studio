@@ -139,7 +139,7 @@ function App() {
 
   return (
     <>
-      <main className="page-shell">
+      <main className="page-shell storefront">
         <header className="site-header">
           <div>
             <p className="header-kicker">{shopConfig.subtitle}</p>
@@ -271,8 +271,8 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
       {!isCollapsed ? (
         <div className="product-detail">
           <section className="product-overview" aria-label={`Thông tin ${productTitle}`}>
-            <span className="product-material">{product.material}</span>
-            <p>{product.fit}</p>
+            {product.material.trim() ? <span className="product-material">{product.material}</span> : null}
+            {product.fit.trim() ? <p>{product.fit}</p> : null}
             <strong>{formatPrice(getProductPrice(product, productTypes))}</strong>
           </section>
 

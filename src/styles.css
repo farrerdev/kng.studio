@@ -1,22 +1,22 @@
 :root {
-  color: #2a241e;
-  background: #fff8ee;
+  color: #111111;
+  background: #ffffff;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Helvetica Neue", Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --ink: #2a241e;
-  --muted: #776b5d;
-  --line: #eadfce;
-  --paper: #fffdf8;
-  --soft: #f8efe0;
-  --cream: #fff4df;
-  --accent: #8f6b4e;
-  --accent-strong: #6d4b34;
-  --sage: #72866b;
-  --rose: #bf6972;
-  --shadow: 0 16px 42px rgba(88, 63, 38, 0.1);
+  --ink: #111111;
+  --muted: #666666;
+  --line: #dddddd;
+  --paper: #ffffff;
+  --soft: #f6f6f6;
+  --cream: #f2f2f2;
+  --accent: #111111;
+  --accent-strong: #111111;
+  --sage: #666666;
+  --rose: #b00020;
+  --shadow: none;
 }
 
 * {
@@ -35,9 +35,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(255, 244, 223, 0.92), rgba(255, 253, 248, 0.72) 340px),
-    #fff8ee;
+  background: #ffffff;
 }
 
 button,
@@ -542,6 +540,300 @@ button {
 .lightbox-caption {
   max-width: min(92vw, 760px);
   font-weight: 800;
+}
+
+/* User storefront: clean fashion retail direction inspired by modern monochrome catalog layouts. */
+.storefront {
+  --store-ink: #111111;
+  --store-muted: #686868;
+  --store-line: #dedede;
+  --store-soft: #f6f6f6;
+  width: min(1440px, calc(100% - 32px));
+  padding: 0 0 104px;
+  color: var(--store-ink);
+}
+
+.storefront .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  min-height: 72px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--store-ink);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.storefront .header-kicker,
+.storefront .eyebrow {
+  color: var(--store-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.storefront .site-header h1 {
+  margin: 2px 0 0;
+  font-family:
+    "Helvetica Neue", Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: clamp(1.42rem, 4vw, 2rem);
+  font-weight: 650;
+  line-height: 1;
+}
+
+.storefront .location-pill {
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--store-ink);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.storefront .shop-info {
+  gap: 16px;
+  padding: 28px 0 34px;
+  border-bottom: 1px solid var(--store-line);
+}
+
+.storefront .shop-info h2,
+.storefront .size-panel h2,
+.storefront .list-heading h2 {
+  color: var(--store-ink);
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  font-weight: 620;
+  line-height: 1.15;
+}
+
+.storefront .shop-info-card {
+  max-width: min(620px, 100%);
+  border: 1px solid var(--store-line);
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.storefront .shop-info-card img {
+  height: clamp(220px, 44vh, 390px);
+  background: var(--store-soft);
+}
+
+.storefront .catalog-layout {
+  gap: 28px;
+  padding-top: 28px;
+}
+
+.storefront .catalog-sidebar {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.storefront .size-panel {
+  padding: 0;
+}
+
+.storefront .size-options {
+  top: 88px;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--store-ink);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+}
+
+.storefront .size-option {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--store-ink);
+}
+
+.storefront .size-option + .size-option {
+  border-left: 1px solid var(--store-ink);
+}
+
+.storefront .size-option span,
+.storefront .size-option strong {
+  color: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.storefront .size-option.active {
+  background: var(--store-ink);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.storefront .catalog-list {
+  gap: 18px;
+  margin-top: 0;
+}
+
+.storefront .list-heading {
+  align-items: end;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--store-line);
+}
+
+.storefront .list-heading p {
+  color: var(--store-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.storefront .product-card {
+  overflow: visible;
+  border: 0;
+  border-bottom: 1px solid var(--store-line);
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.storefront .product-summary {
+  top: 72px;
+  min-height: 54px;
+  padding: 12px 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 1px 0 var(--store-line);
+}
+
+.storefront .product-summary h3 {
+  font-size: clamp(1rem, 2.2vw, 1.2rem);
+  font-weight: 620;
+  line-height: 1.2;
+}
+
+.storefront .summary-side span {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  background: var(--store-soft);
+}
+
+.storefront .product-detail {
+  gap: 30px;
+  padding: 22px 0 34px;
+}
+
+.storefront .product-overview {
+  gap: 8px;
+  max-width: 540px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.storefront .product-material {
+  color: var(--store-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.storefront .product-overview p {
+  color: var(--store-muted);
+  font-size: 0.92rem;
+}
+
+.storefront .product-overview strong {
+  color: var(--store-ink);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.storefront .section-title {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--store-line);
+}
+
+.storefront .section-title h4 {
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.storefront .section-title span {
+  color: var(--store-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.storefront .pattern-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.storefront .model-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.storefront .image-tile,
+.storefront .model-tile {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--store-ink);
+}
+
+.storefront .image-tile img,
+.storefront .model-tile img {
+  background: var(--store-soft);
+}
+
+.storefront .image-tile span {
+  min-height: 38px;
+  padding: 10px 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.storefront .size-chart-inline {
+  min-height: 76px;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--store-line);
+  border-bottom: 1px solid var(--store-line);
+  border-radius: 0;
+  background: #ffffff;
+}
+
+.storefront .size-chart-inline img {
+  border: 0;
+  border-radius: 0;
+  background: var(--store-soft);
+}
+
+.storefront .size-chart-inline-text h4 {
+  color: var(--store-ink);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.storefront .size-chart-inline-text span {
+  color: var(--store-muted);
+  font-weight: 600;
+}
+
+.storefront ~ .contact-buttons .contact-button {
+  min-height: 44px;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 0.82rem;
+  font-weight: 650;
 }
 
 .admin-shell {
@@ -1208,6 +1500,261 @@ button {
   gap: 12px;
   min-height: 280px;
   padding: 24px;
+}
+
+/* Admin refresh: same monochrome fashion-retail language as the storefront. */
+.admin-shell {
+  width: min(1180px, calc(100% - 32px));
+  padding-top: 0;
+  color: var(--ink);
+}
+
+.admin-topbar,
+.admin-login,
+.admin-stats,
+.admin-empty,
+.admin-product-item,
+.product-type-manager,
+.admin-card {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  min-height: 72px;
+  padding: 16px 0;
+  border-width: 0 0 1px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.admin-topbar h1,
+.admin-login h1 {
+  font-family:
+    "Helvetica Neue", Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.admin-topbar .eyebrow,
+.admin-login .eyebrow,
+.admin-card h3,
+.admin-panel-heading h2,
+.admin-empty h2 {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.admin-status-text {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.admin-button,
+.admin-link,
+.icon-button {
+  min-height: 38px;
+  border-color: var(--ink);
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.admin-button.primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.admin-button.ghost,
+.icon-button.active {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.admin-button.danger,
+.icon-button.danger {
+  border-color: #111111;
+  color: #b00020;
+}
+
+.admin-login {
+  margin-top: 72px;
+  padding: 24px;
+}
+
+.admin-login input,
+.admin-form-grid input,
+.admin-form-grid textarea,
+.admin-form-grid select,
+.product-type-row input,
+.pattern-row-main input,
+.pattern-name-field {
+  border-color: var(--line);
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.admin-login span,
+.admin-form-grid span,
+.pattern-row-main span,
+.product-type-row span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-form-grid select {
+  background:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%) right 16px center / 6px 6px no-repeat,
+    #ffffff;
+}
+
+.admin-stats {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-stats > div {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: #ffffff;
+}
+
+.admin-stats span,
+.admin-product-header span,
+.product-type-header span,
+.size-switch {
+  color: var(--muted);
+}
+
+.admin-stats strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.admin-product-list-full {
+  max-width: 980px;
+  gap: 14px;
+}
+
+.admin-product-item {
+  overflow: hidden;
+}
+
+.admin-product-header {
+  min-height: 64px;
+  padding: 14px 18px;
+  background: #ffffff;
+}
+
+.admin-product-header:hover,
+.admin-product-header.active,
+.product-type-header.active {
+  background: var(--soft);
+}
+
+.admin-product-header.active {
+  border-bottom-color: var(--line);
+}
+
+.admin-product-header strong,
+.product-type-header strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.admin-product-header span,
+.product-type-header span {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.admin-product-chevron {
+  border-radius: 0;
+  background: #ffffff;
+}
+
+.admin-product-body,
+.product-type-section-body {
+  background: #ffffff;
+}
+
+.admin-card {
+  padding: 18px;
+}
+
+.product-type-item,
+.pattern-row-list {
+  border-color: var(--line);
+  border-radius: 0;
+  background: #ffffff;
+}
+
+.product-type-header,
+.product-type-row,
+.pattern-row {
+  background: #ffffff;
+}
+
+.product-type-row {
+  border-top: 1px solid var(--line);
+}
+
+.pattern-row {
+  border-bottom-color: var(--line);
+}
+
+.pattern-thumb-field img,
+.admin-image-wrap-item .pattern-thumb-field img {
+  border-color: var(--line);
+  border-radius: 0;
+  background: var(--soft);
+}
+
+.pattern-name-field svg {
+  color: var(--muted);
+}
+
+.size-switch {
+  border-color: var(--line);
+  border-radius: 0;
+  background: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.size-switch.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.admin-image-wrap-item .pattern-delete {
+  border-color: #ffffff;
+  background: #111111;
+  color: #ffffff;
+  box-shadow: none;
 }
 
 @media (max-width: 760px) {
