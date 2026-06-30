@@ -40,8 +40,12 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
 }
 
 function App() {
-  const [catalogProducts, setCatalogProducts] = useState<Product[]>(fallbackCatalog.products);
-  const [currentShopInfoImage, setCurrentShopInfoImage] = useState<ProductImage>(fallbackCatalog.shopInfoImage);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(
+    isSupabaseConfigured ? [] : fallbackCatalog.products,
+  );
+  const [currentShopInfoImage, setCurrentShopInfoImage] = useState<ProductImage | null>(
+    isSupabaseConfigured ? null : fallbackCatalog.shopInfoImage,
+  );
   const [catalogStatus, setCatalogStatus] = useState("Đang tải catalog...");
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -59,13 +63,13 @@ function App() {
       .then((catalog) => {
         if (!isMounted) return;
         setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
-        setCurrentShopInfoImage(catalog.shopInfoImage);
+        setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Đã tải dữ liệu thật." : "Đang dùng mock data.");
       })
       .catch(() => {
         if (!isMounted) return;
         setCatalogProducts(isSupabaseConfigured ? [] : fallbackCatalog.products);
-        setCurrentShopInfoImage(fallbackCatalog.shopInfoImage);
+        setCurrentShopInfoImage(isSupabaseConfigured ? null : fallbackCatalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Không tải được dữ liệu Supabase." : "Đang dùng mock data.");
       });
 
@@ -86,14 +90,18 @@ function App() {
       <AdminPage
         catalogStatus={catalogStatus}
         products={catalogProducts}
-        shopInfoImage={currentShopInfoImage}
+        shopInfoImage={currentShopInfoImage ?? fallbackCatalog.shopInfoImage}
         onProductsChange={setCatalogProducts}
         onRefresh={async () => {
           const catalog = await fetchCatalog();
           setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
-          setCurrentShopInfoImage(catalog.shopInfoImage);
+          setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
         }}
-        onShopInfoImageChange={setCurrentShopInfoImage}
+        onShopInfoImageChange={(updater) =>
+          setCurrentShopInfoImage((currentImage) =>
+            typeof updater === "function" ? updater(currentImage ?? fallbackCatalog.shopInfoImage) : updater,
+          )
+        }
       />
     );
   }
@@ -112,21 +120,23 @@ function App() {
           </div>
         </header>
 
-        <section className="shop-info" aria-label="Bảng giá và quy định chung">
-          <h2>Bảng giá chung và quy định</h2>
-          <button
-            className="shop-info-card"
-            type="button"
-            onClick={() =>
-              setActiveImage({
-                ...currentShopInfoImage,
-                caption: "Bảng giá chung & quy định đặt hàng",
-              })
-            }
-          >
-            <img loading="eager" src={currentShopInfoImage.src} alt={currentShopInfoImage.alt} />
-          </button>
-        </section>
+        {currentShopInfoImage ? (
+          <section className="shop-info" aria-label="Bảng giá và quy định chung">
+            <h2>Bảng giá chung và quy định</h2>
+            <button
+              className="shop-info-card"
+              type="button"
+              onClick={() =>
+                setActiveImage({
+                  ...currentShopInfoImage,
+                  caption: "Bảng giá chung & quy định đặt hàng",
+                })
+              }
+            >
+              <img loading="eager" src={currentShopInfoImage.src} alt={currentShopInfoImage.alt} />
+            </button>
+          </section>
+        ) : null}
 
         <div className="catalog-layout">
           <aside className="catalog-sidebar" aria-label="Bộ lọc sản phẩm">
@@ -165,16 +175,23 @@ function App() {
               </p>
             </div>
 
-            {visibleProducts.map((product) => (
-              <ProductCard
-                isCollapsed={Boolean(collapsed[product.id])}
-                key={product.id}
-                onImageOpen={setActiveImage}
-                onToggle={() => toggleProduct(product.id)}
-                product={product}
-                selectedSize={selectedSize}
-              />
-            ))}
+            {visibleProducts.length > 0 ? (
+              visibleProducts.map((product) => (
+                <ProductCard
+                  isCollapsed={Boolean(collapsed[product.id])}
+                  key={product.id}
+                  onImageOpen={setActiveImage}
+                  onToggle={() => toggleProduct(product.id)}
+                  product={product}
+                  selectedSize={selectedSize}
+                />
+              ))
+            ) : (
+              <section className="empty-state">
+                <h3>Chưa có sản phẩm đang bán</h3>
+                <p>Shop đang cập nhật catalog. Bạn có thể nhắn Instagram hoặc Facebook để hỏi mẫu mới nhất.</p>
+              </section>
+            )}
           </section>
         </div>
       </main>

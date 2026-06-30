@@ -5,7 +5,7 @@ import type { Product, ProductImage, ProductPattern, SizeId } from "../types/cat
 
 export type CatalogData = {
   products: Product[];
-  shopInfoImage: ProductImage;
+  shopInfoImage: ProductImage | null;
 };
 
 type ProductRow = {
@@ -44,7 +44,7 @@ type ShopInfoRow = {
   image_alt: string;
 };
 
-export const fallbackCatalog: CatalogData = {
+export const fallbackCatalog = {
   products: mockProducts,
   shopInfoImage,
 };
@@ -94,13 +94,13 @@ export async function fetchCatalog(): Promise<CatalogData> {
         alt: product.size_chart_image_alt,
       },
     })),
-    shopInfoImage: shopInfoRow
+    shopInfoImage: shopInfoRow?.image_src
       ? {
           id: shopInfoRow.id,
           src: shopInfoRow.image_src,
           alt: shopInfoRow.image_alt,
         }
-      : shopInfoImage,
+      : null,
   };
 }
 
@@ -118,7 +118,7 @@ function mapPatternRow(pattern: PatternRow): ProductPattern {
   };
 }
 
-export async function saveCatalog(catalog: CatalogData) {
+export async function saveCatalog(catalog: { products: Product[]; shopInfoImage: ProductImage }) {
   if (!supabase) {
     throw new Error("Supabase is not configured.");
   }
