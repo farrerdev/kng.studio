@@ -25,7 +25,7 @@ VITE_SUPABASE_ANON_KEY=...
 
 5. Start the app and log in at `/admin`.
 
-Images are uploaded to the public `catalog-images` bucket. If Supabase env vars are missing, the customer site falls back to local mock data and `/admin` shows setup instructions.
+Images are uploaded to the public `catalog-images` bucket. If Supabase env vars are missing, the customer site falls back to local mock data and `/admin` shows setup instructions. Once Supabase is configured, an empty database stays empty until products are added in `/admin`.
 
 ## Build
 

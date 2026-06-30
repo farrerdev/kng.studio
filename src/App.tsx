@@ -58,15 +58,15 @@ function App() {
     fetchCatalog()
       .then((catalog) => {
         if (!isMounted) return;
-        setCatalogProducts(catalog.products.length ? catalog.products : fallbackCatalog.products);
+        setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
         setCurrentShopInfoImage(catalog.shopInfoImage);
         setCatalogStatus(isSupabaseConfigured ? "Đã tải dữ liệu thật." : "Đang dùng mock data.");
       })
       .catch(() => {
         if (!isMounted) return;
-        setCatalogProducts(fallbackCatalog.products);
+        setCatalogProducts(isSupabaseConfigured ? [] : fallbackCatalog.products);
         setCurrentShopInfoImage(fallbackCatalog.shopInfoImage);
-        setCatalogStatus("Không tải được dữ liệu, đang dùng mock.");
+        setCatalogStatus(isSupabaseConfigured ? "Không tải được dữ liệu Supabase." : "Đang dùng mock data.");
       });
 
     return () => {
@@ -90,7 +90,7 @@ function App() {
         onProductsChange={setCatalogProducts}
         onRefresh={async () => {
           const catalog = await fetchCatalog();
-          setCatalogProducts(catalog.products.length ? catalog.products : fallbackCatalog.products);
+          setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
           setCurrentShopInfoImage(catalog.shopInfoImage);
         }}
         onShopInfoImageChange={setCurrentShopInfoImage}
