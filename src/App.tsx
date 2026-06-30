@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -364,25 +365,24 @@ function AdminPage({
   onShopInfoImageChange,
   onRefresh,
 }: AdminPageProps) {
-  const [selectedProductId, setSelectedProductId] = useState(products[0]?.id ?? "");
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [showStats, setShowStats] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
 
-  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0];
+  const expandedProduct = products.find((product) => product.id === expandedProductId) ?? null;
   const patternCount = products.reduce((total, product) => total + product.patterns.length, 0);
   const availablePatternCount = products.reduce(
     (total, product) => total + product.patterns.filter((pattern) => pattern.availableSizes.length > 0).length,
     0,
   );
 
-  useEffect(() => {
-    if (!selectedProduct && products[0]) {
-      setSelectedProductId(products[0].id);
-    }
-  }, [products, selectedProduct]);
+  const toggleExpandProduct = (productId: string) => {
+    setExpandedProductId((current) => (current === productId ? null : productId));
+  };
 
   useEffect(() => {
     if (!supabase) {
@@ -464,7 +464,7 @@ function AdminPage({
       sizeChartImage: createImage(createId("size-chart"), "/images/size-chart-moc.webp", "Ảnh bảng size"),
     };
     onProductsChange((currentProducts) => [...currentProducts, newProduct]);
-    setSelectedProductId(id);
+    setExpandedProductId(id);
   };
 
   const addPattern = (productId: string) => {
@@ -626,6 +626,14 @@ function AdminPage({
           <h1>KNG.studio</h1>
         </div>
         <div className="admin-actions">
+          <button
+            className={showStats ? "icon-button active" : "icon-button"}
+            type="button"
+            onClick={() => setShowStats((s) => !s)}
+            aria-label="Tổng quan"
+          >
+            <BarChart3 size={17} aria-hidden="true" />
+          </button>
           <a className="admin-link" href="/">
             <Eye size={17} aria-hidden="true" />
             Xem site
@@ -644,208 +652,242 @@ function AdminPage({
         </div>
       </header>
 
-      <section className="admin-stats" aria-label="Tổng quan catalog">
-        <div>
-          <PackageCheck size={20} aria-hidden="true" />
-          <span>Sản phẩm</span>
-          <strong>{products.length}</strong>
-        </div>
-        <div>
-          <Image size={20} aria-hidden="true" />
-          <span>Họa tiết</span>
-          <strong>{patternCount}</strong>
-        </div>
-        <div>
-          <PackageCheck size={20} aria-hidden="true" />
-          <span>Đang còn</span>
-          <strong>{availablePatternCount}</strong>
-        </div>
-      </section>
-
-      <div className="admin-layout">
-        <aside className="admin-product-nav" aria-label="Danh sách sản phẩm admin">
-          <div className="admin-panel-heading">
-            <h2>Sản phẩm</h2>
-            <button className="icon-button" type="button" onClick={addProduct} aria-label="Thêm sản phẩm">
-              <Plus size={18} aria-hidden="true" />
-            </button>
+      {showStats ? (
+        <section className="admin-stats" aria-label="Tổng quan catalog">
+          <div>
+            <PackageCheck size={20} aria-hidden="true" />
+            <span>Sản phẩm</span>
+            <strong>{products.length}</strong>
           </div>
-          <div className="admin-product-list">
-            {products.map((product) => (
+          <div>
+            <Image size={20} aria-hidden="true" />
+            <span>Họa tiết</span>
+            <strong>{patternCount}</strong>
+          </div>
+          <div>
+            <PackageCheck size={20} aria-hidden="true" />
+            <span>Đang còn</span>
+            <strong>{availablePatternCount}</strong>
+          </div>
+        </section>
+      ) : null}
+
+      <p className="admin-status-text">{adminMessage}</p>
+
+      <div className="admin-product-list-full">
+        {products.map((product) => {
+          const isExpanded = expandedProductId === product.id;
+          return (
+            <article className="admin-product-item" key={product.id}>
               <button
-                className={selectedProduct?.id === product.id ? "admin-product-tab active" : "admin-product-tab"}
-                key={product.id}
+                className={isExpanded ? "admin-product-header active" : "admin-product-header"}
                 type="button"
-                onClick={() => setSelectedProductId(product.id)}
+                onClick={() => toggleExpandProduct(product.id)}
               >
-                <strong>{product.name}</strong>
-                <span>
-                  {formatPrice(product.price)} · {product.patterns.length} họa tiết
+                <div>
+                  <strong>{product.name}</strong>
+                  <span>
+                    {formatPrice(product.price)} · {product.patterns.length} họa tiết
+                  </span>
+                </div>
+                <span className="admin-product-chevron">
+                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </span>
               </button>
-            ))}
-          </div>
 
-          <section className="admin-mini-panel" aria-label="Ảnh bảng giá chung">
-            <h3>Bảng giá chung</h3>
-            <label>
-              <span>URL ảnh</span>
-              <input
-                value={adminShopInfoImage.src}
-                onChange={(event) => onShopInfoImageChange((image) => ({ ...image, src: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Upload ảnh</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  uploadImage(file, "shop-info", (url) =>
-                    onShopInfoImageChange((image) => ({ ...image, src: url })),
-                  );
-                  event.target.value = "";
-                }}
-              />
-            </label>
-            <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
-          </section>
-        </aside>
-
-        {selectedProduct ? (
-          <section className="admin-editor" aria-label="Chỉnh sản phẩm">
-            <div className="admin-editor-head">
-              <div>
-                <span className="eyebrow">Đang chỉnh</span>
-                <h2>{selectedProduct.name}</h2>
-              </div>
-              <p>{adminMessage}</p>
-            </div>
-
-            <div className="admin-card">
-              <h3>Thông tin sản phẩm</h3>
-              <div className="admin-form-grid">
-                <label>
-                  <span>Tên mẫu</span>
-                  <input
-                    value={selectedProduct.name}
-                    onChange={(event) => updateProduct(selectedProduct.id, { name: event.target.value })}
-                  />
-                </label>
-                <label>
-                  <span>Giá</span>
-                  <input
-                    value={selectedProduct.price}
-                    onChange={(event) => updateProduct(selectedProduct.id, { price: event.target.value })}
-                  />
-                </label>
-                <label>
-                  <span>Chất liệu</span>
-                  <input
-                    value={selectedProduct.material}
-                    onChange={(event) => updateProduct(selectedProduct.id, { material: event.target.value })}
-                  />
-                </label>
-                <label className="full-row">
-                  <span>Mô tả form dáng</span>
-                  <textarea
-                    value={selectedProduct.fit}
-                    onChange={(event) => updateProduct(selectedProduct.id, { fit: event.target.value })}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="admin-card">
-              <div className="admin-panel-heading">
-                <h3>Họa tiết & tồn size</h3>
-                <button className="admin-button small" type="button" onClick={() => addPattern(selectedProduct.id)}>
-                  <Plus size={16} aria-hidden="true" />
-                  Thêm phân loại
-                </button>
-              </div>
-              <div className="pattern-row-list">
-                {selectedProduct.patterns.map((pattern) => (
-                  <article className="pattern-row" key={pattern.id}>
-                    <label className="pattern-thumb-field" aria-label={`Upload ảnh ${pattern.name}`}>
-                      <img src={pattern.image.src} alt={pattern.image.alt} />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          uploadImage(file, `patterns/${selectedProduct.id}`, (url) =>
-                            updatePattern(selectedProduct.id, pattern.id, {
-                              image: { ...pattern.image, src: url },
-                            }),
-                          );
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
-
-                    <div className="pattern-row-main">
-                      <div className="pattern-name-field">
+              {isExpanded ? (
+                <div className="admin-product-body">
+                  <div className="admin-card">
+                    <h3>Thông tin sản phẩm</h3>
+                    <div className="admin-form-grid">
+                      <label>
+                        <span>Tên mẫu</span>
                         <input
-                          aria-label="Tên phân loại"
-                          value={pattern.name}
+                          value={product.name}
+                          onChange={(event) => updateProduct(product.id, { name: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        <span>Giá</span>
+                        <input
+                          value={product.price}
+                          onChange={(event) => updateProduct(product.id, { price: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        <span>Chất liệu</span>
+                        <input
+                          value={product.material}
+                          onChange={(event) => updateProduct(product.id, { material: event.target.value })}
+                        />
+                      </label>
+                      <label className="full-row">
+                        <span>Mô tả form dáng</span>
+                        <textarea
+                          value={product.fit}
+                          onChange={(event) => updateProduct(product.id, { fit: event.target.value })}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="admin-card">
+                    <h3>Họa tiết &amp; tồn size</h3>
+                    <div className="pattern-row-list">
+                      {product.patterns.map((pattern) => (
+                        <article className="pattern-row" key={pattern.id}>
+                          <label className="pattern-thumb-field" aria-label={`Upload ảnh ${pattern.name}`}>
+                            <img src={pattern.image.src} alt={pattern.image.alt} />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                uploadImage(file, `patterns/${product.id}`, (url) =>
+                                  updatePattern(product.id, pattern.id, {
+                                    image: { ...pattern.image, src: url },
+                                  }),
+                                );
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+
+                          <div className="pattern-row-main">
+                            <div className="pattern-name-field">
+                              <input
+                                aria-label="Tên phân loại"
+                                value={pattern.name}
+                                placeholder="Nhập tên phân loại"
+                                onChange={(event) =>
+                                  updatePattern(product.id, pattern.id, { name: event.target.value })
+                                }
+                              />
+                              <ChevronDown size={18} aria-hidden="true" />
+                            </div>
+
+                            <div className="pattern-size-switches" aria-label={`Tồn size ${pattern.name}`}>
+                              {sizeOptions.map((size) => (
+                                <button
+                                  className={pattern.availableSizes.includes(size.id) ? "size-switch active" : "size-switch"}
+                                  key={size.id}
+                                  type="button"
+                                  aria-pressed={pattern.availableSizes.includes(size.id)}
+                                  onClick={() => togglePatternSize(product.id, pattern, size.id)}
+                                >
+                                  {size.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <button
+                            className="icon-button danger pattern-delete"
+                            type="button"
+                            aria-label={`Xóa ${pattern.name}`}
+                            onClick={() => removePattern(product.id, pattern.id)}
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                    <button className="admin-button small full-width" type="button" onClick={() => addPattern(product.id)}>
+                      <Plus size={16} aria-hidden="true" />
+                      Thêm phân loại
+                    </button>
+                  </div>
+
+                  <div className="admin-card">
+                    <h3>Ảnh mẫu mặc</h3>
+                    <div className="admin-image-list">
+                      {product.modelImages.map((image) => (
+                        <div className="admin-image-row" key={image.id}>
+                          <img src={image.src} alt={image.alt} />
+                          <label>
+                            <span>URL ảnh</span>
+                            <input
+                              value={image.src}
+                              onChange={(event) =>
+                                updateModelImage(product.id, image.id, { src: event.target.value })
+                              }
+                            />
+                          </label>
+                          <label>
+                            <span>Upload ảnh</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                uploadImage(file, `models/${product.id}`, (url) =>
+                                  updateModelImage(product.id, image.id, { src: url }),
+                                );
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <button
+                            className="icon-button danger"
+                            type="button"
+                            onClick={() => removeModelImage(product.id, image.id)}
+                            aria-label="Xóa ảnh mẫu mặc"
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="admin-button small full-width" type="button" onClick={() => addModelImage(product.id)}>
+                      <Plus size={16} aria-hidden="true" />
+                      Thêm ảnh mẫu mặc
+                    </button>
+                  </div>
+
+                  <div className="admin-card">
+                    <h3>Bảng size dạng ảnh</h3>
+                    <div className="admin-image-row wide">
+                      <img src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
+                      <label>
+                        <span>URL ảnh bảng size</span>
+                        <input
+                          value={product.sizeChartImage.src}
                           onChange={(event) =>
-                            updatePattern(selectedProduct.id, pattern.id, { name: event.target.value })
+                            updateProduct(product.id, {
+                              sizeChartImage: { ...product.sizeChartImage, src: event.target.value },
+                            })
                           }
                         />
-                        <ChevronDown size={18} aria-hidden="true" />
-                      </div>
-
-                      <div className="pattern-size-switches" aria-label={`Tồn size ${pattern.name}`}>
-                        {sizeOptions.map((size) => (
-                          <button
-                            className={pattern.availableSizes.includes(size.id) ? "size-switch active" : "size-switch"}
-                            key={size.id}
-                            type="button"
-                            aria-pressed={pattern.availableSizes.includes(size.id)}
-                            onClick={() => togglePatternSize(selectedProduct.id, pattern, size.id)}
-                          >
-                            {size.label}
-                          </button>
-                        ))}
-                      </div>
+                      </label>
+                      <label>
+                        <span>Upload ảnh bảng size</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) return;
+                            uploadImage(file, `size-charts/${product.id}`, (url) =>
+                              updateProduct(product.id, {
+                                sizeChartImage: { ...product.sizeChartImage, src: url },
+                              }),
+                            );
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
                     </div>
+                  </div>
 
-                    <button
-                      className="icon-button danger pattern-delete"
-                      type="button"
-                      aria-label={`Xóa ${pattern.name}`}
-                      onClick={() => removePattern(selectedProduct.id, pattern.id)}
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="admin-card">
-              <div className="admin-panel-heading">
-                <h3>Ảnh mẫu mặc</h3>
-                <button className="admin-button small" type="button" onClick={() => addModelImage(selectedProduct.id)}>
-                  <Plus size={16} aria-hidden="true" />
-                  Thêm ảnh
-                </button>
-              </div>
-              <div className="admin-image-list">
-                {selectedProduct.modelImages.map((image) => (
-                  <div className="admin-image-row" key={image.id}>
-                    <img src={image.src} alt={image.alt} />
+                  <section className="admin-mini-panel" aria-label="Ảnh bảng giá chung">
+                    <h3>Bảng giá chung</h3>
                     <label>
                       <span>URL ảnh</span>
                       <input
-                        value={image.src}
-                        onChange={(event) =>
-                          updateModelImage(selectedProduct.id, image.id, { src: event.target.value })
-                        }
+                        value={adminShopInfoImage.src}
+                        onChange={(event) => onShopInfoImageChange((image) => ({ ...image, src: event.target.value }))}
                       />
                     </label>
                     <label>
@@ -856,70 +898,25 @@ function AdminPage({
                         onChange={(event) => {
                           const file = event.target.files?.[0];
                           if (!file) return;
-                          uploadImage(file, `models/${selectedProduct.id}`, (url) =>
-                            updateModelImage(selectedProduct.id, image.id, { src: url }),
+                          uploadImage(file, "shop-info", (url) =>
+                            onShopInfoImageChange((image) => ({ ...image, src: url })),
                           );
                           event.target.value = "";
                         }}
                       />
                     </label>
-                    <button
-                      className="icon-button danger"
-                      type="button"
-                      onClick={() => removeModelImage(selectedProduct.id, image.id)}
-                      aria-label="Xóa ảnh mẫu mặc"
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                    <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
+                  </section>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
 
-            <div className="admin-card">
-              <h3>Bảng size dạng ảnh</h3>
-              <div className="admin-image-row wide">
-                <img src={selectedProduct.sizeChartImage.src} alt={selectedProduct.sizeChartImage.alt} />
-                <label>
-                  <span>URL ảnh bảng size</span>
-                  <input
-                    value={selectedProduct.sizeChartImage.src}
-                    onChange={(event) =>
-                      updateProduct(selectedProduct.id, {
-                        sizeChartImage: { ...selectedProduct.sizeChartImage, src: event.target.value },
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  <span>Upload ảnh bảng size</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      uploadImage(file, `size-charts/${selectedProduct.id}`, (url) =>
-                        updateProduct(selectedProduct.id, {
-                          sizeChartImage: { ...selectedProduct.sizeChartImage, src: url },
-                        }),
-                      );
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="admin-empty">
-            <h2>Chưa có sản phẩm</h2>
-            <button className="admin-button primary" type="button" onClick={addProduct}>
-              <Plus size={17} aria-hidden="true" />
-              Tạo sản phẩm đầu tiên
-            </button>
-          </section>
-        )}
+        <button className="admin-button primary full-width" type="button" onClick={addProduct}>
+          <Plus size={17} aria-hidden="true" />
+          Thêm sản phẩm mới
+        </button>
       </div>
     </main>
   );
