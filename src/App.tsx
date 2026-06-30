@@ -8,7 +8,6 @@ import {
   Facebook,
   Image,
   Instagram,
-  LoaderCircle,
   MapPin,
   PackageCheck,
   Plus,
@@ -67,29 +66,17 @@ type GalleryImage = ProductImage & {
 };
 
 type LoadingPanelProps = {
-  title: string;
-  subtitle: string;
   variant?: "client" | "admin";
 };
 
-function LoadingPanel({ title, subtitle, variant = "client" }: LoadingPanelProps) {
+function LoadingPanel({ variant = "client" }: LoadingPanelProps) {
   return (
-    <section className={`loading-panel ${variant}`} aria-live="polite" aria-busy="true">
-      <div className="loading-card">
-        <span className="loading-mark" aria-hidden="true">
-          <LoaderCircle size={20} />
-        </span>
-        <div>
-          <p className="eyebrow">KNG.studio</p>
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
-        <div className="loading-lines" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-      </div>
+    <section className={`loading-panel ${variant}`} aria-label="Đang tải" aria-live="polite" aria-busy="true">
+      <span className="loading-dots" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
     </section>
   );
 }
@@ -201,10 +188,7 @@ function App() {
         </header>
 
         {catalogLoadState === "loading" ? (
-          <LoadingPanel
-            title="Đang chuẩn bị catalog"
-            subtitle="Shop đang tải mẫu còn hàng, bảng giá và hình ảnh mới nhất."
-          />
+          <LoadingPanel />
         ) : currentShopInfoImage ? (
           <section className="shop-info" aria-label="Bảng giá và quy định chung">
             <h2>Bảng giá chung và quy định</h2>
@@ -793,11 +777,7 @@ function AdminPage({
   if (isAuthLoading || isCatalogLoading) {
     return (
       <main className="admin-shell">
-        <LoadingPanel
-          title="Đang mở admin"
-          subtitle="Đang kiểm tra đăng nhập và tải dữ liệu catalog."
-          variant="admin"
-        />
+        <LoadingPanel variant="admin" />
       </main>
     );
   }
