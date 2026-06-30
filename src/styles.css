@@ -550,6 +550,41 @@ button {
 .admin-stats,
 .admin-card,
 .admin-product-nav,
+.admin-image-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.admin-image-wrap-item {
+  position: relative;
+}
+
+.admin-image-wrap-item .pattern-thumb-field,
+.admin-image-wrap-item .pattern-thumb-field img {
+  width: 84px;
+  height: 84px;
+}
+
+.admin-image-wrap-item .pattern-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--rose);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 .admin-empty {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -990,6 +1025,41 @@ button {
   margin-top: 2px;
 }
 
+
+.admin-image-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.admin-image-wrap-item {
+  position: relative;
+}
+
+.admin-image-wrap-item .pattern-thumb-field,
+.admin-image-wrap-item .pattern-thumb-field img {
+  width: 84px;
+  height: 84px;
+}
+
+.admin-image-wrap-item .pattern-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--rose);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
 
 .admin-empty {
   display: grid;

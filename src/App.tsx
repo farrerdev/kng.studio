@@ -809,9 +809,9 @@ function AdminPage({
 
                   <div className="admin-card">
                     <h3>Ảnh mẫu mặc</h3>
-                    <div className="pattern-row-list">
+                    <div className="admin-image-wrap">
                       {product.modelImages.map((image) => (
-                        <div className="pattern-row" key={image.id}>
+                        <div className="admin-image-wrap-item" key={image.id}>
                           <label className="pattern-thumb-field">
                             <img src={image.src} alt={image.alt} />
                             <input
@@ -827,14 +827,13 @@ function AdminPage({
                               }}
                             />
                           </label>
-                          <div className="pattern-row-main" />
                           <button
                             className="icon-button danger pattern-delete"
                             type="button"
                             onClick={() => removeModelImage(product.id, image.id)}
                             aria-label="Xóa ảnh mẫu mặc"
                           >
-                            <Trash2 size={16} aria-hidden="true" />
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
                       ))}
