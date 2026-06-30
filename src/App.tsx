@@ -373,6 +373,10 @@ function AdminPage({
   const [isBusy, setIsBusy] = useState(false);
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
 
+  useEffect(() => {
+    setAdminMessage(catalogStatus);
+  }, [catalogStatus]);
+
   const expandedProduct = products.find((product) => product.id === expandedProductId) ?? null;
   const patternCount = products.reduce((total, product) => total + product.patterns.length, 0);
   const availablePatternCount = products.reduce(
@@ -450,7 +454,7 @@ function AdminPage({
       name: "Mẫu mới",
       price: "390.000đ",
       fit: "Mô tả form dáng ngắn.",
-      material: "Muslin cotton",
+      material: "Xô muslin 2 lớp",
       patterns: [
         {
           id: createId("pattern"),
@@ -711,7 +715,11 @@ function AdminPage({
                         <span>Giá</span>
                         <input
                           value={product.price}
-                          onChange={(event) => updateProduct(product.id, { price: event.target.value })}
+                          placeholder="Ví dụ: 390.000đ"
+                          onChange={(event) => {
+                            const formatted = formatPrice(event.target.value);
+                            updateProduct(product.id, { price: formatted });
+                          }}
                         />
                       </label>
                       <label>
@@ -801,21 +809,11 @@ function AdminPage({
 
                   <div className="admin-card">
                     <h3>Ảnh mẫu mặc</h3>
-                    <div className="admin-image-list">
+                    <div className="pattern-row-list">
                       {product.modelImages.map((image) => (
-                        <div className="admin-image-row" key={image.id}>
-                          <img src={image.src} alt={image.alt} />
-                          <label>
-                            <span>URL ảnh</span>
-                            <input
-                              value={image.src}
-                              onChange={(event) =>
-                                updateModelImage(product.id, image.id, { src: event.target.value })
-                              }
-                            />
-                          </label>
-                          <label>
-                            <span>Upload ảnh</span>
+                        <div className="pattern-row" key={image.id}>
+                          <label className="pattern-thumb-field">
+                            <img src={image.src} alt={image.alt} />
                             <input
                               type="file"
                               accept="image/*"
@@ -829,8 +827,9 @@ function AdminPage({
                               }}
                             />
                           </label>
+                          <div className="pattern-row-main" />
                           <button
-                            className="icon-button danger"
+                            className="icon-button danger pattern-delete"
                             type="button"
                             onClick={() => removeModelImage(product.id, image.id)}
                             aria-label="Xóa ảnh mẫu mặc"
@@ -848,65 +847,29 @@ function AdminPage({
 
                   <div className="admin-card">
                     <h3>Bảng size dạng ảnh</h3>
-                    <div className="admin-image-row wide">
-                      <img src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
-                      <label>
-                        <span>URL ảnh bảng size</span>
-                        <input
-                          value={product.sizeChartImage.src}
-                          onChange={(event) =>
-                            updateProduct(product.id, {
-                              sizeChartImage: { ...product.sizeChartImage, src: event.target.value },
-                            })
-                          }
-                        />
-                      </label>
-                      <label>
-                        <span>Upload ảnh bảng size</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            uploadImage(file, `size-charts/${product.id}`, (url) =>
-                              updateProduct(product.id, {
-                                sizeChartImage: { ...product.sizeChartImage, src: url },
-                              }),
-                            );
-                            event.target.value = "";
-                          }}
-                        />
-                      </label>
+                    <div className="pattern-row-list">
+                      <div className="pattern-row no-delete">
+                        <label className="pattern-thumb-field">
+                          <img src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (!file) return;
+                              uploadImage(file, `size-charts/${product.id}`, (url) =>
+                                updateProduct(product.id, {
+                                  sizeChartImage: { ...product.sizeChartImage, src: url },
+                                }),
+                              );
+                              event.target.value = "";
+                            }}
+                          />
+                        </label>
+                        <div className="pattern-row-main" />
+                      </div>
                     </div>
                   </div>
-
-                  <section className="admin-mini-panel" aria-label="Ảnh bảng giá chung">
-                    <h3>Bảng giá chung</h3>
-                    <label>
-                      <span>URL ảnh</span>
-                      <input
-                        value={adminShopInfoImage.src}
-                        onChange={(event) => onShopInfoImageChange((image) => ({ ...image, src: event.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      <span>Upload ảnh</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          uploadImage(file, "shop-info", (url) =>
-                            onShopInfoImageChange((image) => ({ ...image, src: url })),
-                          );
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
-                    <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
-                  </section>
                 </div>
               ) : null}
             </article>
@@ -917,6 +880,30 @@ function AdminPage({
           <Plus size={17} aria-hidden="true" />
           Thêm sản phẩm mới
         </button>
+
+        <div className="admin-card" style={{ marginTop: "24px" }}>
+          <h3>Bảng giá & Quy định chung</h3>
+          <div className="pattern-row-list">
+            <div className="pattern-row no-delete">
+              <label className="pattern-thumb-field">
+                <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    uploadImage(file, "shop-info", (url) =>
+                      onShopInfoImageChange((image) => ({ ...image, src: url })),
+                    );
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+              <div className="pattern-row-main" />
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );

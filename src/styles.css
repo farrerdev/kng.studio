@@ -569,7 +569,6 @@ button {
 .admin-editor-head h2,
 .admin-panel-heading h2,
 .admin-card h3,
-.admin-mini-panel h3,
 .admin-empty h2 {
   margin: 0;
   color: var(--ink);
@@ -811,25 +810,6 @@ button {
   width: 100%;
 }
 
-.admin-mini-panel {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff8ee;
-  min-width: 0;
-}
-
-.admin-mini-panel img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin-top: 4px;
-  border: 1px solid var(--line);
-}
-
 .admin-card {
   display: grid;
   gap: 14px;
@@ -854,16 +834,14 @@ button {
 }
 
 .admin-form-grid label,
-.admin-mini-panel label,
-.admin-image-row label {
+.pattern-row-main label {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
 .admin-form-grid span,
-.admin-mini-panel span,
-.admin-image-row span {
+.pattern-row-main span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
@@ -871,8 +849,7 @@ button {
 
 .admin-form-grid input,
 .admin-form-grid textarea,
-.admin-mini-panel input,
-.admin-image-row input {
+.pattern-row-main input {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -1005,42 +982,14 @@ button {
   box-shadow: 0 0 0 2px rgba(143, 107, 78, 0.1);
 }
 
+.pattern-row.no-delete {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
 .pattern-delete {
   margin-top: 2px;
 }
 
-.admin-image-list {
-  display: grid;
-  gap: 10px;
-}
-
-.admin-image-row {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) minmax(160px, 0.62fr) 38px;
-  align-items: end;
-  gap: 10px;
-  min-width: 0;
-  width: 100%;
-}
-
-.admin-image-row.wide {
-  grid-template-columns: 96px minmax(0, 1fr) minmax(160px, 0.62fr);
-  min-width: 0;
-  width: 100%;
-}
-
-.admin-image-row img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  object-fit: cover;
-  background: #f4eadc;
-}
-
-.admin-image-row.wide img {
-  aspect-ratio: 16 / 9;
-}
 
 .admin-empty {
   display: grid;
@@ -1194,43 +1143,6 @@ button {
   .pattern-name-field input {
     min-height: 36px;
     padding: 6px 8px;
-  }
-
-  .admin-image-row {
-    grid-template-columns: 86px minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .admin-image-row.wide {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-image-row.wide img {
-    aspect-ratio: 16 / 9;
-    width: 100%;
-  }
-
-  .admin-image-row > :nth-child(3),
-  .admin-image-row > :nth-child(4) {
-    grid-column: 1 / -1;
-  }
-
-  .admin-image-row .icon-button {
-    width: 100%;
-  }
-
-  .admin-card {
-    padding: 14px 10px;
-    gap: 12px;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .admin-product-body {
-    padding: 12px 8px;
-    gap: 12px;
-    min-width: 0;
-    overflow: hidden;
   }
 
   .admin-product-header {
