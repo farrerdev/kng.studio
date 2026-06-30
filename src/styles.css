@@ -585,6 +585,13 @@ button {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .admin-empty {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1059,6 +1066,13 @@ button {
   background: var(--rose);
   color: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .admin-empty {

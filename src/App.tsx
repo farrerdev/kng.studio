@@ -845,28 +845,25 @@ function AdminPage({
                   </div>
 
                   <div className="admin-card">
-                    <h3>Bảng size dạng ảnh</h3>
-                    <div className="pattern-row-list">
-                      <div className="pattern-row no-delete">
-                        <label className="pattern-thumb-field">
-                          <img src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              if (!file) return;
-                              uploadImage(file, `size-charts/${product.id}`, (url) =>
-                                updateProduct(product.id, {
-                                  sizeChartImage: { ...product.sizeChartImage, src: url },
-                                }),
-                              );
-                              event.target.value = "";
-                            }}
-                          />
-                        </label>
-                        <div className="pattern-row-main" />
-                      </div>
+                    <div className="admin-card-header">
+                      <h3>Bảng size sản phẩm</h3>
+                      <label className="pattern-thumb-field" aria-label="Upload bảng size">
+                        <img src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) return;
+                            uploadImage(file, `size-charts/${product.id}`, (url) =>
+                              updateProduct(product.id, {
+                                sizeChartImage: { ...product.sizeChartImage, src: url },
+                              }),
+                            );
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -881,26 +878,23 @@ function AdminPage({
         </button>
 
         <div className="admin-card" style={{ marginTop: "24px" }}>
-          <h3>Bảng giá & Quy định chung</h3>
-          <div className="pattern-row-list">
-            <div className="pattern-row no-delete">
-              <label className="pattern-thumb-field">
-                <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    uploadImage(file, "shop-info", (url) =>
-                      onShopInfoImageChange((image) => ({ ...image, src: url })),
-                    );
-                    event.target.value = "";
-                  }}
-                />
-              </label>
-              <div className="pattern-row-main" />
-            </div>
+          <div className="admin-card-header">
+            <h3>Bảng giá & Quy định chung</h3>
+            <label className="pattern-thumb-field" aria-label="Upload bảng giá chung">
+              <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  uploadImage(file, "shop-info", (url) =>
+                    onShopInfoImageChange((image) => ({ ...image, src: url })),
+                  );
+                  event.target.value = "";
+                }}
+              />
+            </label>
           </div>
         </div>
       </div>
