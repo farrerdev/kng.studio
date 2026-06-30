@@ -98,22 +98,25 @@ button {
 
 .shop-info {
   display: grid;
-  justify-items: center;
+  justify-items: flex-start;
   gap: 12px;
   padding: 20px 0 2px;
 }
 
-.shop-info h2 {
-  width: min(720px, 92%);
+.shop-info h2,
+.size-panel h2 {
   margin: 0;
   color: var(--ink);
   font-size: clamp(1.18rem, 3vw, 1.55rem);
   letter-spacing: 0;
+  text-align: left;
 }
 
 .shop-info-card {
+  justify-self: center;
   display: block;
-  width: min(720px, 92%);
+  width: fit-content;
+  max-width: min(720px, 92%);
   overflow: hidden;
   padding: 0;
   border: 1px solid var(--line);
@@ -125,9 +128,10 @@ button {
 
 .shop-info-card img {
   display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
+  height: clamp(240px, 50vh, 420px);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
   background: #f4eadc;
 }
 
@@ -135,7 +139,6 @@ button {
   padding: 26px 0 10px;
 }
 
-.size-panel h2,
 .list-heading h2 {
   margin: 0;
   color: var(--ink);
@@ -372,12 +375,15 @@ button {
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.model-grid {
+.pattern-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.model-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .image-tile,
@@ -1102,11 +1108,16 @@ button {
   .shop-info {
     justify-items: flex-start;
     padding-top: 16px;
+    text-align: left;
   }
 
-  .shop-info h2,
-  .shop-info-card {
+  .shop-info h2 {
     width: 100%;
+  }
+
+  .shop-info-card {
+    width: fit-content;
+    max-width: 100%;
   }
 
   .size-panel {
@@ -1139,6 +1150,15 @@ button {
 
   .product-detail {
     padding: 12px 14px 16px;
+  }
+
+  .shop-info-card img {
+    height: 200px;
+  }
+
+  .pattern-grid,
+  .model-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .pattern-grid {
@@ -1248,15 +1268,18 @@ button {
     padding: 28px 0 26px;
   }
 
-  .shop-info h2 {
+  .shop-info h2,
+  .size-panel h2 {
     width: auto;
     max-width: 360px;
-    font-size: 2rem;
+    font-size: clamp(1.18rem, 3vw, 1.55rem);
     line-height: 1.18;
+    text-align: left;
   }
 
   .shop-info-card {
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
   }
 
   .catalog-layout {
@@ -1329,8 +1352,16 @@ button {
     font-size: 2.4rem;
   }
 
+  .shop-info-card img {
+    height: 200px;
+  }
+
   .pattern-grid,
   .model-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pattern-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

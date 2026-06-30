@@ -148,10 +148,9 @@ function App() {
 
         <div className="catalog-layout">
           <aside className="catalog-sidebar" aria-label="Bộ lọc sản phẩm">
-            <section className="size-panel" aria-labelledby="size-heading">
+            <section className="size-panel">
               <div>
-                <h2 id="size-heading">Chọn size còn hàng</h2>
-                <p>Chọn size phù hợp để xem các hoạ tiết và mẫu đang còn hàng.</p>
+                <h2>Chọn size phù hợp để xem mẫu đang còn hàng</h2>
               </div>
             </section>
 
