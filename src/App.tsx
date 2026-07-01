@@ -5,10 +5,10 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
-  Facebook,
   Image,
   Instagram,
   MapPin,
+  MessageCircle,
   PackageCheck,
   Plus,
   RotateCcw,
@@ -259,7 +259,7 @@ function App() {
             ) : (
               <section className="empty-state">
                 <h3>Chưa có sản phẩm đang bán</h3>
-                <p>Shop đang cập nhật catalog. Bạn có thể nhắn Instagram hoặc Facebook để hỏi mẫu mới nhất.</p>
+                <p>Shop đang cập nhật catalog. Bạn có thể nhắn Instagram hoặc Messenger để hỏi mẫu mới nhất.</p>
               </section>
             )}
           </section>
@@ -392,13 +392,27 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
 function ContactButtons() {
   return (
     <div className="contact-buttons" aria-label="Nhắn tin đặt hàng">
-      <a className="contact-button instagram" href={shopConfig.contacts.instagram} target="_blank" rel="noreferrer">
+      <a
+        className="contact-button instagram"
+        href={shopConfig.contacts.instagram}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Nhắn tin KNG.studio qua Instagram"
+        data-tooltip="Nhắn Instagram"
+      >
         <Instagram size={22} aria-hidden="true" />
         <span>Instagram</span>
       </a>
-      <a className="contact-button facebook" href={shopConfig.contacts.facebook} target="_blank" rel="noreferrer">
-        <Facebook size={22} aria-hidden="true" />
-        <span>Facebook</span>
+      <a
+        className="contact-button messenger"
+        href={shopConfig.contacts.messenger}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Nhắn tin KNG.studio qua Messenger"
+        data-tooltip="Nhắn Messenger"
+      >
+        <MessageCircle size={22} aria-hidden="true" />
+        <span>Messenger</span>
       </a>
     </div>
   );

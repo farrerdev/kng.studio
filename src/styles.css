@@ -535,6 +535,7 @@ button {
 }
 
 .contact-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -546,14 +547,93 @@ button {
   font-weight: 900;
   text-decoration: none;
   box-shadow: 0 12px 28px rgba(16, 24, 40, 0.22);
+  transition:
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+  animation: contact-glow 2.8s ease-in-out infinite;
+  isolation: isolate;
 }
 
 .contact-button.instagram {
-  background: #c13584;
+  background: linear-gradient(135deg, #f58529 0%, #dd2a7b 46%, #8134af 100%);
 }
 
-.contact-button.facebook {
-  background: #1877f2;
+.contact-button.messenger {
+  background: linear-gradient(135deg, #00b2ff 0%, #006aff 52%, #a033ff 100%);
+  animation-delay: 0.18s;
+}
+
+.contact-button:hover,
+.contact-button:focus-visible {
+  box-shadow: 0 16px 34px rgba(16, 24, 40, 0.28);
+  transform: translateY(-2px);
+}
+
+.contact-button::before {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  z-index: 2;
+  width: max-content;
+  max-width: 160px;
+  padding: 7px 9px;
+  border: 1px solid var(--ink);
+  background: #ffffff;
+  color: var(--ink);
+  content: attr(data-tooltip);
+  font-size: 0.76rem;
+  font-weight: 650;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(6px, -50%);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.contact-button::after {
+  position: absolute;
+  inset: -5px;
+  z-index: -1;
+  border: 1px solid currentColor;
+  border-radius: inherit;
+  content: "";
+  opacity: 0.28;
+  animation: contact-ring 2.8s ease-out infinite;
+}
+
+.contact-button:hover::before,
+.contact-button:focus-visible::before {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@keyframes contact-glow {
+  0%,
+  100% {
+    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.22);
+  }
+
+  50% {
+    box-shadow: 0 16px 34px rgba(16, 24, 40, 0.3);
+  }
+}
+
+@keyframes contact-ring {
+  0%,
+  62% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  76% {
+    opacity: 0.22;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
 }
 
 .lightbox {

@@ -3,7 +3,7 @@ export const shopConfig = {
   subtitle: "Muslin homewear",
   location: "Đà Nẵng",
   contacts: {
-    instagram: "https://instagram.com/kng.studio",
-    facebook: "https://m.me/kng.studio",
+    instagram: "https://ig.me/m/kng.stu_",
+    messenger: "https://m.me/61584468240625",
   },
 };
