@@ -8,7 +8,6 @@ import {
   Image,
   Instagram,
   MapPin,
-  MessageCircle,
   PackageCheck,
   Plus,
   RotateCcw,
@@ -78,6 +77,17 @@ function LoadingPanel({ variant = "client" }: LoadingPanelProps) {
         <span />
       </span>
     </section>
+  );
+}
+
+function MessengerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 2C6.48 2 2 6.15 2 11.25c0 2.9 1.45 5.49 3.72 7.18V22l3.39-1.86c.92.25 1.89.39 2.89.39 5.52 0 10-4.15 10-9.28S17.52 2 12 2Zm1.03 12.53-2.55-2.7-4.96 2.7 5.43-5.76 2.59 2.7 4.93-2.7-5.44 5.76Z"
+      />
+    </svg>
   );
 }
 
@@ -398,7 +408,6 @@ function ContactButtons() {
         target="_blank"
         rel="noreferrer"
         aria-label="Nhắn tin KNG.studio qua Instagram"
-        data-tooltip="Nhắn Instagram"
       >
         <Instagram size={22} aria-hidden="true" />
         <span>Instagram</span>
@@ -409,9 +418,8 @@ function ContactButtons() {
         target="_blank"
         rel="noreferrer"
         aria-label="Nhắn tin KNG.studio qua Messenger"
-        data-tooltip="Nhắn Messenger"
       >
-        <MessageCircle size={22} aria-hidden="true" />
+        <MessengerIcon />
         <span>Messenger</span>
       </a>
     </div>

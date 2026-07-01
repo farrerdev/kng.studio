@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light only;
+  dynamic-range-limit: standard;
   color: #111111;
   background: #ffffff;
   font-family:
@@ -456,11 +458,16 @@ button {
 .image-tile img,
 .model-tile img {
   display: block;
+  dynamic-range-limit: standard;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   aspect-ratio: 1 / 1;
+  filter: none;
+  image-rendering: auto;
+  mix-blend-mode: normal;
   object-fit: cover;
+  opacity: 1;
   background: #f4eadc;
 }
 
@@ -528,7 +535,7 @@ button {
 .contact-buttons {
   position: fixed;
   right: 18px;
-  bottom: 18px;
+  bottom: 10px;
   z-index: 20;
   display: grid;
   gap: 8px;
@@ -542,7 +549,7 @@ button {
   gap: 8px;
   min-height: 46px;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #ffffff;
   font-weight: 900;
   text-decoration: none;
@@ -550,7 +557,6 @@ button {
   transition:
     box-shadow 0.22s ease,
     transform 0.22s ease;
-  animation: contact-glow 2.8s ease-in-out infinite;
   isolation: isolate;
 }
 
@@ -560,7 +566,6 @@ button {
 
 .contact-button.messenger {
   background: linear-gradient(135deg, #00b2ff 0%, #006aff 52%, #a033ff 100%);
-  animation-delay: 0.18s;
 }
 
 .contact-button:hover,
@@ -569,70 +574,37 @@ button {
   transform: translateY(-2px);
 }
 
-.contact-button::before {
-  position: absolute;
-  right: calc(100% + 10px);
-  top: 50%;
-  z-index: 2;
-  width: max-content;
-  max-width: 160px;
-  padding: 7px 9px;
-  border: 1px solid var(--ink);
-  background: #ffffff;
-  color: var(--ink);
-  content: attr(data-tooltip);
-  font-size: 0.76rem;
-  font-weight: 650;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(6px, -50%);
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
+.contact-button svg {
+  flex: 0 0 auto;
+  transform-origin: 50% 80%;
+  animation: contact-wiggle 1.65s ease-in-out infinite;
 }
 
-.contact-button::after {
-  position: absolute;
-  inset: -5px;
-  z-index: -1;
-  border: 1px solid currentColor;
-  border-radius: inherit;
-  content: "";
-  opacity: 0.28;
-  animation: contact-ring 2.8s ease-out infinite;
+.contact-button.messenger svg {
+  animation-delay: 0.18s;
 }
 
-.contact-button:hover::before,
-.contact-button:focus-visible::before {
-  opacity: 1;
-  transform: translate(0, -50%);
-}
-
-@keyframes contact-glow {
+@keyframes contact-wiggle {
   0%,
+  54%,
   100% {
-    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.22);
+    transform: rotate(0deg);
   }
 
-  50% {
-    box-shadow: 0 16px 34px rgba(16, 24, 40, 0.3);
-  }
-}
-
-@keyframes contact-ring {
-  0%,
   62% {
-    opacity: 0;
-    transform: scale(0.96);
+    transform: rotate(-9deg);
   }
 
-  76% {
-    opacity: 0.22;
+  70% {
+    transform: rotate(8deg);
   }
 
-  100% {
-    opacity: 0;
-    transform: scale(1.2);
+  78% {
+    transform: rotate(-6deg);
+  }
+
+  86% {
+    transform: rotate(4deg);
   }
 }
 
@@ -924,6 +896,11 @@ button {
 .storefront .image-tile img,
 .storefront .model-tile img {
   background: var(--store-soft);
+  dynamic-range-limit: standard;
+  filter: none;
+  image-rendering: auto;
+  mix-blend-mode: normal;
+  opacity: 1;
 }
 
 .storefront .image-tile span {
@@ -963,7 +940,7 @@ button {
 
 .storefront ~ .contact-buttons .contact-button {
   min-height: 44px;
-  border-radius: 0;
+  border-radius: 999px;
   box-shadow: none;
   font-size: 0.82rem;
   font-weight: 650;
@@ -1516,11 +1493,16 @@ button {
 
 .pattern-thumb-field img {
   display: block;
+  dynamic-range-limit: standard;
   width: 64px;
   aspect-ratio: 1;
   border: 1px solid var(--line);
   border-radius: 6px;
+  filter: none;
+  image-rendering: auto;
+  mix-blend-mode: normal;
   object-fit: cover;
+  opacity: 1;
   background: #f4eadc;
 }
 
@@ -1991,7 +1973,7 @@ button {
 
   .contact-buttons {
     right: 12px;
-    bottom: 12px;
+    bottom: 10px;
     left: auto;
     grid-template-columns: repeat(2, 48px);
     align-items: center;
@@ -2012,6 +1994,11 @@ button {
     width: 48px;
     min-height: 48px;
     padding: 0;
+    border-radius: 50%;
+  }
+
+  .storefront ~ .contact-buttons .contact-button {
+    border-radius: 50%;
   }
 
   .admin-shell {
