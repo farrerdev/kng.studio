@@ -3,6 +3,8 @@ import {
   ArrowUp,
   BarChart3,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Eye,
   Image,
@@ -100,6 +102,24 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
     .filter((product) => product.patterns.length > 0);
 }
 
+function getProductGalleryImages(product: Product, productTypes: ProductType[]): GalleryImage[] {
+  const productTitle = getProductTitle(product, productTypes);
+  return [
+    ...product.patterns.map((pattern) => ({
+      ...pattern.image,
+      caption: `${productTitle} - ${pattern.name}`,
+    })),
+    ...product.modelImages.map((image, index) => ({
+      ...image,
+      caption: `${productTitle} - ảnh mẫu ${index + 1}`,
+    })),
+    {
+      ...product.sizeChartImage,
+      caption: `${productTitle} - bảng size`,
+    },
+  ];
+}
+
 function App() {
   const [catalogProductTypes, setCatalogProductTypes] = useState<ProductType[]>(
     isSupabaseConfigured ? [] : fallbackCatalog.productTypes,
@@ -121,10 +141,57 @@ function App() {
     () => getVisibleProducts(selectedSize, catalogProducts),
     [catalogProducts, selectedSize],
   );
+  const galleryImages = useMemo(() => {
+    const shopImages: GalleryImage[] = currentShopInfoImage
+      ? [
+          {
+            ...currentShopInfoImage,
+            caption: "Bảng giá chung & quy định đặt hàng",
+          },
+        ]
+      : [];
+    return [
+      ...shopImages,
+      ...visibleProducts.flatMap((product) => getProductGalleryImages(product, catalogProductTypes)),
+    ];
+  }, [catalogProductTypes, currentShopInfoImage, visibleProducts]);
+  const activeImageIndex = useMemo(() => {
+    if (!activeImage) return -1;
+    return galleryImages.findIndex(
+      (image) =>
+        (image.id === activeImage.id && image.src === activeImage.src) ||
+        (image.src === activeImage.src && image.caption === activeImage.caption),
+    );
+  }, [activeImage, galleryImages]);
+  const canNavigateLightbox = galleryImages.length > 1 && activeImageIndex >= 0;
+  const openGalleryImage = (offset: -1 | 1) => {
+    if (!canNavigateLightbox) return;
+    const nextIndex = (activeImageIndex + offset + galleryImages.length) % galleryImages.length;
+    setActiveImage(galleryImages[nextIndex]);
+  };
 
   useEffect(() => {
     document.title = isAdminRoute ? "KNG.studio Admin" : "KNG.studio | Muslin homewear";
   }, [isAdminRoute]);
+
+  useEffect(() => {
+    if (!activeImage) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActiveImage(null);
+      }
+      if (event.key === "ArrowLeft") {
+        openGalleryImage(-1);
+      }
+      if (event.key === "ArrowRight") {
+        openGalleryImage(1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeImage, activeImageIndex, canNavigateLightbox, galleryImages]);
 
   useEffect(() => {
     let isMounted = true;
@@ -280,18 +347,47 @@ function App() {
       <ContactButtons />
 
       {activeImage ? (
-        <button
+        <div
           className="lightbox"
-          type="button"
-          aria-label="Đóng ảnh phóng to"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ảnh phóng to"
           onClick={() => setActiveImage(null)}
         >
-          <span className="lightbox-close">
+          <button className="lightbox-close" type="button" aria-label="Đóng ảnh" onClick={() => setActiveImage(null)}>
             <X size={22} aria-hidden="true" />
-          </span>
-          <img src={activeImage.src} alt={activeImage.alt} />
-          <span className="lightbox-caption">{activeImage.caption}</span>
-        </button>
+          </button>
+          {canNavigateLightbox ? (
+            <button
+              className="lightbox-nav previous"
+              type="button"
+              aria-label="Xem ảnh trước"
+              onClick={(event) => {
+                event.stopPropagation();
+                openGalleryImage(-1);
+              }}
+            >
+              <ChevronLeft size={26} aria-hidden="true" />
+            </button>
+          ) : null}
+          <div className="lightbox-media" onClick={(event) => event.stopPropagation()}>
+            <img src={activeImage.src} alt={activeImage.alt} />
+            <span className="lightbox-caption">{activeImage.caption}</span>
+          </div>
+          {canNavigateLightbox ? (
+            <button
+              className="lightbox-nav next"
+              type="button"
+              aria-label="Xem ảnh sau"
+              onClick={(event) => {
+                event.stopPropagation();
+                openGalleryImage(1);
+              }}
+            >
+              <ChevronRight size={26} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </>
   );
@@ -387,11 +483,11 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
                 })
               }
             >
-              <img loading="lazy" src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
               <div className="size-chart-inline-text">
-                <h4>Bảng size</h4>
+                <h4>Bảng size chi tiết</h4>
                 <span>Tap để xem lớn</span>
               </div>
+              <img loading="lazy" src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
             </button>
           </section>
       </div>

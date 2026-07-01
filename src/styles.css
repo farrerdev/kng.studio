@@ -492,6 +492,7 @@ button {
 .size-chart-inline {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   width: 100%;
   min-width: 0;
@@ -518,6 +519,7 @@ button {
 .size-chart-inline-text {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .size-chart-inline-text h4 {
@@ -616,10 +618,16 @@ button {
   place-items: center;
   gap: 14px;
   padding: 54px 18px 28px;
-  border: 0;
   background: rgba(12, 15, 18, 0.88);
   color: #ffffff;
   cursor: zoom-out;
+}
+
+.lightbox-media {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  cursor: default;
 }
 
 .lightbox img {
@@ -638,8 +646,43 @@ button {
   place-items: center;
   width: 42px;
   height: 42px;
+  border: 0;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.lightbox-nav {
+  position: fixed;
+  top: 50%;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  cursor: pointer;
+  transform: translateY(-50%);
+  backdrop-filter: blur(10px);
+}
+
+.lightbox-nav.previous {
+  left: max(14px, calc((100vw - 820px) / 2));
+}
+
+.lightbox-nav.next {
+  right: max(14px, calc((100vw - 820px) / 2));
+}
+
+.lightbox-close:hover,
+.lightbox-nav:hover,
+.lightbox-close:focus-visible,
+.lightbox-nav:focus-visible {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .lightbox-caption {
