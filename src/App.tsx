@@ -346,12 +346,12 @@ function App() {
     const slug = getProductTypeSlug(productType);
     setSelectedProductTypeSlug(slug);
     window.history.pushState(null, "", `/${slug}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
   const closeProductType = () => {
     setSelectedProductTypeSlug(null);
     window.history.pushState(null, "", "/");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
 
   useEffect(() => {
@@ -473,7 +473,7 @@ function App() {
           <>
             {currentShopInfoImage ? (
               <section className="shop-info" aria-label="Bảng giá và quy định chung">
-                <h2>Bảng giá chung và quy định</h2>
+                <h2>BẢNG GIÁ CHUNG VÀ QUY ĐỊNH</h2>
                 <button
                   className="shop-info-card"
                   type="button"
