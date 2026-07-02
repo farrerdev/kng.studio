@@ -2082,8 +2082,7 @@ button {
   backdrop-filter: blur(8px);
 }
 
-.admin-save-overlay > div,
-.admin-save-toast {
+.admin-save-overlay > div {
   display: grid;
   gap: 10px;
   min-width: min(360px, calc(100vw - 32px));
@@ -2095,50 +2094,20 @@ button {
   text-align: center;
 }
 
-.admin-save-overlay strong,
-.admin-save-toast strong {
+.admin-save-overlay.error > div {
+  border-color: #b00020;
+}
+
+.admin-save-overlay strong {
   font-size: 0.88rem;
   font-weight: 750;
   text-transform: uppercase;
 }
 
-.admin-save-toast {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 115;
-  grid-template-columns: minmax(0, 1fr) 32px;
-  text-align: left;
-}
-
-.admin-save-toast strong,
-.admin-save-toast span {
-  grid-column: 1;
-}
-
-.admin-save-toast span {
+.admin-save-overlay span:not(.loading-dots) {
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.4;
-}
-
-.admin-save-toast button {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: start;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--ink);
-  cursor: pointer;
-}
-
-.admin-save-toast.error {
-  border-color: #b00020;
 }
 
 /* Admin refresh: same monochrome fashion-retail language as the storefront. */

@@ -952,7 +952,6 @@ function AdminPage({
       productType,
     ]);
     setExpandedProductTypeId(id);
-    openAdminProductType(productType);
   };
 
   const updateProductType = (productTypeId: string, patch: Partial<ProductType>) => {
@@ -1759,26 +1758,29 @@ function AdminPage({
           </div>
         ) : null}
 
-        {saveState.status === "saving" ? (
-          <div className="admin-save-overlay" role="status" aria-live="polite" aria-busy="true">
+        {saveState.status !== "idle" ? (
+          <div
+            className={`admin-save-overlay ${saveState.status}`}
+            role="status"
+            aria-live="polite"
+            aria-busy={saveState.status === "saving"}
+          >
             <div>
-              <span className="loading-dots" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </span>
-              <strong>{saveState.message}</strong>
+              {saveState.status === "saving" ? (
+                <span className="loading-dots" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              ) : null}
+              <strong>{saveState.status === "success" ? "Lưu thành công" : saveState.status === "error" ? "Lưu thất bại" : saveState.message}</strong>
+              {saveState.status !== "saving" ? <span>{saveState.message}</span> : null}
+              {saveState.status !== "saving" ? (
+                <button className="admin-button primary" type="button" onClick={() => setSaveState({ status: "idle", message: "" })}>
+                  Đóng
+                </button>
+              ) : null}
             </div>
-          </div>
-        ) : null}
-
-        {saveState.status === "success" || saveState.status === "error" ? (
-          <div className={`admin-save-toast ${saveState.status}`} role="status" aria-live="polite">
-            <strong>{saveState.status === "success" ? "Lưu thành công" : "Lưu thất bại"}</strong>
-            <span>{saveState.message}</span>
-            <button type="button" onClick={() => setSaveState({ status: "idle", message: "" })} aria-label="Ẩn thông báo">
-              <X size={16} aria-hidden="true" />
-            </button>
           </div>
         ) : null}
 
