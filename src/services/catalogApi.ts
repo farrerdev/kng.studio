@@ -25,6 +25,10 @@ type ProductTypeRow = {
   id: string;
   name: string;
   price: string;
+  cover_image_src?: string | null;
+  cover_image_alt?: string | null;
+  size_chart_image_src?: string | null;
+  size_chart_image_alt?: string | null;
   sort_order: number;
 };
 
@@ -82,7 +86,14 @@ export async function fetchCatalog(): Promise<CatalogData> {
   const patternRows = (patternsResult.data ?? []) as PatternRow[];
   const imageRows = (imagesResult.data ?? []) as ProductImageRow[];
   const shopInfoRow = shopInfoResult.data as ShopInfoRow | null;
-  const productTypes = productTypeRows.length > 0 ? productTypeRows.map(mapProductTypeRow) : deriveProductTypes(productRows);
+  const productTypes =
+    productTypeRows.length > 0
+      ? productTypeRows.map((productType) => fillProductTypeFallbacks(mapProductTypeRow(productType), productRows))
+      : deriveProductTypes(productRows);
+  const storageModelImages =
+    imageRows.length === 0
+      ? await fetchStorageModelImages(productRows.map((product) => product.id))
+      : new Map<string, ProductImage[]>();
 
   return {
     productTypes,
@@ -107,7 +118,8 @@ export async function fetchCatalog(): Promise<CatalogData> {
             id: image.id,
             src: image.src,
             alt: image.alt,
-          })),
+          }))
+          .concat(storageModelImages.get(product.id) ?? []),
         sizeChartImage: {
           id: `${product.id}-size-chart`,
           src: product.size_chart_image_src,
@@ -125,11 +137,69 @@ export async function fetchCatalog(): Promise<CatalogData> {
   };
 }
 
+async function fetchStorageModelImages(productIds: string[]) {
+  const storageModelImages = new Map<string, ProductImage[]>();
+  if (!supabase || productIds.length === 0) return storageModelImages;
+  const client = supabase;
+
+  await Promise.all(
+    productIds.map(async (productId) => {
+      const result = await client.storage
+        .from(supabaseConfig.storageBucket)
+        .list(`models/${productId}`, { limit: 100, sortBy: { column: "created_at", order: "asc" } });
+
+      if (result.error) return;
+
+      const images = (result.data ?? [])
+        .filter((file) => file.name && !file.name.startsWith("."))
+        .map((file, index) => {
+          const path = `models/${productId}/${file.name}`;
+          const publicUrl = client.storage.from(supabaseConfig.storageBucket).getPublicUrl(path);
+          return {
+            id: `storage-${productId}-${file.id ?? file.name}`,
+            src: publicUrl.data.publicUrl,
+            alt: `Ảnh mẫu mặc ${index + 1}`,
+          };
+        });
+
+      if (images.length > 0) {
+        storageModelImages.set(productId, images);
+      }
+    }),
+  );
+
+  return storageModelImages;
+}
+
 function mapProductTypeRow(productType: ProductTypeRow): ProductType {
   return {
     id: productType.id,
     name: productType.name,
     price: productType.price,
+    coverImage: {
+      id: `${productType.id}-cover`,
+      src: productType.cover_image_src ?? "",
+      alt: productType.cover_image_alt ?? `Ảnh bìa ${productType.name}`,
+    },
+    sizeChartImage: {
+      id: `${productType.id}-size-chart`,
+      src: productType.size_chart_image_src ?? "",
+      alt: productType.size_chart_image_alt ?? `Bảng size ${productType.name}`,
+    },
+  };
+}
+
+function fillProductTypeFallbacks(productType: ProductType, products: ProductRow[]): ProductType {
+  if (productType.sizeChartImage.src.trim()) return productType;
+
+  const firstProduct = products.find((product) => product.product_type_id === productType.id);
+  return {
+    ...productType,
+    sizeChartImage: {
+      ...productType.sizeChartImage,
+      src: firstProduct?.size_chart_image_src ?? "",
+      alt: firstProduct?.size_chart_image_alt || productType.sizeChartImage.alt,
+    },
   };
 }
 
@@ -175,6 +245,16 @@ function deriveProductTypes(products: ProductRow[]): ProductType[] {
         id,
         name: legacyTitle.typeName,
         price: product.price,
+        coverImage: {
+          id: `${id}-cover`,
+          src: "",
+          alt: `Ảnh bìa ${legacyTitle.typeName}`,
+        },
+        sizeChartImage: {
+          id: `${id}-size-chart`,
+          src: product.size_chart_image_src,
+          alt: product.size_chart_image_alt || `Bảng size ${legacyTitle.typeName}`,
+        },
       });
     }
   });
@@ -198,6 +278,10 @@ export async function saveCatalog(catalog: {
     id: productType.id,
     name: productType.name,
     price: productType.price,
+    cover_image_src: productType.coverImage.src,
+    cover_image_alt: productType.coverImage.alt,
+    size_chart_image_src: productType.sizeChartImage.src,
+    size_chart_image_alt: productType.sizeChartImage.alt,
     sort_order: index,
   }));
 

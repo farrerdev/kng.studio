@@ -6,9 +6,51 @@ export const sizeOptions: SizeOption[] = [
 ];
 
 export const productTypes: ProductType[] = [
-  { id: "type-set-bo", name: "Set bộ", price: "390.000đ" },
-  { id: "type-dam-ngu", name: "Đầm ngủ", price: "420.000đ" },
-  { id: "type-pajama", name: "Pajama dài", price: "460.000đ" },
+  {
+    id: "type-set-bo",
+    name: "Set bộ",
+    price: "390.000đ",
+    coverImage: {
+      id: "type-set-bo-cover",
+      src: "/images/moc-hoa-nhi.webp",
+      alt: "Ảnh bìa Set bộ",
+    },
+    sizeChartImage: {
+      id: "type-set-bo-size-chart",
+      src: "/images/size-chart-moc.webp",
+      alt: "Bảng size Set bộ",
+    },
+  },
+  {
+    id: "type-dam-ngu",
+    name: "Đầm ngủ",
+    price: "420.000đ",
+    coverImage: {
+      id: "type-dam-ngu-cover",
+      src: "/images/may-cham-bi.webp",
+      alt: "Ảnh bìa Đầm ngủ",
+    },
+    sizeChartImage: {
+      id: "type-dam-ngu-size-chart",
+      src: "/images/size-chart-may.webp",
+      alt: "Bảng size Đầm ngủ",
+    },
+  },
+  {
+    id: "type-pajama",
+    name: "Pajama dài",
+    price: "460.000đ",
+    coverImage: {
+      id: "type-pajama-cover",
+      src: "/images/an-caro-kem.webp",
+      alt: "Ảnh bìa Pajama dài",
+    },
+    sizeChartImage: {
+      id: "type-pajama-size-chart",
+      src: "/images/size-chart-an.webp",
+      alt: "Bảng size Pajama dài",
+    },
+  },
 ];
 
 export const products: Product[] = [

@@ -48,8 +48,65 @@ function getProductTitle(product: Product, productTypes: ProductType[]) {
   return productName ? `${typeName} - ${productName}` : typeName;
 }
 
+function getProductDisplayName(product: Product) {
+  return product.name.trim() || "Mẫu";
+}
+
 function getProductPrice(product: Product, productTypes: ProductType[]) {
   return getProductType(product, productTypes)?.price ?? product.price;
+}
+
+function getProductTypeCoverImage(productType: ProductType, products: Product[]): ProductImage {
+  if (productType.coverImage.src.trim()) {
+    return productType.coverImage;
+  }
+
+  const firstPatternImage = products.find((product) => product.productTypeId === productType.id)?.patterns[0]?.image;
+  return (
+    firstPatternImage ?? {
+      id: `${productType.id}-cover-fallback`,
+      src: "/images/shop-info.webp",
+      alt: `Ảnh bìa ${productType.name || "loại sản phẩm"}`,
+    }
+  );
+}
+
+function getProductTypeSizeChartImage(productType: ProductType, products: Product[]): ProductImage {
+  if (productType.sizeChartImage.src.trim()) {
+    return productType.sizeChartImage;
+  }
+
+  const firstSizeChart = products.find((product) => product.productTypeId === productType.id)?.sizeChartImage;
+  return (
+    firstSizeChart ?? {
+      id: `${productType.id}-size-chart-fallback`,
+      src: "/images/size-chart-moc.webp",
+      alt: `Bảng size ${productType.name || "loại sản phẩm"}`,
+    }
+  );
+}
+
+function slugify(value: string) {
+  const slug = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "san-pham";
+}
+
+function getProductTypeSlug(productType: ProductType) {
+  return slugify(productType.name || productType.id);
+}
+
+function getProductTypeSlugFromPath() {
+  if (typeof window === "undefined") return null;
+  const path = decodeURIComponent(window.location.pathname).replace(/^\/+|\/+$/g, "");
+  if (!path || path === "admin" || path.startsWith("admin/")) return null;
+  return path.split("/")[0] || null;
 }
 
 function moveItem<T>(items: T[], fromIndex: number, direction: -1 | 1) {
@@ -103,7 +160,7 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
 }
 
 function getProductGalleryImages(product: Product, productTypes: ProductType[]): GalleryImage[] {
-  const productTitle = getProductTitle(product, productTypes);
+  const productTitle = getProductDisplayName(product);
   return [
     ...product.patterns.map((pattern) => ({
       ...pattern.image,
@@ -113,10 +170,6 @@ function getProductGalleryImages(product: Product, productTypes: ProductType[]):
       ...image,
       caption: `${productTitle} - ảnh mẫu ${index + 1}`,
     })),
-    {
-      ...product.sizeChartImage,
-      caption: `${productTitle} - bảng size`,
-    },
   ];
 }
 
@@ -135,14 +188,35 @@ function App() {
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
+  const [selectedProductTypeSlug, setSelectedProductTypeSlug] = useState<string | null>(() => getProductTypeSlugFromPath());
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
+  const selectedProductType = useMemo(
+    () =>
+      selectedProductTypeSlug
+        ? catalogProductTypes.find((productType) => getProductTypeSlug(productType) === selectedProductTypeSlug) ?? null
+        : null,
+    [catalogProductTypes, selectedProductTypeSlug],
+  );
+  const productTypesWithAvailableProducts = useMemo(
+    () =>
+      catalogProductTypes.filter((productType) =>
+        catalogProducts.some((product) => product.productTypeId === productType.id && product.patterns.length > 0),
+      ),
+    [catalogProductTypes, catalogProducts],
+  );
   const visibleProducts = useMemo(
-    () => getVisibleProducts(selectedSize, catalogProducts),
-    [catalogProducts, selectedSize],
+    () =>
+      selectedProductType
+        ? getVisibleProducts(
+            selectedSize,
+            catalogProducts.filter((product) => product.productTypeId === selectedProductType.id),
+          )
+        : [],
+    [catalogProducts, selectedProductType, selectedSize],
   );
   const galleryImages = useMemo(() => {
-    const shopImages: GalleryImage[] = currentShopInfoImage
+    const shopImages: GalleryImage[] = currentShopInfoImage && !selectedProductType
       ? [
           {
             ...currentShopInfoImage,
@@ -150,11 +224,16 @@ function App() {
           },
         ]
       : [];
-    return [
-      ...shopImages,
-      ...visibleProducts.flatMap((product) => getProductGalleryImages(product, catalogProductTypes)),
-    ];
-  }, [catalogProductTypes, currentShopInfoImage, visibleProducts]);
+    const typeSizeChart = selectedProductType
+      ? [
+          {
+            ...getProductTypeSizeChartImage(selectedProductType, catalogProducts),
+            caption: `${selectedProductType.name || "Loại sản phẩm"} - bảng size`,
+          },
+        ]
+      : [];
+    return [...shopImages, ...typeSizeChart, ...visibleProducts.flatMap((product) => getProductGalleryImages(product, catalogProductTypes))];
+  }, [catalogProductTypes, catalogProducts, currentShopInfoImage, selectedProductType, visibleProducts]);
   const activeImageIndex = useMemo(() => {
     if (!activeImage) return -1;
     return galleryImages.findIndex(
@@ -169,10 +248,30 @@ function App() {
     const nextIndex = (activeImageIndex + offset + galleryImages.length) % galleryImages.length;
     setActiveImage(galleryImages[nextIndex]);
   };
+  const openProductType = (productType: ProductType) => {
+    const slug = getProductTypeSlug(productType);
+    setSelectedProductTypeSlug(slug);
+    window.history.pushState(null, "", `/${slug}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const closeProductType = () => {
+    setSelectedProductTypeSlug(null);
+    window.history.pushState(null, "", "/");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     document.title = isAdminRoute ? "KNG.studio Admin" : "KNG.studio | Muslin homewear";
   }, [isAdminRoute]);
+
+  useEffect(() => {
+    const syncProductTypeFromRoute = () => {
+      setSelectedProductTypeSlug(getProductTypeSlugFromPath());
+    };
+
+    window.addEventListener("popstate", syncProductTypeFromRoute);
+    return () => window.removeEventListener("popstate", syncProductTypeFromRoute);
+  }, []);
 
   useEffect(() => {
     if (!activeImage) return;
@@ -264,35 +363,69 @@ function App() {
           </div>
         </header>
 
-        {catalogLoadState === "loading" ? (
-          <LoadingPanel />
-        ) : currentShopInfoImage ? (
-          <section className="shop-info" aria-label="Bảng giá và quy định chung">
-            <h2>Bảng giá chung và quy định</h2>
-            <button
-              className="shop-info-card"
-              type="button"
-              onClick={() =>
-                setActiveImage({
-                  ...currentShopInfoImage,
-                  caption: "Bảng giá chung & quy định đặt hàng",
-                })
-              }
-            >
-              <img loading="eager" src={currentShopInfoImage.src} alt={currentShopInfoImage.alt} />
-            </button>
-          </section>
-        ) : null}
+        {catalogLoadState === "loading" ? <LoadingPanel /> : null}
 
-        {catalogLoadState !== "loading" ? (
-        <div className="catalog-layout">
-          <aside className="catalog-sidebar" aria-label="Bộ lọc sản phẩm">
-            <section className="size-panel">
-              <div>
-                <h2>Chọn size phù hợp để xem mẫu đang còn hàng</h2>
+        {catalogLoadState !== "loading" && !selectedProductType ? (
+          <>
+            {currentShopInfoImage ? (
+              <section className="shop-info" aria-label="Bảng giá và quy định chung">
+                <h2>Bảng giá chung và quy định</h2>
+                <button
+                  className="shop-info-card"
+                  type="button"
+                  onClick={() =>
+                    setActiveImage({
+                      ...currentShopInfoImage,
+                      caption: "Bảng giá chung & quy định đặt hàng",
+                    })
+                  }
+                >
+                  <img loading="eager" src={currentShopInfoImage.src} alt={currentShopInfoImage.alt} />
+                </button>
+              </section>
+            ) : null}
+
+            <section className="product-type-showcase" aria-label="Sản phẩm">
+              <div className="section-title">
+                <h2>Sản phẩm</h2>
+                <span>{productTypesWithAvailableProducts.length} loại</span>
+              </div>
+              <div className="product-type-grid">
+                {productTypesWithAvailableProducts.map((productType) => {
+                  const coverImage = getProductTypeCoverImage(productType, catalogProducts);
+                  return (
+                    <button
+                      className="product-type-card"
+                      key={productType.id}
+                      type="button"
+                      onClick={() => openProductType(productType)}
+                    >
+                      <img src={coverImage.src} alt={coverImage.alt} loading="lazy" />
+                      <span className="product-type-card-overlay">
+                        <span>{productType.name || "Chưa đặt tên"}</span>
+                        <strong>{formatPrice(productType.price)}</strong>
+                        <em>Xem ngay</em>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
+          </>
+        ) : null}
 
+        {catalogLoadState !== "loading" && selectedProductType ? (
+        <section className="product-type-screen" aria-label={`Sản phẩm ${selectedProductType.name}`}>
+          <button className="back-button" type="button" onClick={closeProductType}>
+            <ChevronLeft size={18} aria-hidden="true" />
+            Sản phẩm
+          </button>
+          <header className="product-type-screen-header">
+            <h2>{selectedProductType.name || "Loại sản phẩm"}</h2>
+            <strong>{formatPrice(selectedProductType.price)}</strong>
+          </header>
+          <div className="catalog-layout">
+          <aside className="catalog-sidebar" aria-label="Bộ lọc sản phẩm">
             <div className="size-options" role="radiogroup" aria-label="Chọn size">
               {sizeOptions.map((size) => (
                 <button
@@ -308,6 +441,26 @@ function App() {
                 </button>
               ))}
             </div>
+            <button
+              className="size-chart-inline type-size-chart"
+              type="button"
+              onClick={() =>
+                setActiveImage({
+                  ...getProductTypeSizeChartImage(selectedProductType, catalogProducts),
+                  caption: `${selectedProductType.name || "Loại sản phẩm"} - bảng size`,
+                })
+              }
+            >
+              <div className="size-chart-inline-text">
+                <h4>Bảng size chi tiết</h4>
+                <span>Tap để xem lớn</span>
+              </div>
+              <img
+                loading="lazy"
+                src={getProductTypeSizeChartImage(selectedProductType, catalogProducts).src}
+                alt={getProductTypeSizeChartImage(selectedProductType, catalogProducts).alt}
+              />
+            </button>
           </aside>
 
           <section className="catalog-list" aria-label="Danh sách sản phẩm">
@@ -331,6 +484,7 @@ function App() {
                   product={product}
                   productTypes={catalogProductTypes}
                   selectedSize={selectedSize}
+                  compact
                 />
               ))
             ) : (
@@ -341,6 +495,7 @@ function App() {
             )}
           </section>
         </div>
+        </section>
         ) : null}
       </main>
 
@@ -400,10 +555,19 @@ type ProductCardProps = {
   isCollapsed: boolean;
   onToggle: () => void;
   onImageOpen: (image: GalleryImage) => void;
+  compact?: boolean;
 };
 
-function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggle, onImageOpen }: ProductCardProps) {
-  const productTitle = getProductTitle(product, productTypes);
+function ProductCard({
+  product,
+  productTypes,
+  selectedSize,
+  isCollapsed,
+  onToggle,
+  onImageOpen,
+  compact = false,
+}: ProductCardProps) {
+  const productTitle = compact ? getProductDisplayName(product) : getProductTitle(product, productTypes);
 
   return (
     <article className="product-card">
@@ -418,7 +582,7 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
           <section className="product-overview" aria-label={`Thông tin ${productTitle}`}>
             {product.material.trim() ? <span className="product-material">{product.material}</span> : null}
             {product.fit.trim() ? <p>{product.fit}</p> : null}
-            <strong>{formatPrice(getProductPrice(product, productTypes))}</strong>
+            {!compact ? <strong>{formatPrice(getProductPrice(product, productTypes))}</strong> : null}
           </section>
 
           <section aria-label={`Họa tiết còn hàng của ${productTitle}`}>
@@ -448,6 +612,7 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
             </div>
           </section>
 
+          {product.modelImages.length > 0 ? (
           <section aria-label={`Ảnh mẫu mặc ${productTitle}`}>
             <div className="section-title">
               <h4>Ảnh mẫu mặc</h4>
@@ -471,25 +636,28 @@ function ProductCard({ product, productTypes, selectedSize, isCollapsed, onToggl
               ))}
             </div>
           </section>
+          ) : null}
 
-          <section aria-label={`Bảng size ${productTitle}`}>
-            <button
-              className="size-chart-inline"
-              type="button"
-              onClick={() =>
-                onImageOpen({
-                  ...product.sizeChartImage,
-                  caption: `${productTitle} - bảng size`,
-                })
-              }
-            >
-              <div className="size-chart-inline-text">
-                <h4>Bảng size chi tiết</h4>
-                <span>Tap để xem lớn</span>
-              </div>
-              <img loading="lazy" src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
-            </button>
-          </section>
+          {!compact ? (
+            <section aria-label={`Bảng size ${productTitle}`}>
+              <button
+                className="size-chart-inline"
+                type="button"
+                onClick={() =>
+                  onImageOpen({
+                    ...product.sizeChartImage,
+                    caption: `${productTitle} - bảng size`,
+                  })
+                }
+              >
+                <div className="size-chart-inline-text">
+                  <h4>Bảng size chi tiết</h4>
+                  <span>Tap để xem lớn</span>
+                </div>
+                <img loading="lazy" src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
+              </button>
+            </section>
+          ) : null}
       </div>
     </article>
   );
@@ -563,6 +731,7 @@ function AdminPage({
   const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isBusy, setIsBusy] = useState(false);
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
+  const [previewImage, setPreviewImage] = useState<GalleryImage | null>(null);
 
   useEffect(() => {
     setAdminMessage(catalogStatus);
@@ -618,6 +787,8 @@ function AdminPage({
         id,
         name: "",
         price: "",
+        coverImage: createImage(createId("type-cover"), "", "Ảnh bìa loại sản phẩm"),
+        sizeChartImage: createImage(createId("type-size-chart"), "", "Bảng size loại sản phẩm"),
       },
     ]);
     setIsProductTypesExpanded(true);
@@ -705,6 +876,8 @@ function AdminPage({
       id: createId("type"),
       name: "",
       price: "",
+      coverImage: createImage(createId("type-cover"), "", "Ảnh bìa loại sản phẩm"),
+      sizeChartImage: createImage(createId("type-size-chart"), "", "Bảng size loại sản phẩm"),
     };
 
     if (!defaultProductType) {
@@ -734,17 +907,18 @@ function AdminPage({
     setExpandedProductId(id);
   };
 
-  const addPattern = (productId: string) => {
-    const newPattern: ProductPattern = {
+  const addPatterns = (productId: string, urls: string[]) => {
+    const newPatterns: ProductPattern[] = urls.map((url) => ({
       id: createId("pattern"),
       name: "",
       accent: "#c8b69a",
-      image: createImage(createId("pattern-image"), "/images/moc-hoa-nhi.webp", "Ảnh họa tiết mới"),
+      image: createImage(createId("pattern-image"), url, "Họa tiết"),
       availableSizes: ["1", "2"],
-    };
+    }));
+
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
-        product.id === productId ? { ...product, patterns: [...product.patterns, newPattern] } : product,
+        product.id === productId ? { ...product, patterns: [...product.patterns, ...newPatterns] } : product,
       ),
     );
   };
@@ -1033,14 +1207,85 @@ function AdminPage({
 
                       {isTypeExpanded ? (
                         <div className="product-type-row">
-                          <label>
+                          <label
+                            className="pattern-thumb-field product-type-cover-field"
+                            aria-label={`Upload ảnh bìa ${productType.name}`}
+                          >
+                            <img
+                              src={
+                                getProductTypeCoverImage(productType, products).src
+                              }
+                              alt={getProductTypeCoverImage(productType, products).alt}
+                            />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                uploadImage(file, `product-types/${productType.id}`, (url) =>
+                                  updateProductType(productType.id, {
+                                    coverImage: {
+                                      ...productType.coverImage,
+                                      src: url,
+                                      alt: productType.coverImage.alt || `Ảnh bìa ${productType.name}`,
+                                    },
+                                  }),
+                                );
+                                event.target.value = "";
+                              }}
+	                            />
+	                          </label>
+                          <label
+                            className="pattern-thumb-field product-type-size-field"
+                            aria-label={`Upload bảng size ${productType.name}`}
+                          >
+                            <img
+                              src={getProductTypeSizeChartImage(productType, products).src}
+                              alt={getProductTypeSizeChartImage(productType, products).alt}
+                            />
+                            <button
+                              className="thumb-preview-trigger"
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setPreviewImage({
+                                  ...getProductTypeSizeChartImage(productType, products),
+                                  caption: `Bảng size ${productType.name || "loại sản phẩm"}`,
+                                });
+                              }}
+                              aria-label="Xem bảng size lớn"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (!file) return;
+                                uploadImage(file, `product-types/${productType.id}/size-charts`, (url) =>
+                                  updateProductType(productType.id, {
+                                    sizeChartImage: {
+                                      ...productType.sizeChartImage,
+                                      src: url,
+                                      alt: productType.sizeChartImage.alt || `Bảng size ${productType.name}`,
+                                    },
+                                  }),
+                                );
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <label className="product-type-name-field">
                             <span>Loại</span>
                             <input
                               value={productType.name}
                               onChange={(event) => updateProductType(productType.id, { name: event.target.value })}
                             />
                           </label>
-                          <label>
+                          <label className="product-type-price-field">
                             <span>Giá</span>
                             <input
                               value={productType.price}
@@ -1198,6 +1443,18 @@ function AdminPage({
                         <article className="pattern-row" key={pattern.id}>
                           <label className="pattern-thumb-field" aria-label={`Upload ảnh ${pattern.name}`}>
                             <img src={pattern.image.src} alt={pattern.image.alt} />
+                            <button
+                              className="thumb-preview-trigger"
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setPreviewImage({ ...pattern.image, caption: pattern.name || "Họa tiết" });
+                              }}
+                              aria-label="Xem ảnh lớn"
+                            >
+                              <Eye size={14} />
+                            </button>
                             <input
                               type="file"
                               accept="image/*"
@@ -1253,10 +1510,21 @@ function AdminPage({
                         </article>
                       ))}
                     </div>
-                    <button className="admin-button small full-width" type="button" onClick={() => addPattern(product.id)}>
+                    <label className="admin-button small full-width file-button">
                       <Plus size={16} aria-hidden="true" />
-                      Thêm phân loại
-                    </button>
+                      Thêm phân loại (chọn nhiều ảnh)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(event) => {
+                          const files = Array.from(event.target.files ?? []);
+                          if (files.length === 0) return;
+                          uploadImages(files, `patterns/${product.id}`, (urls) => addPatterns(product.id, urls));
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
                   </div>
 
                   <div className="admin-card">
@@ -1266,6 +1534,18 @@ function AdminPage({
                         <div className="admin-image-wrap-item" key={image.id}>
                           <label className="pattern-thumb-field">
                             <img src={image.src} alt={image.alt} />
+                            <button
+                              className="thumb-preview-trigger"
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setPreviewImage({ ...image, caption: "Ảnh mẫu mặc" });
+                              }}
+                              aria-label="Xem ảnh lớn"
+                            >
+                              <Eye size={14} />
+                            </button>
                             <input
                               type="file"
                               accept="image/*"
@@ -1306,29 +1586,6 @@ function AdminPage({
                       />
                     </label>
                   </div>
-
-                  <div className="admin-card">
-                    <div className="admin-card-header">
-                      <h3>Bảng size sản phẩm</h3>
-                      <label className="pattern-thumb-field" aria-label="Upload bảng size">
-                        <img src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (!file) return;
-                            uploadImage(file, `size-charts/${product.id}`, (url) =>
-                              updateProduct(product.id, {
-                                sizeChartImage: { ...product.sizeChartImage, src: url },
-                              }),
-                            );
-                            event.target.value = "";
-                          }}
-                        />
-                      </label>
-                    </div>
-                  </div>
                 </div>
               ) : null}
             </article>
@@ -1340,11 +1597,23 @@ function AdminPage({
           Thêm sản phẩm mới
         </button>
 
-        <div className="admin-card" style={{ marginTop: "24px" }}>
+        <div className="admin-card" style={{ marginTop: "16px" }}>
           <div className="admin-card-header">
             <h3>Bảng giá & Quy định chung</h3>
             <label className="pattern-thumb-field" aria-label="Upload bảng giá chung">
               <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
+              <button
+                className="thumb-preview-trigger"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPreviewImage({ ...adminShopInfoImage, caption: "Bảng giá & Quy định chung" });
+                }}
+                aria-label="Xem ảnh lớn"
+              >
+                <Eye size={14} />
+              </button>
               <input
                 type="file"
                 accept="image/*"
@@ -1360,6 +1629,21 @@ function AdminPage({
             </label>
           </div>
         </div>
+
+        {previewImage ? (
+          <button
+            className="lightbox"
+            type="button"
+            aria-label="Đóng ảnh phóng to"
+            onClick={() => setPreviewImage(null)}
+          >
+            <span className="lightbox-close">
+              <X size={22} aria-hidden="true" />
+            </span>
+            <img src={previewImage.src} alt={previewImage.alt} />
+            <span className="lightbox-caption">{previewImage.caption}</span>
+          </button>
+        ) : null}
       </div>
     </main>
   );

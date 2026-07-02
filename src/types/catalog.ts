@@ -24,6 +24,8 @@ export type ProductType = {
   id: string;
   name: string;
   price: string;
+  coverImage: ProductImage;
+  sizeChartImage: ProductImage;
 };
 
 export type Product = {
