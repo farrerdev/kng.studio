@@ -1,0 +1,53 @@
+{
+  "name": "KNG.studio",
+  "alternateName": "KNG studio",
+  "description": "Catalog đồ ngủ muslin homewear KNG.studio tại Đà Nẵng.",
+  "url": "https://kngstudio.vercel.app/",
+  "language": "vi",
+  "location": "Đà Nẵng, Việt Nam",
+  "contacts": {
+    "instagramProfile": "https://www.instagram.com/kng.stu_/",
+    "instagramMessage": "https://ig.me/m/kng.stu_",
+    "facebookPage": "https://www.facebook.com/p/KNGstudio-61584468240625/",
+    "messenger": "https://m.me/61584468240625"
+  },
+  "sizes": [
+    {
+      "id": "1",
+      "label": "Size 1",
+      "range": "Dưới 55kg"
+    },
+    {
+      "id": "2",
+      "label": "Size 2",
+      "range": "55 - 65kg"
+    }
+  ],
+  "catalog": {
+    "stockSource": "Live catalog rendered from shop admin data",
+    "orderingNote": "Khách xem mẫu còn hàng trên website rồi nhắn Instagram hoặc Messenger để chốt đơn.",
+    "shippingOffer": "Miễn phí vận chuyển đơn từ 2 bộ"
+  },
+  "knownRoutes": [
+    {
+      "name": "Trang chủ",
+      "url": "https://kngstudio.vercel.app/"
+    },
+    {
+      "name": "Tay ngắn quần đùi",
+      "url": "https://kngstudio.vercel.app/tay-ngan-quan-dui"
+    },
+    {
+      "name": "Set bộ",
+      "url": "https://kngstudio.vercel.app/set-bo"
+    },
+    {
+      "name": "Đầm ngủ",
+      "url": "https://kngstudio.vercel.app/dam-ngu"
+    },
+    {
+      "name": "Pajama dài",
+      "url": "https://kngstudio.vercel.app/pajama-dai"
+    }
+  ]
+}

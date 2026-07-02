@@ -1,0 +1,27 @@
+# KNG.studio
+
+KNG.studio is a muslin homewear shop in Da Nang, Vietnam. The website is a lightweight catalog for customers to view product categories, available patterns, sizes, price information, shipping notes, gifts, and ordering rules.
+
+Canonical site: https://kngstudio.vercel.app/
+
+## What customers can do
+
+- View the general price and ordering policy image.
+- Browse product categories such as short-sleeve sleepwear sets, dresses, and pajama styles.
+- Select Size 1 for under 55kg or Size 2 for 55kg to 65kg.
+- View available patterns, product photos, model photos, and detailed size chart images.
+- Message the shop to order through Instagram or Messenger.
+
+## Contact and ordering
+
+- Instagram direct message: https://ig.me/m/kng.stu_
+- Instagram profile: https://www.instagram.com/kng.stu_/
+- Messenger: https://m.me/61584468240625
+- Facebook page: https://www.facebook.com/p/KNGstudio-61584468240625/
+
+## Agent-readable resources
+
+- Sitemap: https://kngstudio.vercel.app/sitemap.xml
+- Public catalog summary: https://kngstudio.vercel.app/catalog.json
+
+For the freshest stock state, use the rendered catalog page because the shop updates product availability through the admin site.
