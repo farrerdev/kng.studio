@@ -96,6 +96,26 @@ button {
   white-space: nowrap;
 }
 
+.shipping-promo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 14px;
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.shipping-promo span {
+  min-width: 0;
+}
+
 .shop-info {
   display: grid;
   justify-items: flex-start;
@@ -837,7 +857,7 @@ button {
   top: 0;
   z-index: 40;
   min-height: 72px;
-  padding: 16px 0;
+  padding: 16px 0 15px;
   border-bottom: 1px solid var(--store-ink);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
@@ -861,6 +881,7 @@ button {
 }
 
 .storefront .location-pill {
+  align-self: center;
   min-height: 34px;
   padding: 0;
   border: 0;
@@ -871,9 +892,19 @@ button {
   font-weight: 650;
 }
 
+.storefront .shipping-promo {
+  min-height: 34px;
+  margin-top: 0;
+  background: #3a3a3a;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 620;
+  letter-spacing: 0;
+}
+
 .storefront .shop-info {
   gap: 16px;
-  padding: 28px 0 34px;
+  padding: 26px 0 32px;
   border-bottom: 1px solid var(--store-line);
 }
 
@@ -1028,8 +1059,9 @@ button {
 }
 
 .storefront .list-heading {
-  align-items: end;
-  padding-bottom: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 0 12px;
   border-bottom: 1px solid var(--store-line);
 }
 
@@ -1407,8 +1439,17 @@ button {
   line-height: 1;
 }
 
-.admin-status-text {
+.admin-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 12px 0 0;
+}
+
+.admin-status-text {
+  flex: 1;
+  margin: 0;
   color: var(--muted);
   font-weight: 750;
   text-align: right;
@@ -1458,6 +1499,10 @@ button {
 .admin-product-header.active {
   background: #fff8ee;
   border-bottom: 1px solid var(--line);
+}
+
+.product-type-manager-heading {
+  cursor: default;
 }
 
 .admin-product-header div {
@@ -1593,6 +1638,42 @@ button {
 .product-type-header.active {
   border-bottom: 1px solid rgba(234, 223, 206, 0.78);
   background: #fffaf1;
+}
+
+.product-type-header.selected {
+  background: #fff1d6;
+}
+
+.product-type-open-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.product-type-open-button span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.product-type-open-button em,
+.product-type-open-button small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .product-type-header div {
@@ -1742,11 +1823,25 @@ button {
   display: grid;
   place-items: center;
   width: 100%;
+  aspect-ratio: 1;
   min-height: 0;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--line);
   background: transparent;
   cursor: pointer;
+}
+
+.pattern-thumb-field.empty .thumb-image-button {
+  border-style: dashed;
+  background: var(--soft);
+}
+
+.thumb-empty-state {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--muted);
 }
 
 .thumb-action-menu {
@@ -1791,7 +1886,7 @@ button {
   dynamic-range-limit: standard;
   width: 64px;
   aspect-ratio: 1;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 6px;
   filter: none;
   image-rendering: auto;
@@ -1928,6 +2023,122 @@ button {
   gap: 12px;
   min-height: 280px;
   padding: 24px;
+}
+
+.admin-empty.compact {
+  min-height: 180px;
+  text-align: center;
+}
+
+.admin-empty.compact p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.product-type-detail-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.admin-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.admin-panel-heading.flat {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-panel-heading div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-panel-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.admin-save-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.admin-save-overlay > div,
+.admin-save-toast {
+  display: grid;
+  gap: 10px;
+  min-width: min(360px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--ink);
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+  text-align: center;
+}
+
+.admin-save-overlay strong,
+.admin-save-toast strong {
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.admin-save-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 115;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  text-align: left;
+}
+
+.admin-save-toast strong,
+.admin-save-toast span {
+  grid-column: 1;
+}
+
+.admin-save-toast span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-save-toast button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.admin-save-toast.error {
+  border-color: #b00020;
 }
 
 /* Admin refresh: same monochrome fashion-retail language as the storefront. */
@@ -2235,6 +2446,10 @@ button {
     align-items: flex-start;
   }
 
+  .storefront .list-heading {
+    align-items: center;
+  }
+
   .list-heading p {
     font-size: 0.9rem;
   }
@@ -2493,6 +2708,15 @@ button {
     border: 1px solid var(--line);
     border-radius: 8px;
     background: rgba(255, 253, 248, 0.72);
+  }
+
+  .storefront .list-heading {
+    min-height: 56px;
+    padding: 0 0 12px;
+    border-width: 0 0 1px;
+    border-color: var(--store-line);
+    border-radius: 0;
+    background: transparent;
   }
 
   .product-summary {

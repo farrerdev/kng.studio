@@ -109,6 +109,13 @@ function getProductTypeSlugFromPath() {
   return path.split("/")[0] || null;
 }
 
+function getAdminProductTypeSlugFromPath() {
+  if (typeof window === "undefined") return null;
+  const path = decodeURIComponent(window.location.pathname).replace(/^\/+|\/+$/g, "");
+  if (path === "admin" || !path.startsWith("admin/")) return null;
+  return path.split("/")[1] || null;
+}
+
 function moveItem<T>(items: T[], fromIndex: number, direction: -1 | 1) {
   const toIndex = fromIndex + direction;
   if (toIndex < 0 || toIndex >= items.length) return items;
@@ -142,21 +149,34 @@ function AdminImageActionField({
 }: AdminImageActionFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasImage = image.src.trim().length > 0;
 
   const rootClassName = className ? `pattern-thumb-field ${className}` : "pattern-thumb-field";
 
   return (
-    <div className={rootClassName}>
+    <div className={hasImage ? rootClassName : `${rootClassName} empty`}>
       <button
         className="thumb-image-button"
         type="button"
         aria-label={ariaLabel}
         aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          if (!hasImage) {
+            inputRef.current?.click();
+            return;
+          }
+          setIsOpen((current) => !current);
+        }}
       >
-        <img src={image.src} alt={image.alt} />
+        {hasImage ? (
+          <img src={image.src} alt={image.alt} />
+        ) : (
+          <span className="thumb-empty-state">
+            <Plus size={16} aria-hidden="true" />
+          </span>
+        )}
       </button>
-      {isOpen ? (
+      {hasImage && isOpen ? (
         <div className="thumb-action-menu" role="menu">
           <button
             type="button"
@@ -398,6 +418,12 @@ function App() {
     }));
   };
 
+  const emptyShopInfoImage: ProductImage = {
+    id: "shop-info-empty",
+    src: "",
+    alt: "Bảng giá & Quy định chung",
+  };
+
   if (isAdminRoute) {
     return (
       <AdminPage
@@ -405,7 +431,7 @@ function App() {
         isCatalogLoading={catalogLoadState === "loading"}
         productTypes={catalogProductTypes}
         products={catalogProducts}
-        shopInfoImage={currentShopInfoImage ?? fallbackCatalog.shopInfoImage}
+        shopInfoImage={currentShopInfoImage ?? emptyShopInfoImage}
         onProductTypesChange={setCatalogProductTypes}
         onProductsChange={setCatalogProducts}
         onRefresh={async () => {
@@ -416,7 +442,7 @@ function App() {
         }}
         onShopInfoImageChange={(updater) =>
           setCurrentShopInfoImage((currentImage) =>
-            typeof updater === "function" ? updater(currentImage ?? fallbackCatalog.shopInfoImage) : updater,
+            typeof updater === "function" ? updater(currentImage ?? emptyShopInfoImage) : updater,
           )
         }
       />
@@ -436,6 +462,10 @@ function App() {
             <span>{shopConfig.location}</span>
           </div>
         </header>
+
+        <section className="shipping-promo" aria-label="Ưu đãi vận chuyển">
+          <span>Miễn phí vận chuyển đơn từ 2 bộ</span>
+        </section>
 
         {catalogLoadState === "loading" ? <LoadingPanel /> : null}
 
@@ -776,13 +806,18 @@ type AdminPageProps = {
   onRefresh: () => Promise<void>;
 };
 
-const createId = (prefix: string) => `${prefix}-${Date.now().toString(36)}`;
+const createId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-const createImage = (id: string, src = "/images/shop-info.webp", alt = "Ảnh sản phẩm"): ProductImage => ({
+const createImage = (id: string, src = "", alt = "Ảnh sản phẩm"): ProductImage => ({
   id,
   src,
   alt,
 });
+
+type AdminSaveState = {
+  status: "idle" | "saving" | "success" | "error";
+  message: string;
+};
 
 function AdminPage({
   catalogStatus,
@@ -796,8 +831,9 @@ function AdminPage({
   onRefresh,
 }: AdminPageProps) {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
-  const [isProductTypesExpanded, setIsProductTypesExpanded] = useState(false);
   const [expandedProductTypeId, setExpandedProductTypeId] = useState<string | null>(null);
+  const [selectedAdminProductTypeId, setSelectedAdminProductTypeId] = useState<string | null>(null);
+  const [adminProductTypeSlug, setAdminProductTypeSlug] = useState<string | null>(() => getAdminProductTypeSlugFromPath());
   const [showStats, setShowStats] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -805,19 +841,24 @@ function AdminPage({
   const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isBusy, setIsBusy] = useState(false);
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
+  const [saveState, setSaveState] = useState<AdminSaveState>({ status: "idle", message: "" });
   const [previewImage, setPreviewImage] = useState<GalleryImage | null>(null);
 
   useEffect(() => {
     setAdminMessage(catalogStatus);
   }, [catalogStatus]);
 
-  const expandedProduct = products.find((product) => product.id === expandedProductId) ?? null;
   const patternCount = products.reduce((total, product) => total + product.patterns.length, 0);
   const availablePatternCount = products.reduce(
     (total, product) => total + product.patterns.filter((pattern) => pattern.availableSizes.length > 0).length,
     0,
   );
   const defaultProductType = productTypes[0] ?? null;
+  const selectedAdminProductType =
+    productTypes.find((productType) => productType.id === selectedAdminProductTypeId) ?? null;
+  const selectedTypeProducts = selectedAdminProductType
+    ? products.filter((product) => product.productTypeId === selectedAdminProductType.id)
+    : [];
 
   const toggleExpandProduct = (productId: string) => {
     setExpandedProductId((current) => (current === productId ? null : productId));
@@ -826,6 +867,50 @@ function AdminPage({
   const toggleExpandProductType = (productTypeId: string) => {
     setExpandedProductTypeId((current) => (current === productTypeId ? null : productTypeId));
   };
+
+  const openAdminProductType = (productType: ProductType) => {
+    const slug = getProductTypeSlug(productType);
+    setSelectedAdminProductTypeId(productType.id);
+    setAdminProductTypeSlug(slug);
+    window.history.pushState(null, "", `/admin/${slug}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeAdminProductType = () => {
+    setSelectedAdminProductTypeId(null);
+    setAdminProductTypeSlug(null);
+    setExpandedProductId(null);
+    window.history.pushState(null, "", "/admin");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (!adminProductTypeSlug) {
+      setSelectedAdminProductTypeId(null);
+      return;
+    }
+    const productType = productTypes.find((currentProductType) => getProductTypeSlug(currentProductType) === adminProductTypeSlug);
+    if (productType) {
+      setSelectedAdminProductTypeId(productType.id);
+      return;
+    }
+    setSelectedAdminProductTypeId(null);
+  }, [adminProductTypeSlug, productTypes]);
+
+  useEffect(() => {
+    if (!selectedAdminProductTypeId) return;
+    if (productTypes.some((productType) => productType.id === selectedAdminProductTypeId)) return;
+    setSelectedAdminProductTypeId(null);
+  }, [productTypes, selectedAdminProductTypeId]);
+
+  useEffect(() => {
+    const syncAdminRoute = () => {
+      setAdminProductTypeSlug(getAdminProductTypeSlugFromPath());
+    };
+
+    window.addEventListener("popstate", syncAdminRoute);
+    return () => window.removeEventListener("popstate", syncAdminRoute);
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -855,18 +940,19 @@ function AdminPage({
 
   const addProductType = () => {
     const id = createId("type");
+    const productType = {
+      id,
+      name: "",
+      price: "",
+      coverImage: createImage(createId("type-cover"), "", "Ảnh bìa loại sản phẩm"),
+      sizeChartImage: createImage(createId("type-size-chart"), "", "Bảng size loại sản phẩm"),
+    };
     onProductTypesChange((currentTypes) => [
       ...currentTypes,
-      {
-        id,
-        name: "",
-        price: "",
-        coverImage: createImage(createId("type-cover"), "", "Ảnh bìa loại sản phẩm"),
-        sizeChartImage: createImage(createId("type-size-chart"), "", "Bảng size loại sản phẩm"),
-      },
+      productType,
     ]);
-    setIsProductTypesExpanded(true);
     setExpandedProductTypeId(id);
+    openAdminProductType(productType);
   };
 
   const updateProductType = (productTypeId: string, patch: Partial<ProductType>) => {
@@ -884,6 +970,7 @@ function AdminPage({
 
     onProductTypesChange((currentTypes) => currentTypes.filter((productType) => productType.id !== productTypeId));
     setExpandedProductTypeId((current) => (current === productTypeId ? null : current));
+    setSelectedAdminProductTypeId((current) => (current === productTypeId ? null : current));
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
         product.productTypeId === productTypeId
@@ -904,6 +991,27 @@ function AdminPage({
     onProductsChange((currentProducts) => {
       const index = currentProducts.findIndex((product) => product.id === productId);
       return index === -1 ? currentProducts : moveItem(currentProducts, index, direction);
+    });
+  };
+
+  const reorderProductWithinType = (productId: string, direction: -1 | 1) => {
+    onProductsChange((currentProducts) => {
+      const product = currentProducts.find((currentProduct) => currentProduct.id === productId);
+      if (!product) return currentProducts;
+
+      const typeProducts = currentProducts.filter((currentProduct) => currentProduct.productTypeId === product.productTypeId);
+      const typeIndex = typeProducts.findIndex((currentProduct) => currentProduct.id === productId);
+      const targetTypeProduct = typeProducts[typeIndex + direction];
+      if (!targetTypeProduct) return currentProducts;
+
+      const index = currentProducts.findIndex((currentProduct) => currentProduct.id === productId);
+      const targetIndex = currentProducts.findIndex((currentProduct) => currentProduct.id === targetTypeProduct.id);
+      if (index === -1 || targetIndex === -1) return currentProducts;
+
+      const nextProducts = [...currentProducts];
+      const [movedProduct] = nextProducts.splice(index, 1);
+      nextProducts.splice(targetIndex, 0, movedProduct);
+      return nextProducts;
     });
   };
 
@@ -944,9 +1052,11 @@ function AdminPage({
     updatePattern(productId, pattern.id, { availableSizes });
   };
 
-  const addProduct = () => {
+  const addProduct = (productTypeId = selectedAdminProductType?.id ?? defaultProductType?.id) => {
     const id = createId("product");
-    const productType = defaultProductType ?? {
+    const productType =
+      productTypes.find((currentProductType) => currentProductType.id === productTypeId) ??
+      defaultProductType ?? {
       id: createId("type"),
       name: "",
       price: "",
@@ -965,19 +1075,12 @@ function AdminPage({
       price: productType.price,
       fit: "",
       material: "Xô muslin 2 lớp",
-      patterns: [
-        {
-          id: createId("pattern"),
-          name: "",
-          accent: "#c8b69a",
-          image: createImage(createId("pattern-image"), "/images/moc-hoa-nhi.webp", "Ảnh họa tiết mới"),
-          availableSizes: ["1", "2"],
-        },
-      ],
+      patterns: [],
       modelImages: [],
-      sizeChartImage: createImage(createId("size-chart"), "/images/size-chart-moc.webp", "Ảnh bảng size"),
+      sizeChartImage: createImage(createId("size-chart"), "", "Ảnh bảng size"),
     };
     onProductsChange((currentProducts) => [...currentProducts, newProduct]);
+    setSelectedAdminProductTypeId(productType.id);
     setExpandedProductId(id);
   };
 
@@ -1065,15 +1168,20 @@ function AdminPage({
   const saveToSupabase = async () => {
     setIsBusy(true);
     setAdminMessage("Đang lưu lên Supabase...");
+    setSaveState({ status: "saving", message: "Đang lưu lên Supabase..." });
     try {
       await saveCatalog({
         productTypes,
         products,
         shopInfoImage: adminShopInfoImage,
       });
-      setAdminMessage(`Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`);
+      const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
+      setAdminMessage(message);
+      setSaveState({ status: "success", message });
     } catch (error) {
-      setAdminMessage(error instanceof Error ? error.message : "Không lưu được catalog.");
+      const message = error instanceof Error ? error.message : "Không lưu được catalog.";
+      setAdminMessage(message);
+      setSaveState({ status: "error", message });
     } finally {
       setIsBusy(false);
     }
@@ -1238,147 +1346,153 @@ function AdminPage({
         </section>
       ) : null}
 
-      <p className="admin-status-text">{adminMessage}</p>
+      <div className="admin-status-row">
+        {adminProductTypeSlug ? (
+          <button className="admin-button ghost" type="button" onClick={closeAdminProductType}>
+            <ChevronLeft size={17} aria-hidden="true" />
+            Danh sách loại
+          </button>
+        ) : null}
+        <p className="admin-status-text">{adminMessage}</p>
+      </div>
 
       <div className="admin-product-list-full">
-        <section className="product-type-manager" aria-label="Quản lý loại sản phẩm">
-          <button
-            className={isProductTypesExpanded ? "admin-product-header active" : "admin-product-header"}
-            type="button"
-            onClick={() => setIsProductTypesExpanded((current) => !current)}
-            aria-expanded={isProductTypesExpanded}
-          >
-            <div>
-              <strong>Loại sản phẩm ({productTypes.length})</strong>
-              <span>Quản lý loại và giá hiển thị cho từng sản phẩm</span>
-            </div>
-            <span className="admin-product-chevron">
-              {isProductTypesExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </span>
-          </button>
+        {!adminProductTypeSlug ? (
+          <>
+            <section className="admin-panel-heading flat">
+              <div>
+                <h2>Loại sản phẩm ({productTypes.length})</h2>
+                <p>Tap vào row để mở detail, tap mũi tên để sửa loại</p>
+              </div>
+            </section>
 
-          {isProductTypesExpanded ? (
-            <div className="product-type-section-body">
-              <div className="product-type-list">
-                {productTypes.map((productType, index) => {
-                  const isTypeExpanded = expandedProductTypeId === productType.id;
-                  return (
-                    <article className="product-type-item" key={productType.id}>
+            <div className="product-type-list standalone">
+              {productTypes.map((productType, index) => {
+                const isTypeExpanded = expandedProductTypeId === productType.id;
+                return (
+                  <article className="product-type-item" key={productType.id}>
+                    <div className="product-type-header">
+                      <button className="product-type-open-button" type="button" onClick={() => openAdminProductType(productType)}>
+                        <span>
+                          <strong>{productType.name || "Chưa đặt tên"}</strong>
+                          <em>{formatPrice(productType.price)}</em>
+                        </span>
+                        <small>{products.filter((product) => product.productTypeId === productType.id).length} sản phẩm</small>
+                      </button>
                       <button
-                        className={isTypeExpanded ? "product-type-header active" : "product-type-header"}
+                        className="admin-product-chevron small"
                         type="button"
                         onClick={() => toggleExpandProductType(productType.id)}
+                        aria-label={`Sửa ${productType.name || "loại sản phẩm"}`}
                         aria-expanded={isTypeExpanded}
                       >
-                        <div>
-                          <strong>{productType.name || "Chưa đặt tên"}</strong>
-                          <span>{formatPrice(productType.price)}</span>
-                        </div>
-                        <span className="admin-product-chevron small">
-                          {isTypeExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                        </span>
+                        {isTypeExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
+                    </div>
 
-                      {isTypeExpanded ? (
-                        <div className="product-type-row">
-                          <AdminImageActionField
-                            ariaLabel={`Mở tùy chọn ảnh bìa ${productType.name || "loại sản phẩm"}`}
-                            caption={`Ảnh bìa ${productType.name || "loại sản phẩm"}`}
-                            className="product-type-cover-field"
-                            image={getProductTypeCoverImage(productType, products)}
-                            onPreview={setPreviewImage}
-                            onFileSelected={(file) =>
-                              uploadImage(file, `product-types/${productType.id}`, (url) =>
-                                updateProductType(productType.id, {
-                                  coverImage: {
-                                    ...productType.coverImage,
-                                    src: url,
-                                    alt: productType.coverImage.alt || `Ảnh bìa ${productType.name}`,
-                                  },
-                                }),
-                              )
-                            }
+                    {isTypeExpanded ? (
+                      <div className="product-type-row">
+                        <AdminImageActionField
+                          ariaLabel={`Mở tùy chọn ảnh bìa ${productType.name || "loại sản phẩm"}`}
+                          caption={`Ảnh bìa ${productType.name || "loại sản phẩm"}`}
+                          className="product-type-cover-field"
+                          image={productType.coverImage}
+                          onPreview={setPreviewImage}
+                          onFileSelected={(file) =>
+                            uploadImage(file, `product-types/${productType.id}`, (url) =>
+                              updateProductType(productType.id, {
+                                coverImage: {
+                                  ...productType.coverImage,
+                                  src: url,
+                                  alt: productType.coverImage.alt || `Ảnh bìa ${productType.name}`,
+                                },
+                              }),
+                            )
+                          }
+                        />
+                        <AdminImageActionField
+                          ariaLabel={`Mở tùy chọn bảng size ${productType.name || "loại sản phẩm"}`}
+                          caption={`Bảng size ${productType.name || "loại sản phẩm"}`}
+                          className="product-type-size-field"
+                          image={productType.sizeChartImage}
+                          onPreview={setPreviewImage}
+                          onFileSelected={(file) =>
+                            uploadImage(file, `product-types/${productType.id}/size-charts`, (url) =>
+                              updateProductType(productType.id, {
+                                sizeChartImage: {
+                                  ...productType.sizeChartImage,
+                                  src: url,
+                                  alt: productType.sizeChartImage.alt || `Bảng size ${productType.name}`,
+                                },
+                              }),
+                            )
+                          }
+                        />
+                        <label className="product-type-name-field">
+                          <span>Loại</span>
+                          <input value={productType.name} onChange={(event) => updateProductType(productType.id, { name: event.target.value })} />
+                        </label>
+                        <label className="product-type-price-field">
+                          <span>Giá</span>
+                          <input
+                            value={productType.price}
+                            placeholder="Ví dụ: 390.000đ"
+                            onChange={(event) => updateProductType(productType.id, { price: formatPrice(event.target.value) })}
                           />
-                          <AdminImageActionField
-                            ariaLabel={`Mở tùy chọn bảng size ${productType.name || "loại sản phẩm"}`}
-                            caption={`Bảng size ${productType.name || "loại sản phẩm"}`}
-                            className="product-type-size-field"
-                            image={getProductTypeSizeChartImage(productType, products)}
-                            onPreview={setPreviewImage}
-                            onFileSelected={(file) =>
-                              uploadImage(file, `product-types/${productType.id}/size-charts`, (url) =>
-                                updateProductType(productType.id, {
-                                  sizeChartImage: {
-                                    ...productType.sizeChartImage,
-                                    src: url,
-                                    alt: productType.sizeChartImage.alt || `Bảng size ${productType.name}`,
-                                  },
-                                }),
-                              )
-                            }
-                          />
-                          <label className="product-type-name-field">
-                            <span>Loại</span>
-                            <input
-                              value={productType.name}
-                              onChange={(event) => updateProductType(productType.id, { name: event.target.value })}
-                            />
-                          </label>
-                          <label className="product-type-price-field">
-                            <span>Giá</span>
-                            <input
-                              value={productType.price}
-                              placeholder="Ví dụ: 390.000đ"
-                              onChange={(event) =>
-                                updateProductType(productType.id, { price: formatPrice(event.target.value) })
-                              }
-                            />
-                          </label>
-                          <div className="reorder-controls" aria-label="Sắp xếp loại sản phẩm">
-                            <button
-                              className="icon-button"
-                              type="button"
-                              disabled={index === 0}
-                              onClick={() => reorderProductType(productType.id, -1)}
-                              aria-label={`Đưa ${productType.name || "loại sản phẩm"} lên`}
-                            >
-                              <ArrowUp size={15} aria-hidden="true" />
-                            </button>
-                            <button
-                              className="icon-button"
-                              type="button"
-                              disabled={index === productTypes.length - 1}
-                              onClick={() => reorderProductType(productType.id, 1)}
-                              aria-label={`Đưa ${productType.name || "loại sản phẩm"} xuống`}
-                            >
-                              <ArrowDown size={15} aria-hidden="true" />
-                            </button>
-                          </div>
+                        </label>
+                        <div className="reorder-controls" aria-label="Sắp xếp loại sản phẩm">
                           <button
-                            className="icon-button danger"
+                            className="icon-button"
                             type="button"
-                            disabled={productTypes.length <= 1}
-                            onClick={() => removeProductType(productType.id)}
-                            aria-label={`Xóa loại ${productType.name}`}
+                            disabled={index === 0}
+                            onClick={() => reorderProductType(productType.id, -1)}
+                            aria-label={`Đưa ${productType.name || "loại sản phẩm"} lên`}
                           >
-                            <Trash2 size={16} aria-hidden="true" />
+                            <ArrowUp size={15} aria-hidden="true" />
+                          </button>
+                          <button
+                            className="icon-button"
+                            type="button"
+                            disabled={index === productTypes.length - 1}
+                            onClick={() => reorderProductType(productType.id, 1)}
+                            aria-label={`Đưa ${productType.name || "loại sản phẩm"} xuống`}
+                          >
+                            <ArrowDown size={15} aria-hidden="true" />
                           </button>
                         </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>
-
-              <button className="admin-button small full-width" type="button" onClick={addProductType}>
-                <Plus size={16} aria-hidden="true" />
-                Thêm loại
-              </button>
+                        <button
+                          className="icon-button danger"
+                          type="button"
+                          disabled={productTypes.length <= 1}
+                          onClick={() => removeProductType(productType.id)}
+                          aria-label={`Xóa loại ${productType.name}`}
+                        >
+                          <Trash2 size={16} aria-hidden="true" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
-          ) : null}
-        </section>
 
-        {products.map((product, productIndex) => {
+            <button className="admin-button primary full-width" type="button" onClick={addProductType}>
+              <Plus size={16} aria-hidden="true" />
+              Thêm loại
+            </button>
+          </>
+        ) : selectedAdminProductType ? (
+          <section className="product-type-detail-panel" aria-label={`Sản phẩm ${selectedAdminProductType.name}`}>
+            <div className="admin-panel-heading">
+              <div>
+                <h2>{selectedAdminProductType.name || "Chưa đặt tên"}</h2>
+                <p>
+                  {formatPrice(selectedAdminProductType.price)} · {selectedTypeProducts.length} sản phẩm
+                </p>
+              </div>
+            </div>
+
+            {selectedTypeProducts.map((product, productIndex) => {
           const isExpanded = expandedProductId === product.id;
           const productTitle = getProductTitle(product, productTypes);
           return (
@@ -1403,20 +1517,20 @@ function AdminPage({
                 <div className="admin-product-body">
                   <div className="admin-danger-row">
                     <div className="reorder-controls" aria-label="Sắp xếp sản phẩm">
-                      <button
-                        className="admin-button small"
-                        type="button"
-                        disabled={productIndex === 0}
-                        onClick={() => reorderProduct(product.id, -1)}
-                      >
+	                      <button
+	                        className="admin-button small"
+	                        type="button"
+	                        disabled={productIndex === 0}
+	                        onClick={() => reorderProductWithinType(product.id, -1)}
+	                      >
                         <ArrowUp size={15} aria-hidden="true" />
                         Lên
                       </button>
-                      <button
-                        className="admin-button small"
-                        type="button"
-                        disabled={productIndex === products.length - 1}
-                        onClick={() => reorderProduct(product.id, 1)}
+	                      <button
+	                        className="admin-button small"
+	                        type="button"
+	                        disabled={productIndex === selectedTypeProducts.length - 1}
+	                        onClick={() => reorderProductWithinType(product.id, 1)}
                       >
                         <ArrowDown size={15} aria-hidden="true" />
                         Xuống
@@ -1599,27 +1713,74 @@ function AdminPage({
           );
         })}
 
-        <button className="admin-button primary full-width" type="button" onClick={addProduct}>
-          <Plus size={17} aria-hidden="true" />
-          Thêm sản phẩm mới
-        </button>
+            {selectedTypeProducts.length === 0 ? (
+              <section className="admin-empty compact">
+                <h2>Chưa có sản phẩm trong loại này</h2>
+                <p>Thêm sản phẩm mới để bắt đầu nhập họa tiết và ảnh mẫu mặc.</p>
+              </section>
+            ) : null}
 
-        <div className="admin-card" style={{ marginTop: "16px" }}>
-          <div className="admin-card-header">
-            <h3>Bảng giá & Quy định chung</h3>
-            <AdminImageActionField
-              ariaLabel="Mở tùy chọn bảng giá chung"
-              caption="Bảng giá & Quy định chung"
-              image={adminShopInfoImage}
-              onPreview={setPreviewImage}
-              onFileSelected={(file) =>
-                uploadImage(file, "shop-info", (url) =>
-                  onShopInfoImageChange((image) => ({ ...image, src: url })),
-                )
-              }
-            />
+            <button
+              className="admin-button primary full-width"
+              type="button"
+              onClick={() => addProduct(selectedAdminProductType.id)}
+            >
+              <Plus size={17} aria-hidden="true" />
+              Thêm sản phẩm mới
+            </button>
+          </section>
+        ) : (
+          <section className="admin-empty compact">
+            <h2>Không tìm thấy loại sản phẩm</h2>
+            <p>Loại sản phẩm này có thể đã đổi tên hoặc đã bị xóa.</p>
+            <button className="admin-button ghost" type="button" onClick={closeAdminProductType}>
+              <ChevronLeft size={17} aria-hidden="true" />
+              Về danh sách loại
+            </button>
+          </section>
+        )}
+
+        {!adminProductTypeSlug ? (
+          <div className="admin-card" style={{ marginTop: "16px" }}>
+            <div className="admin-card-header">
+              <h3>Bảng giá & Quy định chung</h3>
+              <AdminImageActionField
+                ariaLabel="Mở tùy chọn bảng giá chung"
+                caption="Bảng giá & Quy định chung"
+                image={adminShopInfoImage}
+                onPreview={setPreviewImage}
+                onFileSelected={(file) =>
+                  uploadImage(file, "shop-info", (url) =>
+                    onShopInfoImageChange((image) => ({ ...image, src: url })),
+                  )
+                }
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
+
+        {saveState.status === "saving" ? (
+          <div className="admin-save-overlay" role="status" aria-live="polite" aria-busy="true">
+            <div>
+              <span className="loading-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <strong>{saveState.message}</strong>
+            </div>
+          </div>
+        ) : null}
+
+        {saveState.status === "success" || saveState.status === "error" ? (
+          <div className={`admin-save-toast ${saveState.status}`} role="status" aria-live="polite">
+            <strong>{saveState.status === "success" ? "Lưu thành công" : "Lưu thất bại"}</strong>
+            <span>{saveState.message}</span>
+            <button type="button" onClick={() => setSaveState({ status: "idle", message: "" })} aria-label="Ẩn thông báo">
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
 
         {previewImage ? (
           <button
