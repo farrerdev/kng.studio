@@ -280,7 +280,7 @@ function App() {
   const [catalogStatus, setCatalogStatus] = useState("Đang tải catalog...");
   const [catalogLoadState, setCatalogLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
   const [selectedProductTypeSlug, setSelectedProductTypeSlug] = useState<string | null>(() => getProductTypeSlugFromPath());
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
@@ -308,6 +308,10 @@ function App() {
           )
         : [],
     [catalogProducts, selectedProductType, selectedSize],
+  );
+  const activeProduct = useMemo(
+    () => visibleProducts.find((product) => product.id === activeProductId) ?? visibleProducts[0] ?? null,
+    [activeProductId, visibleProducts],
   );
   const galleryImages = useMemo(() => {
     const shopImages: GalleryImage[] = currentShopInfoImage && !selectedProductType
@@ -368,6 +372,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!selectedProductType || visibleProducts.length === 0) {
+      setActiveProductId(null);
+      return;
+    }
+    if (activeProductId && visibleProducts.some((product) => product.id === activeProductId)) return;
+    setActiveProductId(visibleProducts[0].id);
+  }, [activeProductId, selectedProductType, visibleProducts]);
+
+  useEffect(() => {
     if (!activeImage) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -410,13 +423,6 @@ function App() {
       isMounted = false;
     };
   }, []);
-
-  const toggleProduct = (productId: string) => {
-    setCollapsed((current) => ({
-      ...current,
-      [productId]: !current[productId],
-    }));
-  };
 
   const emptyShopInfoImage: ProductImage = {
     id: "shop-info-empty",
@@ -529,22 +535,6 @@ function App() {
             <strong>{formatPrice(selectedProductType.price)}</strong>
           </header>
           <div className="catalog-layout">
-          <aside className="catalog-sidebar" aria-label="Bộ lọc sản phẩm">
-            <div className="size-options" role="radiogroup" aria-label="Chọn size">
-              {sizeOptions.map((size) => (
-                <button
-                  className={selectedSize === size.id ? "size-option active" : "size-option"}
-                  key={size.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedSize === size.id}
-                  onClick={() => setSelectedSize(size.id)}
-                >
-                  <span>{size.label}</span>
-                  <strong>{size.range}</strong>
-                </button>
-              ))}
-            </div>
             <button
               className="size-chart-inline type-size-chart"
               type="button"
@@ -565,32 +555,60 @@ function App() {
                 alt={getProductTypeSizeChartImage(selectedProductType, catalogProducts).alt}
               />
             </button>
-          </aside>
-
-          <section className="catalog-list" aria-label="Danh sách sản phẩm">
-            <div className="list-heading">
-              <div>
-                <span className="eyebrow">Đang còn hàng</span>
-                <h2>{visibleProducts.length} mẫu phù hợp</h2>
-              </div>
-              <p>
-                Size {selectedSize} - {sizeOptions.find((size) => size.id === selectedSize)?.range}
-              </p>
+            <h3 className="size-selector-title">Chọn size để xem mẫu</h3>
+            <div className="size-options" role="radiogroup" aria-label="Chọn size">
+              {sizeOptions.map((size) => (
+                <button
+                  className={selectedSize === size.id ? "size-option active" : "size-option"}
+                  key={size.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedSize === size.id}
+                  onClick={() => setSelectedSize(size.id)}
+                >
+                  <span>{size.label}</span>
+                  <strong>{size.range}</strong>
+                </button>
+              ))}
             </div>
 
+          <section className="catalog-list" aria-label="Danh sách sản phẩm">
             {visibleProducts.length > 0 ? (
-              visibleProducts.map((product) => (
-                <ProductCard
-                  isCollapsed={Boolean(collapsed[product.id])}
-                  key={product.id}
-                  onImageOpen={setActiveImage}
-                  onToggle={() => toggleProduct(product.id)}
-                  product={product}
-                  productTypes={catalogProductTypes}
-                  selectedSize={selectedSize}
-                  compact
-                />
-              ))
+              <>
+                {visibleProducts.length > 1 ? (
+                  <div className="product-tabs-block">
+                    <h3>Phân loại</h3>
+                    <div className="product-tabs" role="tablist" aria-label="Chọn mẫu sản phẩm">
+                      {visibleProducts.map((product, index) => {
+                        const productTitle = product.name.trim() || `Mẫu ${index + 1}`;
+                        const isActive = product.id === activeProduct?.id;
+                        return (
+                          <button
+                            className={isActive ? "product-tab active" : "product-tab"}
+                            key={product.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={isActive}
+                            onClick={() => setActiveProductId(product.id)}
+                          >
+                            {productTitle}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+                {activeProduct ? (
+                  <ProductCard
+                    key={activeProduct.id}
+                    onImageOpen={setActiveImage}
+                    product={activeProduct}
+                    productTypes={catalogProductTypes}
+                    selectedSize={selectedSize}
+                    compact
+                  />
+                ) : null}
+              </>
             ) : (
               <section className="empty-state">
                 <h3>Chưa có sản phẩm đang bán</h3>
@@ -656,8 +674,6 @@ type ProductCardProps = {
   product: Product;
   productTypes: ProductType[];
   selectedSize: SizeId;
-  isCollapsed: boolean;
-  onToggle: () => void;
   onImageOpen: (image: GalleryImage) => void;
   compact?: boolean;
 };
@@ -666,8 +682,6 @@ function ProductCard({
   product,
   productTypes,
   selectedSize,
-  isCollapsed,
-  onToggle,
   onImageOpen,
   compact = false,
 }: ProductCardProps) {
@@ -675,14 +689,7 @@ function ProductCard({
 
   return (
     <article className="product-card">
-      <button className="product-summary" type="button" onClick={onToggle} aria-expanded={!isCollapsed}>
-        <h3>{productTitle}</h3>
-        <div className="summary-side">
-          <span>{isCollapsed ? <ChevronDown size={22} /> : <ChevronUp size={22} />}</span>
-        </div>
-      </button>
-
-      <div className="product-detail" hidden={isCollapsed}>
+      <div className="product-detail">
           <section className="product-overview" aria-label={`Thông tin ${productTitle}`}>
             {product.material.trim() ? <span className="product-material">{product.material}</span> : null}
             {product.fit.trim() ? <p>{product.fit}</p> : null}
