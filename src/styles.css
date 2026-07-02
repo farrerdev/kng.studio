@@ -1712,7 +1712,6 @@ button {
 .pattern-row-list {
   display: grid;
   gap: 0;
-  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--paper);
@@ -1737,30 +1736,54 @@ button {
   position: relative;
   display: block;
   width: 64px;
+}
+
+.thumb-image-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
 }
 
-.thumb-preview-trigger {
+.thumb-action-menu {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
   display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--accent-strong);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  cursor: zoom-in;
-  transition: opacity 0.2s;
+  min-width: 138px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  box-shadow: 0 12px 26px rgba(18, 16, 14, 0.14);
 }
 
-.thumb-preview-trigger:hover {
+.thumb-action-menu button {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
   background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.thumb-action-menu button:last-child {
+  border-bottom: 0;
+}
+
+.thumb-action-menu button:hover,
+.thumb-action-menu button:focus-visible {
+  background: var(--soft);
 }
 
 .pattern-thumb-field img {
@@ -1778,11 +1801,12 @@ button {
   background: #f4eadc;
 }
 
-.pattern-thumb-field input {
-  position: absolute;
-  inset: 0;
+.pattern-thumb-field .thumb-file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
   opacity: 0;
-  cursor: pointer;
+  pointer-events: none;
 }
 
 .pattern-row-main {

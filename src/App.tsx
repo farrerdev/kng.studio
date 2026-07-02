@@ -17,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { shopConfig } from "./config/shop";
 import { sizeOptions } from "./data/mockCatalog";
 import { supabase } from "./lib/supabase";
@@ -122,6 +122,80 @@ function moveItem<T>(items: T[], fromIndex: number, direction: -1 | 1) {
 type GalleryImage = ProductImage & {
   caption: string;
 };
+
+type AdminImageActionFieldProps = {
+  image: ProductImage;
+  caption: string;
+  ariaLabel: string;
+  className?: string;
+  onPreview: (image: GalleryImage) => void;
+  onFileSelected: (file: File) => void;
+};
+
+function AdminImageActionField({
+  image,
+  caption,
+  ariaLabel,
+  className,
+  onPreview,
+  onFileSelected,
+}: AdminImageActionFieldProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const rootClassName = className ? `pattern-thumb-field ${className}` : "pattern-thumb-field";
+
+  return (
+    <div className={rootClassName}>
+      <button
+        className="thumb-image-button"
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <img src={image.src} alt={image.alt} />
+      </button>
+      {isOpen ? (
+        <div className="thumb-action-menu" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setIsOpen(false);
+              onPreview({ ...image, caption });
+            }}
+          >
+            Xem ảnh
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setIsOpen(false);
+              inputRef.current?.click();
+            }}
+          >
+            Upload ảnh mới
+          </button>
+        </div>
+      ) : null}
+      <input
+        ref={inputRef}
+        className="thumb-file-input"
+        type="file"
+        accept="image/*"
+        tabIndex={-1}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (!file) return;
+          onFileSelected(file);
+          event.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
 
 type LoadingPanelProps = {
   variant?: "client" | "admin";
@@ -1207,77 +1281,42 @@ function AdminPage({
 
                       {isTypeExpanded ? (
                         <div className="product-type-row">
-                          <label
-                            className="pattern-thumb-field product-type-cover-field"
-                            aria-label={`Upload ảnh bìa ${productType.name}`}
-                          >
-                            <img
-                              src={
-                                getProductTypeCoverImage(productType, products).src
-                              }
-                              alt={getProductTypeCoverImage(productType, products).alt}
-                            />
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (!file) return;
-                                uploadImage(file, `product-types/${productType.id}`, (url) =>
-                                  updateProductType(productType.id, {
-                                    coverImage: {
-                                      ...productType.coverImage,
-                                      src: url,
-                                      alt: productType.coverImage.alt || `Ảnh bìa ${productType.name}`,
-                                    },
-                                  }),
-                                );
-                                event.target.value = "";
-                              }}
-	                            />
-	                          </label>
-                          <label
-                            className="pattern-thumb-field product-type-size-field"
-                            aria-label={`Upload bảng size ${productType.name}`}
-                          >
-                            <img
-                              src={getProductTypeSizeChartImage(productType, products).src}
-                              alt={getProductTypeSizeChartImage(productType, products).alt}
-                            />
-                            <button
-                              className="thumb-preview-trigger"
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setPreviewImage({
-                                  ...getProductTypeSizeChartImage(productType, products),
-                                  caption: `Bảng size ${productType.name || "loại sản phẩm"}`,
-                                });
-                              }}
-                              aria-label="Xem bảng size lớn"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (!file) return;
-                                uploadImage(file, `product-types/${productType.id}/size-charts`, (url) =>
-                                  updateProductType(productType.id, {
-                                    sizeChartImage: {
-                                      ...productType.sizeChartImage,
-                                      src: url,
-                                      alt: productType.sizeChartImage.alt || `Bảng size ${productType.name}`,
-                                    },
-                                  }),
-                                );
-                                event.target.value = "";
-                              }}
-                            />
-                          </label>
+                          <AdminImageActionField
+                            ariaLabel={`Mở tùy chọn ảnh bìa ${productType.name || "loại sản phẩm"}`}
+                            caption={`Ảnh bìa ${productType.name || "loại sản phẩm"}`}
+                            className="product-type-cover-field"
+                            image={getProductTypeCoverImage(productType, products)}
+                            onPreview={setPreviewImage}
+                            onFileSelected={(file) =>
+                              uploadImage(file, `product-types/${productType.id}`, (url) =>
+                                updateProductType(productType.id, {
+                                  coverImage: {
+                                    ...productType.coverImage,
+                                    src: url,
+                                    alt: productType.coverImage.alt || `Ảnh bìa ${productType.name}`,
+                                  },
+                                }),
+                              )
+                            }
+                          />
+                          <AdminImageActionField
+                            ariaLabel={`Mở tùy chọn bảng size ${productType.name || "loại sản phẩm"}`}
+                            caption={`Bảng size ${productType.name || "loại sản phẩm"}`}
+                            className="product-type-size-field"
+                            image={getProductTypeSizeChartImage(productType, products)}
+                            onPreview={setPreviewImage}
+                            onFileSelected={(file) =>
+                              uploadImage(file, `product-types/${productType.id}/size-charts`, (url) =>
+                                updateProductType(productType.id, {
+                                  sizeChartImage: {
+                                    ...productType.sizeChartImage,
+                                    src: url,
+                                    alt: productType.sizeChartImage.alt || `Bảng size ${productType.name}`,
+                                  },
+                                }),
+                              )
+                            }
+                          />
                           <label className="product-type-name-field">
                             <span>Loại</span>
                             <input
@@ -1441,35 +1480,19 @@ function AdminPage({
                     <div className="pattern-row-list">
                       {product.patterns.map((pattern) => (
                         <article className="pattern-row" key={pattern.id}>
-                          <label className="pattern-thumb-field" aria-label={`Upload ảnh ${pattern.name}`}>
-                            <img src={pattern.image.src} alt={pattern.image.alt} />
-                            <button
-                              className="thumb-preview-trigger"
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setPreviewImage({ ...pattern.image, caption: pattern.name || "Họa tiết" });
-                              }}
-                              aria-label="Xem ảnh lớn"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (!file) return;
-                                uploadImage(file, `patterns/${product.id}`, (url) =>
-                                  updatePattern(product.id, pattern.id, {
-                                    image: { ...pattern.image, src: url },
-                                  }),
-                                );
-                                event.target.value = "";
-                              }}
-                            />
-                          </label>
+                          <AdminImageActionField
+                            ariaLabel={`Mở tùy chọn ảnh ${pattern.name || "họa tiết"}`}
+                            caption={pattern.name || "Họa tiết"}
+                            image={pattern.image}
+                            onPreview={setPreviewImage}
+                            onFileSelected={(file) =>
+                              uploadImage(file, `patterns/${product.id}`, (url) =>
+                                updatePattern(product.id, pattern.id, {
+                                  image: { ...pattern.image, src: url },
+                                }),
+                              )
+                            }
+                          />
 
                           <div className="pattern-row-main">
                             <div className="pattern-name-field">
@@ -1532,33 +1555,17 @@ function AdminPage({
                     <div className="admin-image-wrap">
                       {product.modelImages.map((image) => (
                         <div className="admin-image-wrap-item" key={image.id}>
-                          <label className="pattern-thumb-field">
-                            <img src={image.src} alt={image.alt} />
-                            <button
-                              className="thumb-preview-trigger"
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setPreviewImage({ ...image, caption: "Ảnh mẫu mặc" });
-                              }}
-                              aria-label="Xem ảnh lớn"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (!file) return;
-                                uploadImage(file, `models/${product.id}`, (url) =>
-                                  updateModelImage(product.id, image.id, { src: url }),
-                                );
-                                event.target.value = "";
-                              }}
-                            />
-                          </label>
+                          <AdminImageActionField
+                            ariaLabel="Mở tùy chọn ảnh mẫu mặc"
+                            caption="Ảnh mẫu mặc"
+                            image={image}
+                            onPreview={setPreviewImage}
+                            onFileSelected={(file) =>
+                              uploadImage(file, `models/${product.id}`, (url) =>
+                                updateModelImage(product.id, image.id, { src: url }),
+                              )
+                            }
+                          />
                           <button
                             className="icon-button danger pattern-delete"
                             type="button"
@@ -1600,33 +1607,17 @@ function AdminPage({
         <div className="admin-card" style={{ marginTop: "16px" }}>
           <div className="admin-card-header">
             <h3>Bảng giá & Quy định chung</h3>
-            <label className="pattern-thumb-field" aria-label="Upload bảng giá chung">
-              <img src={adminShopInfoImage.src} alt={adminShopInfoImage.alt} />
-              <button
-                className="thumb-preview-trigger"
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setPreviewImage({ ...adminShopInfoImage, caption: "Bảng giá & Quy định chung" });
-                }}
-                aria-label="Xem ảnh lớn"
-              >
-                <Eye size={14} />
-              </button>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  uploadImage(file, "shop-info", (url) =>
-                    onShopInfoImageChange((image) => ({ ...image, src: url })),
-                  );
-                  event.target.value = "";
-                }}
-              />
-            </label>
+            <AdminImageActionField
+              ariaLabel="Mở tùy chọn bảng giá chung"
+              caption="Bảng giá & Quy định chung"
+              image={adminShopInfoImage}
+              onPreview={setPreviewImage}
+              onFileSelected={(file) =>
+                uploadImage(file, "shop-info", (url) =>
+                  onShopInfoImageChange((image) => ({ ...image, src: url })),
+                )
+              }
+            />
           </div>
         </div>
 
