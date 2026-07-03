@@ -71,6 +71,20 @@ function getProductTypeCoverImage(productType: ProductType, products: Product[])
   );
 }
 
+function getProductCoverImage(product: Product, productTypes: ProductType[], products: Product[]): ProductImage {
+  const firstPatternImage = product.patterns[0]?.image;
+  if (firstPatternImage) return firstPatternImage;
+
+  const productType = getProductType(product, productTypes);
+  if (productType) return getProductTypeCoverImage(productType, products);
+
+  return {
+    id: `${product.id}-cover-fallback`,
+    src: "/images/shop-info.webp",
+    alt: `Ảnh bìa ${product.name || "sản phẩm"}`,
+  };
+}
+
 function getProductTypeSizeChartImage(productType: ProductType, products: Product[]): ProductImage {
   if (productType.sizeChartImage.src.trim()) {
     return productType.sizeChartImage;
@@ -102,7 +116,11 @@ function getProductTypeSlug(productType: ProductType) {
   return slugify(productType.name || productType.id);
 }
 
-function getProductTypeSlugFromPath() {
+function getProductSlug(product: Product, productTypes: ProductType[]) {
+  return slugify(getProductTitle(product, productTypes) || product.id);
+}
+
+function getStorefrontSlugFromPath() {
   if (typeof window === "undefined") return null;
   const path = decodeURIComponent(window.location.pathname).replace(/^\/+|\/+$/g, "");
   if (!path || path === "admin" || path.startsWith("admin/")) return null;
@@ -254,7 +272,7 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
 }
 
 function getProductGalleryImages(product: Product, productTypes: ProductType[]): GalleryImage[] {
-  const productTitle = getProductDisplayName(product);
+  const productTitle = getProductTitle(product, productTypes);
   return [
     ...product.patterns.map((pattern) => ({
       ...pattern.image,
@@ -280,41 +298,39 @@ function App() {
   const [catalogStatus, setCatalogStatus] = useState("Đang tải catalog...");
   const [catalogLoadState, setCatalogLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
-  const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
-  const [selectedProductTypeSlug, setSelectedProductTypeSlug] = useState<string | null>(() => getProductTypeSlugFromPath());
+  const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(() => getStorefrontSlugFromPath());
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
-  const selectedProductType = useMemo(
+  const storefrontProducts = useMemo(() => {
+    const typeOrder = new Map(catalogProductTypes.map((productType, index) => [productType.id, index]));
+    return catalogProducts
+      .map((product, index) => ({ product, index }))
+      .filter(({ product }) => product.patterns.length > 0)
+      .sort((left, right) => {
+        const leftTypeOrder = typeOrder.get(left.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
+        const rightTypeOrder = typeOrder.get(right.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
+        return leftTypeOrder === rightTypeOrder ? left.index - right.index : leftTypeOrder - rightTypeOrder;
+      })
+      .map(({ product }) => product);
+  }, [catalogProductTypes, catalogProducts]);
+  const selectedProduct = useMemo(
     () =>
-      selectedProductTypeSlug
-        ? catalogProductTypes.find((productType) => getProductTypeSlug(productType) === selectedProductTypeSlug) ?? null
+      selectedProductSlug
+        ? storefrontProducts.find((product) => getProductSlug(product, catalogProductTypes) === selectedProductSlug) ?? null
         : null,
-    [catalogProductTypes, selectedProductTypeSlug],
+    [catalogProductTypes, selectedProductSlug, storefrontProducts],
   );
-  const productTypesWithAvailableProducts = useMemo(
-    () =>
-      catalogProductTypes.filter((productType) =>
-        catalogProducts.some((product) => product.productTypeId === productType.id && product.patterns.length > 0),
-      ),
-    [catalogProductTypes, catalogProducts],
+  const selectedProductType = useMemo(
+    () => (selectedProduct ? getProductType(selectedProduct, catalogProductTypes) : null),
+    [catalogProductTypes, selectedProduct],
   );
-  const visibleProducts = useMemo(
-    () =>
-      selectedProductType
-        ? getVisibleProducts(
-            selectedSize,
-            catalogProducts.filter((product) => product.productTypeId === selectedProductType.id),
-          )
-        : [],
-    [catalogProducts, selectedProductType, selectedSize],
-  );
-  const activeProduct = useMemo(
-    () => visibleProducts.find((product) => product.id === activeProductId) ?? visibleProducts[0] ?? null,
-    [activeProductId, visibleProducts],
+  const visibleProduct = useMemo(
+    () => (selectedProduct ? getVisibleProducts(selectedSize, [selectedProduct])[0] ?? null : null),
+    [selectedProduct, selectedSize],
   );
   const galleryImages = useMemo(() => {
-    const shopImages: GalleryImage[] = currentShopInfoImage && !selectedProductType
+    const shopImages: GalleryImage[] = currentShopInfoImage && !selectedProduct
       ? [
           {
             ...currentShopInfoImage,
@@ -330,8 +346,8 @@ function App() {
           },
         ]
       : [];
-    return [...shopImages, ...typeSizeChart, ...visibleProducts.flatMap((product) => getProductGalleryImages(product, catalogProductTypes))];
-  }, [catalogProductTypes, catalogProducts, currentShopInfoImage, selectedProductType, visibleProducts]);
+    return [...shopImages, ...typeSizeChart, ...(visibleProduct ? getProductGalleryImages(visibleProduct, catalogProductTypes) : [])];
+  }, [catalogProductTypes, catalogProducts, currentShopInfoImage, selectedProduct, selectedProductType, visibleProduct]);
   const activeImageIndex = useMemo(() => {
     if (!activeImage) return -1;
     return galleryImages.findIndex(
@@ -346,14 +362,20 @@ function App() {
     const nextIndex = (activeImageIndex + offset + galleryImages.length) % galleryImages.length;
     setActiveImage(galleryImages[nextIndex]);
   };
-  const openProductType = (productType: ProductType) => {
-    const slug = getProductTypeSlug(productType);
-    setSelectedProductTypeSlug(slug);
+  const openProduct = (product: Product) => {
+    const hasSelectedSize = product.patterns.some((pattern) => pattern.availableSizes.includes(selectedSize));
+    if (!hasSelectedSize) {
+      const nextSize = product.patterns.flatMap((pattern) => pattern.availableSizes)[0];
+      if (nextSize) setSelectedSize(nextSize);
+    }
+
+    const slug = getProductSlug(product, catalogProductTypes);
+    setSelectedProductSlug(slug);
     window.history.pushState(null, "", `/${slug}`);
     window.scrollTo({ top: 0, behavior: "instant" });
   };
-  const closeProductType = () => {
-    setSelectedProductTypeSlug(null);
+  const closeProduct = () => {
+    setSelectedProductSlug(null);
     window.history.pushState(null, "", "/");
     window.scrollTo({ top: 0, behavior: "instant" });
   };
@@ -364,7 +386,7 @@ function App() {
 
   useEffect(() => {
     const syncProductTypeFromRoute = () => {
-      setSelectedProductTypeSlug(getProductTypeSlugFromPath());
+      setSelectedProductSlug(getStorefrontSlugFromPath());
     };
 
     window.addEventListener("popstate", syncProductTypeFromRoute);
@@ -372,13 +394,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!selectedProductType || visibleProducts.length === 0) {
-      setActiveProductId(null);
-      return;
-    }
-    if (activeProductId && visibleProducts.some((product) => product.id === activeProductId)) return;
-    setActiveProductId(visibleProducts[0].id);
-  }, [activeProductId, selectedProductType, visibleProducts]);
+    if (!selectedProduct) return;
+    if (selectedProduct.patterns.some((pattern) => pattern.availableSizes.includes(selectedSize))) return;
+    const nextSize = selectedProduct.patterns.flatMap((pattern) => pattern.availableSizes)[0];
+    if (nextSize) setSelectedSize(nextSize);
+  }, [selectedProduct, selectedSize]);
 
   useEffect(() => {
     if (!activeImage) return;
@@ -475,64 +495,65 @@ function App() {
 
         {catalogLoadState === "loading" ? <LoadingPanel /> : null}
 
-        {catalogLoadState !== "loading" && !selectedProductType ? (
+        {catalogLoadState !== "loading" && !selectedProduct ? (
           <>
-            {currentShopInfoImage ? (
-              <section className="shop-info" aria-label="Bảng giá và quy định chung">
-                <h2>BẢNG GIÁ CHUNG VÀ QUY ĐỊNH</h2>
-                <button
-                  className="shop-info-card"
-                  type="button"
-                  onClick={() =>
-                    setActiveImage({
-                      ...currentShopInfoImage,
-                      caption: "Bảng giá chung & quy định đặt hàng",
-                    })
-                  }
-                >
-                  <img loading="eager" src={currentShopInfoImage.src} alt={currentShopInfoImage.alt} />
-                </button>
-              </section>
-            ) : null}
-
             <section className="product-type-showcase" aria-label="Sản phẩm">
               <div className="section-title">
                 <h2>Sản phẩm</h2>
-                <span>{productTypesWithAvailableProducts.length} loại</span>
+                <span>{storefrontProducts.length} mẫu</span>
               </div>
-              <div className="product-type-grid">
-                {productTypesWithAvailableProducts.map((productType) => {
-                  const coverImage = getProductTypeCoverImage(productType, catalogProducts);
+              <div className="storefront-product-grid">
+                {storefrontProducts.map((product) => {
+                  const coverImage = getProductCoverImage(product, catalogProductTypes, catalogProducts);
+                  const productTitle = getProductTitle(product, catalogProductTypes);
                   return (
                     <button
-                      className="product-type-card"
-                      key={productType.id}
+                      className="storefront-product-card"
+                      key={product.id}
                       type="button"
-                      onClick={() => openProductType(productType)}
+                      onClick={() => openProduct(product)}
                     >
                       <img src={coverImage.src} alt={coverImage.alt} loading="lazy" />
-                      <span className="product-type-card-overlay">
-                        <span>{productType.name || "Chưa đặt tên"}</span>
-                        <strong>{formatPrice(productType.price)}</strong>
-                        <em>Xem ngay</em>
+                      <span className="storefront-product-info">
+                        <span>{productTitle}</span>
+                        <strong>{formatPrice(getProductPrice(product, catalogProductTypes))}</strong>
                       </span>
                     </button>
                   );
                 })}
               </div>
             </section>
+
+            <section className="storefront-policy" aria-label="Quy định đặt hàng">
+              <article>
+                <h3>Quà tặng</h3>
+                <p>Shop tặng dây buộc tóc scrunchies cùng họa tiết cho mỗi set.</p>
+              </article>
+              <article>
+                <h3>Phí ship</h3>
+                <p>Phí ship 20k. Freeship cho đơn từ 2 bộ.</p>
+              </article>
+              <article>
+                <h3>Thanh toán</h3>
+                <p>Thanh toán trước.</p>
+              </article>
+              <article>
+                <h3>Đổi trả</h3>
+                <p>Shop hỗ trợ trả hàng trong trường hợp sai sản phẩm hoặc sản phẩm lỗi.</p>
+              </article>
+            </section>
           </>
         ) : null}
 
-        {catalogLoadState !== "loading" && selectedProductType ? (
-        <section className="product-type-screen" aria-label={`Sản phẩm ${selectedProductType.name}`}>
-          <button className="back-button" type="button" onClick={closeProductType}>
+        {catalogLoadState !== "loading" && selectedProduct && selectedProductType ? (
+        <section className="product-type-screen" aria-label={`Sản phẩm ${getProductTitle(selectedProduct, catalogProductTypes)}`}>
+          <button className="back-button" type="button" onClick={closeProduct}>
             <ChevronLeft size={18} aria-hidden="true" />
             Sản phẩm
           </button>
           <header className="product-type-screen-header">
-            <h2>{selectedProductType.name || "Loại sản phẩm"}</h2>
-            <strong>{formatPrice(selectedProductType.price)}</strong>
+            <h2>{getProductTitle(selectedProduct, catalogProductTypes)}</h2>
+            <strong>{formatPrice(getProductPrice(selectedProduct, catalogProductTypes))}</strong>
           </header>
           <div className="catalog-layout">
             <button
@@ -573,46 +594,19 @@ function App() {
             </div>
 
           <section className="catalog-list" aria-label="Danh sách sản phẩm">
-            {visibleProducts.length > 0 ? (
-              <>
-                {visibleProducts.length > 1 ? (
-                  <div className="product-tabs-block">
-                    <h3>Phân loại</h3>
-                    <div className="product-tabs" role="tablist" aria-label="Chọn mẫu sản phẩm">
-                      {visibleProducts.map((product, index) => {
-                        const productTitle = product.name.trim() || `Mẫu ${index + 1}`;
-                        const isActive = product.id === activeProduct?.id;
-                        return (
-                          <button
-                            className={isActive ? "product-tab active" : "product-tab"}
-                            key={product.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={isActive}
-                            onClick={() => setActiveProductId(product.id)}
-                          >
-                            {productTitle}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-                {activeProduct ? (
-                  <ProductCard
-                    key={activeProduct.id}
-                    onImageOpen={setActiveImage}
-                    product={activeProduct}
-                    productTypes={catalogProductTypes}
-                    selectedSize={selectedSize}
-                    compact
-                  />
-                ) : null}
-              </>
+            {visibleProduct ? (
+              <ProductCard
+                key={visibleProduct.id}
+                onImageOpen={setActiveImage}
+                product={visibleProduct}
+                productTypes={catalogProductTypes}
+                selectedSize={selectedSize}
+                compact
+              />
             ) : (
               <section className="empty-state">
-                <h3>Chưa có sản phẩm đang bán</h3>
-                <p>Shop đang cập nhật catalog. Bạn có thể nhắn Instagram hoặc Messenger để hỏi mẫu mới nhất.</p>
+                <h3>Size này tạm hết hàng</h3>
+                <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
               </section>
             )}
           </section>
@@ -685,7 +679,7 @@ function ProductCard({
   onImageOpen,
   compact = false,
 }: ProductCardProps) {
-  const productTitle = compact ? getProductDisplayName(product) : getProductTitle(product, productTypes);
+  const productTitle = getProductTitle(product, productTypes);
 
   return (
     <article className="product-card">
