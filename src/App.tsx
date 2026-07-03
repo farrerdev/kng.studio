@@ -7,9 +7,9 @@ import {
   ChevronRight,
   ChevronUp,
   Eye,
+  Menu,
   Image,
   Instagram,
-  MapPin,
   PackageCheck,
   Plus,
   RotateCcw,
@@ -299,6 +299,7 @@ function App() {
   const [catalogLoadState, setCatalogLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(() => getStorefrontSlugFromPath());
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
@@ -378,6 +379,26 @@ function App() {
     setSelectedProductSlug(null);
     window.history.pushState(null, "", "/");
     window.scrollTo({ top: 0, behavior: "instant" });
+  };
+  const goHomeSection = (sectionId?: string) => {
+    setIsSidebarOpen(false);
+    if (selectedProduct) {
+      setSelectedProductSlug(null);
+      window.history.pushState(null, "", "/");
+      window.requestAnimationFrame(() => {
+        if (sectionId) {
+          document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      return;
+    }
+    if (sectionId) {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -479,14 +500,16 @@ function App() {
     <>
       <main className="page-shell storefront">
         <header className="site-header">
-          <div>
-            <p className="header-kicker">{shopConfig.subtitle}</p>
-            <h1>{shopConfig.brand}</h1>
-          </div>
-          <div className="location-pill">
-            <MapPin size={16} aria-hidden="true" />
-            <span>{shopConfig.location}</span>
-          </div>
+          <button
+            className="site-menu-button"
+            type="button"
+            aria-label="Mở menu"
+            aria-expanded={isSidebarOpen}
+            onClick={() => setIsSidebarOpen(true)}
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
+          <h1>{shopConfig.brand}</h1>
         </header>
 
         <section className="shipping-promo" aria-label="Ưu đãi vận chuyển">
@@ -497,7 +520,7 @@ function App() {
 
         {catalogLoadState !== "loading" && !selectedProduct ? (
           <>
-            <section className="product-type-showcase" aria-label="Sản phẩm">
+            <section className="product-type-showcase" id="products" aria-label="Sản phẩm">
               <div className="section-title">
                 <h2>Sản phẩm</h2>
                 <span>{storefrontProducts.length} mẫu</span>
@@ -524,20 +547,20 @@ function App() {
               </div>
             </section>
 
-            <section className="storefront-policy" aria-label="Quy định đặt hàng">
-              <article>
+            <section className="storefront-policy" id="policy" aria-label="Quy định đặt hàng">
+              <article id="gift">
                 <h3>Quà tặng</h3>
                 <p>Shop tặng dây buộc tóc scrunchies cùng họa tiết cho mỗi set.</p>
               </article>
-              <article>
+              <article id="shipping">
                 <h3>Phí ship</h3>
                 <p>Phí ship 20k. Freeship cho đơn từ 2 bộ.</p>
               </article>
-              <article>
+              <article id="payment">
                 <h3>Thanh toán</h3>
                 <p>Thanh toán trước.</p>
               </article>
-              <article>
+              <article id="returns">
                 <h3>Đổi trả</h3>
                 <p>Shop hỗ trợ trả hàng trong trường hợp sai sản phẩm hoặc sản phẩm lỗi.</p>
               </article>
@@ -614,6 +637,32 @@ function App() {
         </section>
         ) : null}
       </main>
+
+      <div className={isSidebarOpen ? "storefront-sidebar-backdrop open" : "storefront-sidebar-backdrop"} onClick={() => setIsSidebarOpen(false)} />
+      <aside className={isSidebarOpen ? "storefront-sidebar open" : "storefront-sidebar"} aria-label="Menu điều hướng" aria-hidden={!isSidebarOpen}>
+        <div className="storefront-sidebar-header">
+          <strong>{shopConfig.brand}</strong>
+          <button type="button" aria-label="Đóng menu" onClick={() => setIsSidebarOpen(false)}>
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+        <nav className="storefront-sidebar-nav">
+          <button type="button" onClick={() => goHomeSection()}>Trang chủ</button>
+          <details open>
+            <summary>Sản phẩm</summary>
+            <button type="button" onClick={() => goHomeSection("products")}>Tất cả sản phẩm</button>
+            {storefrontProducts.map((product) => (
+              <button type="button" key={product.id} onClick={() => { setIsSidebarOpen(false); openProduct(product); }}>
+                {getProductTitle(product, catalogProductTypes)}
+              </button>
+            ))}
+          </details>
+          <button type="button" onClick={() => goHomeSection("gift")}>Quà tặng</button>
+          <button type="button" onClick={() => goHomeSection("shipping")}>Phí ship</button>
+          <button type="button" onClick={() => goHomeSection("payment")}>Thanh toán</button>
+          <button type="button" onClick={() => goHomeSection("returns")}>Đổi trả</button>
+        </nav>
+      </aside>
 
       <ContactButtons />
 
