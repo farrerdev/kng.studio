@@ -301,16 +301,15 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 22px;
-  margin-top: 26px;
-  border-top: 1px solid var(--line);
+  margin-top: 22px;
 }
 
 .storefront-policy article {
   display: grid;
   align-content: start;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
-  padding: 12px 0;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1081,20 +1080,22 @@ button {
 .storefront-sidebar-nav button,
 .storefront-sidebar-nav summary {
   width: 100%;
-  min-height: 42px;
+  min-height: 46px;
   padding: 0;
   border: 0;
   border-bottom: 1px solid var(--store-line);
   background: transparent;
   cursor: pointer;
   text-align: left;
-  font-size: 0.92rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 620;
 }
 
 .storefront-sidebar-nav summary {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   list-style: none;
 }
 
@@ -1102,11 +1103,39 @@ button {
   display: none;
 }
 
+.storefront-sidebar-nav summary svg {
+  flex: 0 0 auto;
+  color: var(--store-muted);
+  transition: transform 0.16s ease;
+}
+
+.storefront-sidebar-nav details[open] > summary svg {
+  transform: rotate(180deg);
+}
+
 .storefront-sidebar-nav details button {
   min-height: 38px;
   padding-left: 14px;
   color: var(--store-muted);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.storefront-sidebar-nav .sidebar-all-products,
+.storefront-sidebar-nav .sidebar-product-type-link {
+  padding-left: 14px;
+}
+
+.storefront-sidebar-nav .sidebar-product-type summary {
+  min-height: 42px;
+  padding-left: 14px;
+  color: var(--store-ink);
+  font-size: 0.92rem;
+  font-weight: 560;
+}
+
+.storefront-sidebar-nav .sidebar-product-type button {
+  padding-left: 28px;
 }
 
 .storefront .shipping-promo {
@@ -1149,7 +1178,6 @@ button {
 
 .storefront .product-type-showcase {
   padding: 26px 0 30px;
-  border-bottom: 1px solid var(--store-line);
 }
 
 .storefront .product-type-showcase .section-title {

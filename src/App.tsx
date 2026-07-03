@@ -315,6 +315,16 @@ function App() {
       })
       .map(({ product }) => product);
   }, [catalogProductTypes, catalogProducts]);
+  const productTypeGroups = useMemo(
+    () =>
+      catalogProductTypes
+        .map((productType) => ({
+          productType,
+          products: storefrontProducts.filter((product) => product.productTypeId === productType.id),
+        }))
+        .filter((group) => group.products.length > 0),
+    [catalogProductTypes, storefrontProducts],
+  );
   const selectedProduct = useMemo(
     () =>
       selectedProductSlug
@@ -648,14 +658,31 @@ function App() {
         </div>
         <nav className="storefront-sidebar-nav">
           <button type="button" onClick={() => goHomeSection()}>Trang chủ</button>
-          <details open>
-            <summary>Sản phẩm</summary>
-            <button type="button" onClick={() => goHomeSection("products")}>Tất cả sản phẩm</button>
-            {storefrontProducts.map((product) => (
-              <button type="button" key={product.id} onClick={() => { setIsSidebarOpen(false); openProduct(product); }}>
-                {getProductTitle(product, catalogProductTypes)}
-              </button>
-            ))}
+          <details className="sidebar-products-group">
+            <summary>
+              <span>Sản phẩm</span>
+              <ChevronDown size={16} aria-hidden="true" />
+            </summary>
+            <button className="sidebar-all-products" type="button" onClick={() => goHomeSection("products")}>Tất cả sản phẩm</button>
+            {productTypeGroups.map(({ productType, products }) =>
+              products.length > 1 ? (
+                <details className="sidebar-product-type" key={productType.id}>
+                  <summary>
+                    <span>{productType.name || "Loại sản phẩm"}</span>
+                    <ChevronDown size={15} aria-hidden="true" />
+                  </summary>
+                  {products.map((product) => (
+                    <button type="button" key={product.id} onClick={() => { setIsSidebarOpen(false); openProduct(product); }}>
+                      {product.name.trim() || getProductTitle(product, catalogProductTypes)}
+                    </button>
+                  ))}
+                </details>
+              ) : (
+                <button className="sidebar-product-type-link" type="button" key={productType.id} onClick={() => { setIsSidebarOpen(false); openProduct(products[0]); }}>
+                  {getProductTitle(products[0], catalogProductTypes)}
+                </button>
+              ),
+            )}
           </details>
           <button type="button" onClick={() => goHomeSection("gift")}>Quà tặng</button>
           <button type="button" onClick={() => goHomeSection("shipping")}>Phí ship</button>
