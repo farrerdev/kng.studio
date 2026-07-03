@@ -301,15 +301,16 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 22px;
-  margin-top: 22px;
+  margin-top: 26px;
+  border-top: 1px solid var(--line);
 }
 
 .storefront-policy article {
   display: grid;
   align-content: start;
-  gap: 5px;
+  gap: 7px;
   min-width: 0;
-  padding: 16px 0;
+  padding: 20px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1273,8 +1274,8 @@ button {
 }
 
 .storefront .catalog-layout {
-  gap: 22px;
-  padding-top: 6px;
+  gap: 0;
+  padding-top: 2px;
 }
 
 .storefront .catalog-sidebar {
@@ -1381,8 +1382,8 @@ button {
 }
 
 .storefront .product-detail {
-  gap: 24px;
-  padding: 20px 0 30px;
+  gap: 18px;
+  padding: 14px 0 30px;
 }
 
 .storefront .product-overview {
@@ -1409,6 +1410,24 @@ button {
   color: var(--store-ink);
   font-size: 1rem;
   font-weight: 650;
+}
+
+.storefront .product-size-controls {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.storefront .product-size-controls + section {
+  margin-top: -2px;
+}
+
+.storefront .product-size-controls .size-chart-inline {
+  margin: 0;
+}
+
+.storefront .product-size-controls .size-selector-title {
+  margin: 0;
 }
 
 .storefront .section-title {

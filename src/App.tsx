@@ -589,43 +589,6 @@ function App() {
             <strong>{formatPrice(getProductPrice(selectedProduct, catalogProductTypes))}</strong>
           </header>
           <div className="catalog-layout">
-            <button
-              className="size-chart-inline type-size-chart"
-              type="button"
-              onClick={() =>
-                setActiveImage({
-                  ...getProductTypeSizeChartImage(selectedProductType, catalogProducts),
-                  caption: `${selectedProductType.name || "Loại sản phẩm"} - bảng size`,
-                })
-              }
-            >
-              <div className="size-chart-inline-text">
-                <h4>Bảng size chi tiết</h4>
-                <span>Tap để xem lớn</span>
-              </div>
-              <img
-                loading="lazy"
-                src={getProductTypeSizeChartImage(selectedProductType, catalogProducts).src}
-                alt={getProductTypeSizeChartImage(selectedProductType, catalogProducts).alt}
-              />
-            </button>
-            <h3 className="size-selector-title">Chọn size để xem mẫu</h3>
-            <div className="size-options" role="radiogroup" aria-label="Chọn size">
-              {sizeOptions.map((size) => (
-                <button
-                  className={selectedSize === size.id ? "size-option active" : "size-option"}
-                  key={size.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedSize === size.id}
-                  onClick={() => setSelectedSize(size.id)}
-                >
-                  <span>{size.label}</span>
-                  <strong>{size.range}</strong>
-                </button>
-              ))}
-            </div>
-
           <section className="catalog-list" aria-label="Danh sách sản phẩm">
             {visibleProduct ? (
               <ProductCard
@@ -634,6 +597,9 @@ function App() {
                 product={visibleProduct}
                 productTypes={catalogProductTypes}
                 selectedSize={selectedSize}
+                onSizeChange={setSelectedSize}
+                sizeChartCaption={`${selectedProductType.name || "Loại sản phẩm"} - bảng size`}
+                sizeChartImage={getProductTypeSizeChartImage(selectedProductType, catalogProducts)}
                 compact
               />
             ) : (
@@ -745,6 +711,9 @@ type ProductCardProps = {
   productTypes: ProductType[];
   selectedSize: SizeId;
   onImageOpen: (image: GalleryImage) => void;
+  onSizeChange?: (sizeId: SizeId) => void;
+  sizeChartCaption?: string;
+  sizeChartImage?: ProductImage;
   compact?: boolean;
 };
 
@@ -753,6 +722,9 @@ function ProductCard({
   productTypes,
   selectedSize,
   onImageOpen,
+  onSizeChange,
+  sizeChartCaption,
+  sizeChartImage,
   compact = false,
 }: ProductCardProps) {
   const productTitle = getProductTitle(product, productTypes);
@@ -765,6 +737,43 @@ function ProductCard({
             {product.fit.trim() ? <p>{product.fit}</p> : null}
             {!compact ? <strong>{formatPrice(getProductPrice(product, productTypes))}</strong> : null}
           </section>
+
+          {compact && sizeChartImage ? (
+            <section className="product-size-controls" aria-label={`Bảng size và chọn size ${productTitle}`}>
+              <button
+                className="size-chart-inline type-size-chart"
+                type="button"
+                onClick={() =>
+                  onImageOpen({
+                    ...sizeChartImage,
+                    caption: sizeChartCaption ?? `${productTitle} - bảng size`,
+                  })
+                }
+              >
+                <div className="size-chart-inline-text">
+                  <h4>Bảng size chi tiết</h4>
+                  <span>Tap để xem lớn</span>
+                </div>
+                <img loading="lazy" src={sizeChartImage.src} alt={sizeChartImage.alt} />
+              </button>
+              <h3 className="size-selector-title">Chọn size để xem mẫu</h3>
+              <div className="size-options" role="radiogroup" aria-label="Chọn size">
+                {sizeOptions.map((size) => (
+                  <button
+                    className={selectedSize === size.id ? "size-option active" : "size-option"}
+                    key={size.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedSize === size.id}
+                    onClick={() => onSizeChange?.(size.id)}
+                  >
+                    <span>{size.label}</span>
+                    <strong>{size.range}</strong>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section aria-label={`Họa tiết còn hàng của ${productTitle}`}>
             <div className="section-title">
