@@ -243,12 +243,12 @@ button {
 .storefront-product-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px 3px;
+  gap: 28px 10px;
 }
 
 .storefront-product-card {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
   padding: 0 0 12px;
   border: 0;
@@ -256,14 +256,14 @@ button {
   color: var(--ink);
   cursor: pointer;
   font: inherit;
-  text-align: center;
+  text-align: left;
 }
 
 .storefront-product-card img {
   display: block;
   dynamic-range-limit: standard;
   width: 100%;
-  aspect-ratio: 1 / 1.18;
+  aspect-ratio: 1;
   background: #f2f2f2;
   filter: none;
   image-rendering: auto;
@@ -274,13 +274,12 @@ button {
 
 .storefront-product-info {
   display: grid;
-  gap: 12px;
+  gap: 3px;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0;
 }
 
 .storefront-product-info span {
-  min-height: 38px;
   color: var(--ink);
   font-size: 0.82rem;
   font-weight: 520;
@@ -301,35 +300,33 @@ button {
 .storefront-policy {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  margin-top: 34px;
-  border: 1px solid var(--line);
-  background: var(--line);
+  gap: 18px 22px;
+  margin-top: 28px;
 }
 
 .storefront-policy article {
   display: grid;
   align-content: start;
-  gap: 10px;
-  min-height: 124px;
-  padding: 18px;
-  background: #ffffff;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
 }
 
 .storefront-policy h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 0.82rem;
-  font-weight: 760;
-  line-height: 1.2;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  font-weight: 620;
+  line-height: 1.15;
   text-transform: uppercase;
 }
 
 .storefront-policy p {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.55;
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 520;
+  line-height: 1.45;
 }
 
 .product-type-screen {
@@ -1098,7 +1095,7 @@ button {
 }
 
 .storefront .storefront-product-grid {
-  gap: 28px 3px;
+  gap: 28px 10px;
 }
 
 .storefront .storefront-product-card {
@@ -1114,18 +1111,13 @@ button {
   color: var(--store-ink);
 }
 
-.storefront .storefront-policy {
-  border-color: var(--store-line);
-  background: var(--store-line);
-}
-
 .storefront .storefront-policy h3 {
   color: var(--store-ink);
   font-weight: 650;
 }
 
 .storefront .storefront-policy p {
-  color: var(--store-muted);
+  color: var(--store-ink);
 }
 
 .storefront .back-button {
