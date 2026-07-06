@@ -1054,7 +1054,7 @@ function App() {
                 <ul>
                   <li>Khách hàng vui lòng quay video khi nhận hàng và mở gói sản phẩm.</li>
                   <li>Với sản phẩm lỗi do nhà sản xuất hoặc shop giao sai mẫu, KNG hỗ trợ đổi 1-1 và chịu toàn bộ chi phí đổi hàng.</li>
-                  <li>Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác ngang giá hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.</li>
+                  <li>Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác giá thấp hơn hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.</li>
                   <li>Khách hàng chịu 1 đầu phí ship đổi hàng, KNG hỗ trợ 1 đầu ship gửi lại.</li>
                   <li>Lưu ý: shop chỉ hỗ trợ đổi 1 lần duy nhất.</li>
                 </ul>
