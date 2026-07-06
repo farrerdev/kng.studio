@@ -283,6 +283,10 @@ function ZaloIcon() {
   return <span className="zalo-mark" aria-hidden="true">Zalo</span>;
 }
 
+function formatSelectedSize(sizeId: SizeId) {
+  return sizeOptions.find((size) => size.id === sizeId)?.label ?? `Size ${sizeId}`;
+}
+
 function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
   return catalogProducts
     .map((product) => ({
@@ -292,12 +296,12 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
     .filter((product) => product.patterns.length > 0);
 }
 
-function getProductGalleryImages(product: Product, productTypes: ProductType[]): GalleryImage[] {
+function getProductGalleryImages(product: Product, productTypes: ProductType[], selectedSize: SizeId): GalleryImage[] {
   const productTitle = getProductTitle(product, productTypes);
   return [
     ...product.patterns.map((pattern) => ({
       ...pattern.image,
-      caption: `${productTitle} - ${pattern.name}`,
+      caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
     })),
     ...product.modelImages.map((image, index) => ({
       ...image,
@@ -378,8 +382,8 @@ function App() {
           },
         ]
       : [];
-    return [...shopImages, ...typeSizeChart, ...(visibleProduct ? getProductGalleryImages(visibleProduct, catalogProductTypes) : [])];
-  }, [catalogProductTypes, catalogProducts, currentShopInfoImage, selectedProduct, selectedProductType, visibleProduct]);
+    return [...shopImages, ...typeSizeChart, ...(visibleProduct ? getProductGalleryImages(visibleProduct, catalogProductTypes, selectedSize) : [])];
+  }, [catalogProductTypes, catalogProducts, currentShopInfoImage, selectedProduct, selectedProductType, selectedSize, visibleProduct]);
   const activeImageIndex = useMemo(() => {
     if (!activeImage) return -1;
     return galleryImages.findIndex(
@@ -818,7 +822,7 @@ function ProductCard({
                   onClick={() =>
                     onImageOpen({
                       ...pattern.image,
-                      caption: `${productTitle} - ${pattern.name}`,
+                      caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
                     })
                   }
                 >

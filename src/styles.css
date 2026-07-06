@@ -1155,6 +1155,14 @@ button {
   display: none;
 }
 
+.storefront #products,
+.storefront #gift,
+.storefront #shipping,
+.storefront #payment,
+.storefront #returns {
+  scroll-margin-top: 82px;
+}
+
 
 .storefront-sidebar-backdrop {
   position: fixed;
