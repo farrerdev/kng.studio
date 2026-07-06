@@ -301,6 +301,65 @@ button {
   outline-offset: 3px;
 }
 
+.cart-checkout-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.cart-checkout-cta.compact {
+  margin-top: 18px;
+}
+
+.cart-checkout-cta div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cart-checkout-cta span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 720;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.cart-checkout-cta strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.cart-checkout-cta button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.cart-checkout-cta button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
 .storefront-policy {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3871,6 +3930,16 @@ button {
 }
 
 @media (max-width: 480px) {
+  .cart-checkout-cta {
+    display: grid;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cart-checkout-cta button {
+    width: 100%;
+  }
+
   .site-title-button h1 {
     font-size: 1.2rem;
   }

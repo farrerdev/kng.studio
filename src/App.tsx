@@ -351,6 +351,31 @@ function LoadingPanel({ variant = "client" }: LoadingPanelProps) {
   );
 }
 
+type CartCheckoutCtaProps = {
+  cartQuantity: number;
+  onClick: () => void;
+  compact?: boolean;
+};
+
+function CartCheckoutCta({ cartQuantity, onClick, compact = false }: CartCheckoutCtaProps) {
+  if (cartQuantity <= 0) {
+    return null;
+  }
+
+  return (
+    <section className={compact ? "cart-checkout-cta compact" : "cart-checkout-cta"} aria-label="Đi tới giỏ hàng">
+      <div>
+        <span>Đã chọn {cartQuantity} sản phẩm</span>
+        <strong>Sẵn sàng chốt đơn?</strong>
+      </div>
+      <button type="button" onClick={onClick}>
+        <ShoppingBag size={18} aria-hidden="true" />
+        Xem giỏ hàng
+      </button>
+    </section>
+  );
+}
+
 function MessengerIcon() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
@@ -1068,6 +1093,7 @@ function App() {
                   );
                 })}
               </div>
+              <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} />
             </section>
 
             <section className="storefront-policy" id="policy" aria-label="Quy định đặt hàng">
@@ -1129,6 +1155,7 @@ function App() {
                 <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
               </section>
             )}
+            <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} compact />
           </section>
         </div>
         </section>
