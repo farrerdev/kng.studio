@@ -56,19 +56,32 @@ function createCartItemId(productId: string, patternId: string, sizeId: SizeId) 
 const SHIPPING_FEE = 20000;
 const CART_STORAGE_KEY = "kng.studio.cart";
 
-function createOrderFileName() {
-  const now = new Date();
+function createOrderFileName(date = new Date()) {
   const dateParts = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
   ].join("");
   const timeParts = [
-    String(now.getHours()).padStart(2, "0"),
-    String(now.getMinutes()).padStart(2, "0"),
-    String(now.getSeconds()).padStart(2, "0"),
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0"),
   ].join("");
   return `kng-order-${dateParts}-${timeParts}.png`;
+}
+
+function formatOrderCreatedAt(date: Date) {
+  const dateParts = [
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    date.getFullYear(),
+  ].join("/");
+  const timeParts = [
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0"),
+  ].join(":");
+  return `${timeParts} ${dateParts}`;
 }
 
 function loadStoredCartItems(): CartItem[] {
@@ -411,10 +424,10 @@ function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: numb
   return currentY + lineHeight;
 }
 
-async function createOrderImageBlob(cartItems: CartItem[]) {
+async function createOrderImageBlob(cartItems: CartItem[], createdAt = new Date()) {
   const width = 1080;
   const rowHeight = 188;
-  const height = Math.max(860, 380 + cartItems.length * rowHeight);
+  const height = Math.max(900, 420 + cartItems.length * rowHeight);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -429,14 +442,16 @@ async function createOrderImageBlob(cartItems: CartItem[]) {
   context.font = "500 25px Helvetica Neue, Arial, sans-serif";
   context.fillStyle = "#6b6b6b";
   context.fillText("Thông tin đơn hàng", 56, 122);
+  context.font = "500 22px Helvetica Neue, Arial, sans-serif";
+  context.fillText(`Thời gian: ${formatOrderCreatedAt(createdAt)}`, 56, 158);
   context.strokeStyle = "#d9d9d9";
   context.lineWidth = 2;
   context.beginPath();
-  context.moveTo(56, 154);
-  context.lineTo(width - 56, 154);
+  context.moveTo(56, 190);
+  context.lineTo(width - 56, 190);
   context.stroke();
 
-  let y = 200;
+  let y = 236;
   for (const item of cartItems) {
     const image = await loadOrderImage(item.image.src);
     context.fillStyle = "#f4f4f4";
@@ -558,6 +573,7 @@ function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartToast, setCartToast] = useState("");
   const [orderImageBlob, setOrderImageBlob] = useState<Blob | null>(null);
+  const [orderImageFileName, setOrderImageFileName] = useState("");
   const [isOrderImagePreparing, setIsOrderImagePreparing] = useState(false);
   const [orderImagePreviewUrl, setOrderImagePreviewUrl] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -710,6 +726,7 @@ function App() {
       if (currentUrl) URL.revokeObjectURL(currentUrl);
       return null;
     });
+    setOrderImageFileName("");
   };
   const showOrderImagePreview = (blob: Blob) => {
     const objectUrl = URL.createObjectURL(blob);
@@ -744,15 +761,21 @@ function App() {
   };
   const captureOrderImage = async () => {
     if (cartItems.length === 0) return;
-    const blob = orderImageBlob ?? await createOrderImageBlob(cartItems);
-    if (!blob) return;
-    if (!orderImageBlob) setOrderImageBlob(blob);
-
-    const file = new File([blob], createOrderFileName(), { type: "image/png" });
-    const didShare = await shareOrderFile(file);
-    if (didShare) return;
-
-    showOrderImagePreview(blob);
+    setIsOrderImagePreparing(true);
+    try {
+      const createdAt = new Date();
+      const blob = await createOrderImageBlob(cartItems, createdAt);
+      if (!blob) return;
+      setOrderImageBlob(blob);
+      setOrderImageFileName(createOrderFileName(createdAt));
+      showOrderImagePreview(blob);
+    } finally {
+      setIsOrderImagePreparing(false);
+    }
+  };
+  const shareCurrentOrderImage = async () => {
+    if (!orderImageBlob) return;
+    await shareOrderFile(new File([orderImageBlob], orderImageFileName || createOrderFileName(), { type: "image/png" }));
   };
   const openOrderMessage = (channel: ShareChannel) => {
     const targetUrl = channel === "instagram" ? shopConfig.contacts.instagramMessage : shopConfig.contacts.messenger;
@@ -774,34 +797,8 @@ function App() {
 
   useEffect(() => {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  useEffect(() => {
-    if (cartItems.length === 0) {
-      setOrderImageBlob(null);
-      setIsOrderImagePreparing(false);
-      return;
-    }
-
-    let isCurrent = true;
-    setIsOrderImagePreparing(true);
-    createOrderImageBlob(cartItems)
-      .then((blob) => {
-        if (!isCurrent) return;
-        setOrderImageBlob(blob);
-      })
-      .catch(() => {
-        if (!isCurrent) return;
-        setOrderImageBlob(null);
-      })
-      .finally(() => {
-        if (!isCurrent) return;
-        setIsOrderImagePreparing(false);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
+    setOrderImageBlob(null);
+    setOrderImageFileName("");
   }, [cartItems]);
 
   useEffect(() => {
@@ -1100,7 +1097,11 @@ function App() {
       ) : null}
 
       {orderImagePreviewUrl ? (
-        <OrderImagePreview imageUrl={orderImagePreviewUrl} onClose={() => setOrderImagePreviewUrl(null)} />
+        <OrderImagePreview
+          imageUrl={orderImagePreviewUrl}
+          onClose={() => setOrderImagePreviewUrl(null)}
+          onShare={shareCurrentOrderImage}
+        />
       ) : null}
 
       <ContactButtons />
@@ -1338,7 +1339,15 @@ function ProductCard({
   );
 }
 
-function OrderImagePreview({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) {
+function OrderImagePreview({
+  imageUrl,
+  onClose,
+  onShare,
+}: {
+  imageUrl: string;
+  onClose: () => void;
+  onShare: () => void;
+}) {
   return (
     <div className="order-preview-backdrop" role="dialog" aria-modal="true" aria-label="Ảnh đơn hàng" onClick={onClose}>
       <section className="order-preview-panel" onClick={(event) => event.stopPropagation()}>
@@ -1347,9 +1356,12 @@ function OrderImagePreview({ imageUrl, onClose }: { imageUrl: string; onClose: (
         </button>
         <div>
           <span>Ảnh đơn hàng</span>
-          <h2>Lưu ảnh vào thư viện ảnh</h2>
-          <p>Nhấn giữ ảnh bên dưới rồi chọn lưu vào Ảnh hoặc Thư viện ảnh, sau đó gửi ảnh này cho shop.</p>
+          <p>Kiểm tra ảnh đơn hàng, sau đó bấm lưu ảnh để lưu vào Ảnh. Nếu không hiện, nhấn giữ ảnh bên dưới để lưu.</p>
         </div>
+        <button className="order-preview-share" type="button" onClick={onShare}>
+          <Save size={17} aria-hidden="true" />
+          Lưu ảnh
+        </button>
         <img src={imageUrl} alt="Ảnh đơn hàng KNG.studio" />
       </section>
     </div>
@@ -1463,7 +1475,7 @@ function CartOverlay({
                     disabled={isOrderImagePreparing}
                     onClick={onCapture}
                   >
-                    {isOrderImagePreparing ? "Đang chuẩn bị ảnh" : "Lưu ảnh đơn hàng"}
+                    {isOrderImagePreparing ? "Đang chuẩn bị ảnh" : "Xem ảnh đơn hàng"}
                   </button>
                 </div>
                 <div className="checkout-step">
