@@ -441,17 +441,15 @@ async function createOrderImageBlob(cartItems: CartItem[], createdAt = new Date(
   context.fillText("KNG.studio", 56, 82);
   context.font = "500 25px Helvetica Neue, Arial, sans-serif";
   context.fillStyle = "#6b6b6b";
-  context.fillText("Thông tin đơn hàng", 56, 122);
-  context.font = "500 22px Helvetica Neue, Arial, sans-serif";
-  context.fillText(`Thời gian: ${formatOrderCreatedAt(createdAt)}`, 56, 158);
+  context.fillText(`Thông tin đơn hàng · ${formatOrderCreatedAt(createdAt)}`, 56, 122);
   context.strokeStyle = "#d9d9d9";
   context.lineWidth = 2;
   context.beginPath();
-  context.moveTo(56, 190);
-  context.lineTo(width - 56, 190);
+  context.moveTo(56, 154);
+  context.lineTo(width - 56, 154);
   context.stroke();
 
-  let y = 236;
+  let y = 200;
   for (const item of cartItems) {
     const image = await loadOrderImage(item.image.src);
     context.fillStyle = "#f4f4f4";
@@ -735,8 +733,8 @@ function App() {
       return objectUrl;
     });
   };
-  const shareOrderFile = async (file: File) => {
-    if (!navigator.share) return false;
+  const shareOrderFile = async (file: File): Promise<"shared" | "cancelled" | "failed"> => {
+    if (!navigator.share) return "failed";
 
     const shareData = {
       files: [file],
@@ -746,16 +744,16 @@ function App() {
 
     try {
       await navigator.share(shareData);
-      return true;
+      return "shared";
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return true;
+      if (error instanceof DOMException && error.name === "AbortError") return "cancelled";
 
       try {
         await navigator.share({ files: [file] });
-        return true;
+        return "shared";
       } catch (fallbackError) {
-        if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") return true;
-        return false;
+        if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") return "cancelled";
+        return "failed";
       }
     }
   };
@@ -775,7 +773,15 @@ function App() {
   };
   const shareCurrentOrderImage = async () => {
     if (!orderImageBlob) return;
-    await shareOrderFile(new File([orderImageBlob], orderImageFileName || createOrderFileName(), { type: "image/png" }));
+    const result = await shareOrderFile(
+      new File([orderImageBlob], orderImageFileName || createOrderFileName(), { type: "image/png" }),
+    );
+    if (result === "shared") {
+      setOrderImagePreviewUrl((currentUrl) => {
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        return null;
+      });
+    }
   };
   const openOrderMessage = (channel: ShareChannel) => {
     const targetUrl = channel === "instagram" ? shopConfig.contacts.instagramMessage : shopConfig.contacts.messenger;
