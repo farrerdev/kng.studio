@@ -12,10 +12,12 @@ import {
   Image,
   Instagram,
   MapPin,
+  Minus,
   PackageCheck,
   Plus,
   RotateCcw,
   Save,
+  ShoppingBag,
   Trash2,
   X,
 } from "lucide-react";
@@ -37,6 +39,62 @@ function formatPrice(raw: string): string {
   if (!digits) return raw;
   const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return formatted + "đ";
+}
+
+function getPriceValue(raw: string) {
+  return Number(raw.replace(/[^0-9]/g, "")) || 0;
+}
+
+function formatMoney(value: number) {
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "đ";
+}
+
+function createCartItemId(productId: string, patternId: string, sizeId: SizeId) {
+  return `${productId}__${patternId}__${sizeId}`;
+}
+
+const SHIPPING_FEE = 20000;
+const CART_STORAGE_KEY = "kng.studio.cart";
+
+function createOrderFileName() {
+  const now = new Date();
+  const dateParts = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("");
+  const timeParts = [
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0"),
+  ].join("");
+  return `kng-order-${dateParts}-${timeParts}.png`;
+}
+
+function loadStoredCartItems(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const rawCart = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!rawCart) return [];
+    const parsedCart = JSON.parse(rawCart);
+    if (!Array.isArray(parsedCart)) return [];
+    return parsedCart.filter(
+      (item): item is CartItem =>
+        typeof item?.id === "string" &&
+        typeof item?.productId === "string" &&
+        typeof item?.patternId === "string" &&
+        (item?.sizeId === "1" || item?.sizeId === "2") &&
+        typeof item?.quantity === "number" &&
+        item.quantity > 0 &&
+        typeof item?.productName === "string" &&
+        typeof item?.patternName === "string" &&
+        typeof item?.price === "string" &&
+        typeof item?.image?.src === "string" &&
+        typeof item?.image?.alt === "string",
+    );
+  } catch {
+    return [];
+  }
 }
 
 function getProductType(product: Product, productTypes: ProductType[]) {
@@ -130,7 +188,24 @@ function moveItem<T>(items: T[], fromIndex: number, direction: -1 | 1) {
 
 type GalleryImage = ProductImage & {
   caption: string;
+  cartItem?: CartDraft;
 };
+
+type CartItem = {
+  id: string;
+  productId: string;
+  patternId: string;
+  sizeId: SizeId;
+  quantity: number;
+  productName: string;
+  patternName: string;
+  price: string;
+  image: ProductImage;
+};
+
+type CartDraft = Omit<CartItem, "quantity">;
+
+type ShareChannel = "instagram" | "messenger";
 
 type AdminImageActionFieldProps = {
   image: ProductImage;
@@ -287,6 +362,150 @@ function formatSelectedSize(sizeId: SizeId) {
   return sizeOptions.find((size) => size.id === sizeId)?.label ?? `Size ${sizeId}`;
 }
 
+function getCartTotal(cartItems: CartItem[]) {
+  return cartItems.reduce((total, item) => total + getPriceValue(item.price) * item.quantity, 0);
+}
+
+function getCartQuantity(cartItems: CartItem[]) {
+  return cartItems.reduce((total, item) => total + item.quantity, 0);
+}
+
+function getShippingFee(cartItems: CartItem[]) {
+  if (cartItems.length === 0) return 0;
+  return getCartQuantity(cartItems) >= 2 ? 0 : SHIPPING_FEE;
+}
+
+function getOrderTotal(cartItems: CartItem[]) {
+  return getCartTotal(cartItems) + getShippingFee(cartItems);
+}
+
+function loadOrderImage(src: string) {
+  return new Promise<HTMLImageElement | null>((resolve) => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
+function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
+  const words = text.split(" ");
+  let line = "";
+  let currentY = y;
+  words.forEach((word) => {
+    const nextLine = line ? `${line} ${word}` : word;
+    if (context.measureText(nextLine).width > maxWidth && line) {
+      context.fillText(line, x, currentY);
+      line = word;
+      currentY += lineHeight;
+      return;
+    }
+    line = nextLine;
+  });
+  if (line) context.fillText(line, x, currentY);
+  return currentY + lineHeight;
+}
+
+async function createOrderImageBlob(cartItems: CartItem[]) {
+  const width = 1080;
+  const rowHeight = 188;
+  const height = Math.max(860, 380 + cartItems.length * rowHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#111111";
+  context.font = "700 54px Helvetica Neue, Arial, sans-serif";
+  context.fillText("KNG.studio", 56, 82);
+  context.font = "500 25px Helvetica Neue, Arial, sans-serif";
+  context.fillStyle = "#6b6b6b";
+  context.fillText("Thông tin đơn hàng", 56, 122);
+  context.strokeStyle = "#d9d9d9";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(56, 154);
+  context.lineTo(width - 56, 154);
+  context.stroke();
+
+  let y = 200;
+  for (const item of cartItems) {
+    const image = await loadOrderImage(item.image.src);
+    context.fillStyle = "#f4f4f4";
+    context.fillRect(56, y - 36, 132, 132);
+    if (image) {
+      context.save();
+      context.beginPath();
+      context.rect(56, y - 36, 132, 132);
+      context.clip();
+      const scale = Math.max(132 / image.width, 132 / image.height);
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      context.drawImage(image, 56 + (132 - drawWidth) / 2, y - 36 + (132 - drawHeight) / 2, drawWidth, drawHeight);
+      context.restore();
+    }
+
+    context.fillStyle = "#111111";
+    context.font = "700 28px Helvetica Neue, Arial, sans-serif";
+    const titleBottom = wrapCanvasText(context, item.productName, 216, y, 520, 34);
+    context.font = "500 24px Helvetica Neue, Arial, sans-serif";
+    context.fillStyle = "#4d4d4d";
+    context.fillText(`${item.patternName} · ${formatSelectedSize(item.sizeId)}`, 216, titleBottom + 8);
+    context.fillText(`Số lượng: ${item.quantity}`, 216, titleBottom + 44);
+    context.fillStyle = "#111111";
+    context.font = "700 26px Helvetica Neue, Arial, sans-serif";
+    context.fillText(formatMoney(getPriceValue(item.price) * item.quantity), width - 260, y + 34);
+    context.strokeStyle = "#eeeeee";
+    context.beginPath();
+    context.moveTo(56, y + 128);
+    context.lineTo(width - 56, y + 128);
+    context.stroke();
+    y += rowHeight;
+  }
+
+  const subtotal = getCartTotal(cartItems);
+  const shippingFee = getShippingFee(cartItems);
+  const total = getOrderTotal(cartItems);
+  const summaryTop = height - 190;
+  context.font = "500 28px Helvetica Neue, Arial, sans-serif";
+  context.fillStyle = "#4d4d4d";
+  context.fillText("Tạm tính", 56, summaryTop);
+  context.fillText(formatMoney(subtotal), width - 300, summaryTop);
+  context.fillText("Phí ship", 56, summaryTop + 48);
+  if (shippingFee === 0) {
+    context.fillStyle = "#8a8a8a";
+    context.fillText("20.000đ", width - 430, summaryTop + 48);
+    context.strokeStyle = "#8a8a8a";
+    context.beginPath();
+    context.moveTo(width - 430, summaryTop + 39);
+    context.lineTo(width - 335, summaryTop + 39);
+    context.stroke();
+    context.fillStyle = "#111111";
+    context.fillText("0đ", width - 300, summaryTop + 48);
+  } else {
+    context.fillText(formatMoney(shippingFee), width - 300, summaryTop + 48);
+  }
+  context.strokeStyle = "#d9d9d9";
+  context.beginPath();
+  context.moveTo(56, summaryTop + 82);
+  context.lineTo(width - 56, summaryTop + 82);
+  context.stroke();
+  context.fillStyle = "#111111";
+  context.font = "800 38px Helvetica Neue, Arial, sans-serif";
+  context.fillText("Tổng", 56, height - 58);
+  context.fillText(formatMoney(total), width - 300, height - 58);
+
+  return new Promise<Blob | null>((resolve) => canvas.toBlob((blob) => resolve(blob), "image/png", 0.94));
+}
+
 function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
   return catalogProducts
     .map((product) => ({
@@ -298,10 +517,21 @@ function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
 
 function getProductGalleryImages(product: Product, productTypes: ProductType[], selectedSize: SizeId): GalleryImage[] {
   const productTitle = getProductTitle(product, productTypes);
+  const price = formatPrice(getProductPrice(product, productTypes));
   return [
     ...product.patterns.map((pattern) => ({
       ...pattern.image,
       caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
+      cartItem: {
+        id: createCartItemId(product.id, pattern.id, selectedSize),
+        productId: product.id,
+        patternId: pattern.id,
+        sizeId: selectedSize,
+        productName: productTitle,
+        patternName: pattern.name,
+        price,
+        image: pattern.image,
+      },
     })),
     ...product.modelImages.map((image, index) => ({
       ...image,
@@ -324,6 +554,12 @@ function App() {
   const [catalogLoadState, setCatalogLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedSize, setSelectedSize] = useState<SizeId>("1");
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => loadStoredCartItems());
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartToast, setCartToast] = useState("");
+  const [orderImageBlob, setOrderImageBlob] = useState<Blob | null>(null);
+  const [isOrderImagePreparing, setIsOrderImagePreparing] = useState(false);
+  const [orderImagePreviewUrl, setOrderImagePreviewUrl] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(() => getStorefrontSlugFromPath());
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
@@ -393,6 +629,15 @@ function App() {
     );
   }, [activeImage, galleryImages]);
   const canNavigateLightbox = galleryImages.length > 1 && activeImageIndex >= 0;
+  const cartQuantity = useMemo(() => getCartQuantity(cartItems), [cartItems]);
+  const cartTotal = useMemo(() => getCartTotal(cartItems), [cartItems]);
+  const shippingFee = useMemo(() => getShippingFee(cartItems), [cartItems]);
+  const orderTotal = useMemo(() => getOrderTotal(cartItems), [cartItems]);
+  const cartQuantityById = useMemo(
+    () => new Map(cartItems.map((item) => [item.id, item.quantity])),
+    [cartItems],
+  );
+  const activeImageCartQuantity = activeImage?.cartItem ? cartQuantityById.get(activeImage.cartItem.id) ?? 0 : 0;
   const openGalleryImage = (offset: -1 | 1) => {
     if (!canNavigateLightbox) return;
     const nextIndex = (activeImageIndex + offset + galleryImages.length) % galleryImages.length;
@@ -435,10 +680,141 @@ function App() {
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const addToCart = (item: CartDraft) => {
+    setCartItems((currentItems) => {
+      const existingItem = currentItems.find((currentItem) => currentItem.id === item.id);
+      if (existingItem) {
+        return currentItems.map((currentItem) =>
+          currentItem.id === item.id ? { ...currentItem, quantity: currentItem.quantity + 1 } : currentItem,
+        );
+      }
+      return [...currentItems, { ...item, quantity: 1 }];
+    });
+    setCartToast(`Đã thêm ${item.patternName}`);
+  };
+  const updateCartQuantity = (itemId: string, quantity: number) => {
+    setCartItems((currentItems) =>
+      currentItems
+        .map((item) => (item.id === itemId ? { ...item, quantity } : item))
+        .filter((item) => item.quantity > 0),
+    );
+  };
+  const removeCartItem = (itemId: string) => {
+    setCartItems((currentItems) => currentItems.filter((item) => item.id !== itemId));
+  };
+  const clearCart = () => {
+    if (!window.confirm("Xoá tất cả sản phẩm trong giỏ hàng?")) return;
+    setCartItems([]);
+    setOrderImageBlob(null);
+    setOrderImagePreviewUrl((currentUrl) => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      return null;
+    });
+  };
+  const showOrderImagePreview = (blob: Blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    setOrderImagePreviewUrl((currentUrl) => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      return objectUrl;
+    });
+  };
+  const shareOrderFile = async (file: File) => {
+    if (!navigator.share) return false;
+
+    const shareData = {
+      files: [file],
+      title: "KNG.studio order",
+      text: "Ảnh đơn hàng KNG.studio",
+    };
+
+    try {
+      await navigator.share(shareData);
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return true;
+
+      try {
+        await navigator.share({ files: [file] });
+        return true;
+      } catch (fallbackError) {
+        if (fallbackError instanceof DOMException && fallbackError.name === "AbortError") return true;
+        return false;
+      }
+    }
+  };
+  const captureOrderImage = async () => {
+    if (cartItems.length === 0) return;
+    const blob = orderImageBlob ?? await createOrderImageBlob(cartItems);
+    if (!blob) return;
+    if (!orderImageBlob) setOrderImageBlob(blob);
+
+    const file = new File([blob], createOrderFileName(), { type: "image/png" });
+    const didShare = await shareOrderFile(file);
+    if (didShare) return;
+
+    showOrderImagePreview(blob);
+  };
+  const openOrderMessage = (channel: ShareChannel) => {
+    const targetUrl = channel === "instagram" ? shopConfig.contacts.instagramMessage : shopConfig.contacts.messenger;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     document.title = isAdminRoute ? "KNG.studio Admin" : "KNG.studio | Muslin homewear";
   }, [isAdminRoute]);
+
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isCartOpen]);
+
+  useEffect(() => {
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setOrderImageBlob(null);
+      setIsOrderImagePreparing(false);
+      return;
+    }
+
+    let isCurrent = true;
+    setIsOrderImagePreparing(true);
+    createOrderImageBlob(cartItems)
+      .then((blob) => {
+        if (!isCurrent) return;
+        setOrderImageBlob(blob);
+      })
+      .catch(() => {
+        if (!isCurrent) return;
+        setOrderImageBlob(null);
+      })
+      .finally(() => {
+        if (!isCurrent) return;
+        setIsOrderImagePreparing(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [cartItems]);
+
+  useEffect(() => {
+    return () => {
+      if (orderImagePreviewUrl) URL.revokeObjectURL(orderImagePreviewUrl);
+    };
+  }, [orderImagePreviewUrl]);
+
+  useEffect(() => {
+    if (!cartToast) return;
+    const timeoutId = window.setTimeout(() => setCartToast(""), 1500);
+    return () => window.clearTimeout(timeoutId);
+  }, [cartToast]);
 
   useEffect(() => {
     const syncProductTypeFromRoute = () => {
@@ -545,6 +921,15 @@ function App() {
             <Menu size={20} aria-hidden="true" />
           </button>
           <h1>{shopConfig.brand}</h1>
+          <button
+            className="site-cart-button"
+            type="button"
+            aria-label={`Mở giỏ hàng, ${cartQuantity} sản phẩm`}
+            onClick={() => setIsCartOpen(true)}
+          >
+            <ShoppingBag size={20} aria-hidden="true" />
+            {cartQuantity > 0 ? <span>{cartQuantity}</span> : null}
+          </button>
         </header>
 
         <section className="shipping-promo" aria-label="Ưu đãi vận chuyển">
@@ -625,6 +1010,8 @@ function App() {
               <ProductCard
                 key={visibleProduct.id}
                 onImageOpen={setActiveImage}
+                onAddToCart={addToCart}
+                getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
                 product={visibleProduct}
                 productTypes={catalogProductTypes}
                 selectedSize={selectedSize}
@@ -690,6 +1077,32 @@ function App() {
         </nav>
       </aside>
 
+      <CartOverlay
+        cartItems={cartItems}
+        cartTotal={cartTotal}
+        isOpen={isCartOpen}
+        orderTotal={orderTotal}
+        isOrderImagePreparing={isOrderImagePreparing}
+        onClose={() => setIsCartOpen(false)}
+        onCapture={captureOrderImage}
+        onOpenMessage={openOrderMessage}
+        onClear={clearCart}
+        onQuantityChange={updateCartQuantity}
+        onRemove={removeCartItem}
+        shippingFee={shippingFee}
+      />
+
+      {cartToast ? (
+        <div className="cart-toast" role="status" aria-live="polite">
+          <ShoppingBag size={17} aria-hidden="true" />
+          {cartToast}
+        </div>
+      ) : null}
+
+      {orderImagePreviewUrl ? (
+        <OrderImagePreview imageUrl={orderImagePreviewUrl} onClose={() => setOrderImagePreviewUrl(null)} />
+      ) : null}
+
       <ContactButtons />
 
       {activeImage ? (
@@ -719,6 +1132,17 @@ function App() {
           <div className="lightbox-media" onClick={(event) => event.stopPropagation()}>
             <img src={activeImage.src} alt={activeImage.alt} />
             <span className="lightbox-caption">{activeImage.caption}</span>
+            {activeImage.cartItem ? (
+              <button
+                className={activeImageCartQuantity > 0 ? "lightbox-add-button active" : "lightbox-add-button"}
+                type="button"
+                onClick={() => addToCart(activeImage.cartItem!)}
+              >
+                <ShoppingBag size={17} aria-hidden="true" />
+                Thêm vào giỏ
+                {activeImageCartQuantity > 0 ? <span className="lightbox-add-count">{activeImageCartQuantity}</span> : null}
+              </button>
+            ) : null}
           </div>
           {canNavigateLightbox ? (
             <button
@@ -744,6 +1168,8 @@ type ProductCardProps = {
   productTypes: ProductType[];
   selectedSize: SizeId;
   onImageOpen: (image: GalleryImage) => void;
+  onAddToCart: (item: CartDraft) => void;
+  getCartItemQuantity: (itemId: string) => number;
   onSizeChange?: (sizeId: SizeId) => void;
   sizeChartCaption?: string;
   sizeChartImage?: ProductImage;
@@ -755,12 +1181,15 @@ function ProductCard({
   productTypes,
   selectedSize,
   onImageOpen,
+  onAddToCart,
+  getCartItemQuantity,
   onSizeChange,
   sizeChartCaption,
   sizeChartImage,
   compact = false,
 }: ProductCardProps) {
   const productTitle = getProductTitle(product, productTypes);
+  const productPrice = formatPrice(getProductPrice(product, productTypes));
 
   return (
     <article className="product-card">
@@ -814,24 +1243,47 @@ function ProductCard({
               <span>{product.patterns.length} mẫu</span>
             </div>
             <div className="pattern-grid">
-              {product.patterns.map((pattern) => (
-                <button
-                  className="image-tile"
-                  key={pattern.id}
-                  type="button"
-                  onClick={() =>
-                    onImageOpen({
-                      ...pattern.image,
-                      caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
-                    })
-                  }
-                >
-                  <img loading="lazy" src={pattern.image.src} alt={pattern.image.alt} />
-                  <span>
-                    {pattern.name}
-                  </span>
-                </button>
-              ))}
+              {product.patterns.map((pattern) => {
+                const cartItem: CartDraft = {
+                  id: createCartItemId(product.id, pattern.id, selectedSize),
+                  productId: product.id,
+                  patternId: pattern.id,
+                  sizeId: selectedSize,
+                  productName: productTitle,
+                  patternName: pattern.name,
+                  price: productPrice,
+                  image: pattern.image,
+                };
+                const cartQuantity = getCartItemQuantity(cartItem.id);
+                return (
+                  <article className={cartQuantity > 0 ? "image-tile in-cart" : "image-tile"} key={pattern.id}>
+                    <button
+                      className="image-tile-preview"
+                      type="button"
+                      onClick={() =>
+                        onImageOpen({
+                          ...pattern.image,
+                          caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
+                          cartItem,
+                        })
+                      }
+                    >
+                      <img loading="lazy" src={pattern.image.src} alt={pattern.image.alt} />
+                      <span>{pattern.name}</span>
+                    </button>
+                    <button
+                      className={cartQuantity > 0 ? "pattern-add-button active" : "pattern-add-button"}
+                      type="button"
+                      aria-label={`Thêm ${pattern.name} size ${selectedSize} vào giỏ`}
+                      onClick={() => onAddToCart(cartItem)}
+                    >
+                      <Plus size={18} aria-hidden="true" />
+                      {cartQuantity > 0 ? <span>{cartQuantity}</span> : null}
+                    </button>
+                    {cartQuantity > 0 ? <span className="pattern-cart-status">Đã thêm vào giỏ hàng</span> : null}
+                  </article>
+                );
+              })}
             </div>
           </section>
 
@@ -883,6 +1335,163 @@ function ProductCard({
           ) : null}
       </div>
     </article>
+  );
+}
+
+function OrderImagePreview({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) {
+  return (
+    <div className="order-preview-backdrop" role="dialog" aria-modal="true" aria-label="Ảnh đơn hàng" onClick={onClose}>
+      <section className="order-preview-panel" onClick={(event) => event.stopPropagation()}>
+        <button className="order-preview-close" type="button" aria-label="Đóng ảnh đơn hàng" onClick={onClose}>
+          <X size={20} aria-hidden="true" />
+        </button>
+        <div>
+          <span>Ảnh đơn hàng</span>
+          <h2>Lưu ảnh vào thư viện ảnh</h2>
+          <p>Nhấn giữ ảnh bên dưới rồi chọn lưu vào Ảnh hoặc Thư viện ảnh, sau đó gửi ảnh này cho shop.</p>
+        </div>
+        <img src={imageUrl} alt="Ảnh đơn hàng KNG.studio" />
+      </section>
+    </div>
+  );
+}
+
+type CartOverlayProps = {
+  cartItems: CartItem[];
+  cartTotal: number;
+  isOpen: boolean;
+  orderTotal: number;
+  isOrderImagePreparing: boolean;
+  onClose: () => void;
+  onCapture: () => void;
+  onOpenMessage: (channel: ShareChannel) => void;
+  onClear: () => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onRemove: (itemId: string) => void;
+  shippingFee: number;
+};
+
+function CartOverlay({
+  cartItems,
+  cartTotal,
+  isOpen,
+  orderTotal,
+  isOrderImagePreparing,
+  onClose,
+  onCapture,
+  onOpenMessage,
+  onClear,
+  onQuantityChange,
+  onRemove,
+  shippingFee,
+}: CartOverlayProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="cart-backdrop" role="dialog" aria-modal="true" aria-label="Giỏ hàng" onClick={onClose}>
+      <aside className="cart-panel" onClick={(event) => event.stopPropagation()}>
+        <header className="cart-header">
+          <div>
+            <span>Giỏ hàng</span>
+            <h2>{cartItems.length > 0 ? `${cartItems.length} mẫu đã chọn` : "Chưa có sản phẩm"}</h2>
+          </div>
+          <div className="cart-header-actions">
+            {cartItems.length > 0 ? (
+              <button className="cart-clear-button" type="button" onClick={onClear}>
+                Xoá tất cả
+              </button>
+            ) : null}
+            <button className="cart-close-button" type="button" aria-label="Đóng giỏ hàng" onClick={onClose}>
+              <X size={21} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        {cartItems.length > 0 ? (
+          <div className="cart-scroll">
+            <div className="cart-list">
+              {cartItems.map((item) => (
+                <article className="cart-row" key={item.id}>
+                  <img src={item.image.src} alt={item.image.alt} />
+                  <div className="cart-row-info">
+                    <h3>{item.productName}</h3>
+                    <p>{item.patternName} · {formatSelectedSize(item.sizeId)}</p>
+                    <strong>{item.price}</strong>
+                    <div className="cart-row-actions">
+                      <div className="cart-quantity" aria-label={`Số lượng ${item.patternName}`}>
+                        <button type="button" onClick={() => onQuantityChange(item.id, item.quantity - 1)} aria-label="Giảm số lượng">
+                          <Minus size={14} aria-hidden="true" />
+                        </button>
+                        <span>{item.quantity}</span>
+                        <button type="button" onClick={() => onQuantityChange(item.id, item.quantity + 1)} aria-label="Tăng số lượng">
+                          <Plus size={14} aria-hidden="true" />
+                        </button>
+                      </div>
+                      <button className="cart-remove" type="button" onClick={() => onRemove(item.id)}>
+                        Xoá
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <footer className="cart-footer">
+              <div className="cart-summary-row">
+                <span>Tổng tạm tính</span>
+                <strong>{formatMoney(cartTotal)}</strong>
+              </div>
+              <div className="cart-summary-row">
+                <span>Phí ship</span>
+                <strong className="shipping-fee">
+                  {shippingFee === 0 ? <del>20.000đ</del> : null}
+                  {formatMoney(shippingFee)}
+                </strong>
+              </div>
+              <div className="cart-total">
+                <span>Tổng thanh toán</span>
+                <strong>{formatMoney(orderTotal)}</strong>
+              </div>
+              <div className="checkout-flow">
+                <h3>Quy trình chốt đơn</h3>
+                <div className="checkout-step">
+                  <span>Bước 1</span>
+                  <p>Lưu ảnh đơn hàng về máy.</p>
+                  <button
+                    className="cart-capture-button"
+                    type="button"
+                    disabled={isOrderImagePreparing}
+                    onClick={onCapture}
+                  >
+                    {isOrderImagePreparing ? "Đang chuẩn bị ảnh" : "Lưu ảnh đơn hàng"}
+                  </button>
+                </div>
+                <div className="checkout-step">
+                  <span>Bước 2</span>
+                  <p>Gửi ảnh cho shop để xác nhận và thanh toán.</p>
+                  <div className="cart-share-actions">
+                    <button type="button" onClick={() => onOpenMessage("instagram")}>
+                      <Instagram size={18} aria-hidden="true" />
+                      Gửi Instagram
+                    </button>
+                    <button type="button" onClick={() => onOpenMessage("messenger")}>
+                      <MessengerIcon />
+                      Gửi Messenger
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </footer>
+          </div>
+        ) : (
+          <section className="cart-empty">
+            <ShoppingBag size={34} aria-hidden="true" />
+            <h3>Chưa có mẫu nào trong giỏ</h3>
+            <p>Chọn hoạ tiết đang còn size rồi bấm dấu cộng để thêm vào giỏ.</p>
+          </section>
+        )}
+      </aside>
+    </div>
   );
 }
 
