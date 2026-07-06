@@ -21,6 +21,10 @@
   --shadow: none;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1220,8 +1224,13 @@ button {
   display: grid;
   justify-items: end;
   background: rgba(0, 0, 0, 0.34);
+  animation: cart-backdrop-in 180ms ease both;
   overscroll-behavior: contain;
   touch-action: none;
+}
+
+.cart-backdrop.closing {
+  animation: cart-backdrop-out 240ms ease both;
 }
 
 .cart-panel {
@@ -1234,8 +1243,13 @@ button {
   background: #ffffff;
   color: #111111;
   box-shadow: -18px 0 56px rgba(0, 0, 0, 0.18);
+  animation: cart-panel-in 240ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
   overscroll-behavior: contain;
   touch-action: auto;
+}
+
+.cart-panel.closing {
+  animation: cart-panel-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .cart-header {
@@ -1694,6 +1708,46 @@ button {
   }
 }
 
+@keyframes cart-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cart-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes cart-backdrop-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes cart-panel-out {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* User storefront: clean fashion retail direction inspired by modern monochrome catalog layouts. */
 .storefront {
   --store-ink: #111111;
@@ -1712,8 +1766,8 @@ button {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: 54px;
-  padding: 8px 0;
+  height: 54px;
+  padding: 0;
   border-bottom: 1px solid var(--store-ink);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
@@ -1727,9 +1781,21 @@ button {
   text-transform: uppercase;
 }
 
-.storefront .site-header h1 {
+.site-title-button {
   grid-column: 2;
   justify-self: center;
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.storefront .site-title-button h1 {
   margin: 0;
   font-family:
     "Helvetica Neue", Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -3493,6 +3559,10 @@ button {
     padding-top: 12px;
   }
 
+  .page-shell.storefront {
+    padding-top: 0;
+  }
+
   .site-header {
     align-items: flex-start;
   }
@@ -3801,7 +3871,7 @@ button {
 }
 
 @media (max-width: 480px) {
-  .site-header h1 {
+  .site-title-button h1 {
     font-size: 1.2rem;
   }
 
@@ -3841,4 +3911,13 @@ button {
     font-size: 1.1rem;
   }
 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-backdrop,
+  .cart-backdrop.closing,
+  .cart-panel,
+  .cart-panel.closing {
+    animation: none;
+  }
 }

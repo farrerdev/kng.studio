@@ -569,6 +569,7 @@ function App() {
   const [activeImage, setActiveImage] = useState<GalleryImage | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>(() => loadStoredCartItems());
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCartClosing, setIsCartClosing] = useState(false);
   const [cartToast, setCartToast] = useState("");
   const [orderImageBlob, setOrderImageBlob] = useState<Blob | null>(null);
   const [orderImageFileName, setOrderImageFileName] = useState("");
@@ -576,6 +577,9 @@ function App() {
   const [orderImagePreviewUrl, setOrderImagePreviewUrl] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(() => getStorefrontSlugFromPath());
+  const homeScrollYRef = useRef(0);
+  const shouldRestoreHomeScrollRef = useRef(false);
+  const cartCloseTimeoutRef = useRef<number | null>(null);
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
   const storefrontProducts = useMemo(() => {
@@ -657,7 +661,27 @@ function App() {
     const nextIndex = (activeImageIndex + offset + galleryImages.length) % galleryImages.length;
     setActiveImage(galleryImages[nextIndex]);
   };
+  const openCart = () => {
+    if (cartCloseTimeoutRef.current) {
+      window.clearTimeout(cartCloseTimeoutRef.current);
+      cartCloseTimeoutRef.current = null;
+    }
+    setIsCartClosing(false);
+    setIsCartOpen(true);
+  };
+  const closeCart = () => {
+    if (!isCartOpen || isCartClosing) return;
+    setIsCartClosing(true);
+    cartCloseTimeoutRef.current = window.setTimeout(() => {
+      setIsCartOpen(false);
+      setIsCartClosing(false);
+      cartCloseTimeoutRef.current = null;
+    }, 240);
+  };
   const openProduct = (product: Product) => {
+    if (!selectedProduct) {
+      homeScrollYRef.current = window.scrollY;
+    }
     const hasSelectedSize = product.patterns.some((pattern) => pattern.availableSizes.includes(selectedSize));
     if (!hasSelectedSize) {
       const nextSize = product.patterns.flatMap((pattern) => pattern.availableSizes)[0];
@@ -667,12 +691,25 @@ function App() {
     const slug = getProductSlug(product, catalogProductTypes);
     setSelectedProductSlug(slug);
     window.history.pushState(null, "", `/${slug}`);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    window.scrollTo({ top: 0 });
+  };
+  const restoreHomeScroll = () => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: homeScrollYRef.current });
+    });
   };
   const closeProduct = () => {
     setSelectedProductSlug(null);
     window.history.pushState(null, "", "/");
-    window.scrollTo({ top: 0, behavior: "instant" });
+    restoreHomeScroll();
+  };
+  const goHeaderHome = () => {
+    setIsSidebarOpen(false);
+    if (selectedProduct) {
+      closeProduct();
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const goHomeSection = (sectionId?: string) => {
     setIsSidebarOpen(false);
@@ -793,6 +830,23 @@ function App() {
   }, [isAdminRoute]);
 
   useEffect(() => {
+    if (!("scrollRestoration" in window.history)) return;
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cartCloseTimeoutRef.current) {
+        window.clearTimeout(cartCloseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isCartOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -821,12 +875,22 @@ function App() {
 
   useEffect(() => {
     const syncProductTypeFromRoute = () => {
-      setSelectedProductSlug(getStorefrontSlugFromPath());
+      const nextSlug = getStorefrontSlugFromPath();
+      if (!nextSlug) {
+        shouldRestoreHomeScrollRef.current = true;
+      }
+      setSelectedProductSlug(nextSlug);
     };
 
     window.addEventListener("popstate", syncProductTypeFromRoute);
     return () => window.removeEventListener("popstate", syncProductTypeFromRoute);
   }, []);
+
+  useEffect(() => {
+    if (selectedProductSlug || !shouldRestoreHomeScrollRef.current) return;
+    shouldRestoreHomeScrollRef.current = false;
+    restoreHomeScroll();
+  }, [selectedProductSlug]);
 
   useEffect(() => {
     if (!selectedProduct) return;
@@ -923,12 +987,14 @@ function App() {
           >
             <Menu size={20} aria-hidden="true" />
           </button>
-          <h1>{shopConfig.brand}</h1>
+          <button className="site-title-button" type="button" onClick={goHeaderHome}>
+            <h1>{shopConfig.brand}</h1>
+          </button>
           <button
             className="site-cart-button"
             type="button"
             aria-label={`Mở giỏ hàng, ${cartQuantity} sản phẩm`}
-            onClick={() => setIsCartOpen(true)}
+            onClick={openCart}
           >
             <ShoppingBag size={20} aria-hidden="true" />
             {cartQuantity > 0 ? <span>{cartQuantity}</span> : null}
@@ -1083,10 +1149,11 @@ function App() {
       <CartOverlay
         cartItems={cartItems}
         cartTotal={cartTotal}
+        isClosing={isCartClosing}
         isOpen={isCartOpen}
         orderTotal={orderTotal}
         isOrderImagePreparing={isOrderImagePreparing}
-        onClose={() => setIsCartOpen(false)}
+        onClose={closeCart}
         onCapture={captureOrderImage}
         onOpenMessage={openOrderMessage}
         onClear={clearCart}
@@ -1377,6 +1444,7 @@ function OrderImagePreview({
 type CartOverlayProps = {
   cartItems: CartItem[];
   cartTotal: number;
+  isClosing: boolean;
   isOpen: boolean;
   orderTotal: number;
   isOrderImagePreparing: boolean;
@@ -1392,6 +1460,7 @@ type CartOverlayProps = {
 function CartOverlay({
   cartItems,
   cartTotal,
+  isClosing,
   isOpen,
   orderTotal,
   isOrderImagePreparing,
@@ -1406,8 +1475,14 @@ function CartOverlay({
   if (!isOpen) return null;
 
   return (
-    <div className="cart-backdrop" role="dialog" aria-modal="true" aria-label="Giỏ hàng" onClick={onClose}>
-      <aside className="cart-panel" onClick={(event) => event.stopPropagation()}>
+    <div
+      className={isClosing ? "cart-backdrop closing" : "cart-backdrop"}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Giỏ hàng"
+      onClick={onClose}
+    >
+      <aside className={isClosing ? "cart-panel closing" : "cart-panel"} onClick={(event) => event.stopPropagation()}>
         <header className="cart-header">
           <div>
             <span>Giỏ hàng</span>
