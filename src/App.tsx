@@ -55,6 +55,29 @@ function createCartItemId(productId: string, patternId: string, sizeId: SizeId) 
 
 const SHIPPING_FEE = 20000;
 const CART_STORAGE_KEY = "kng.studio.cart";
+const IMAGE_WIDTHS = {
+  adminThumb: 240,
+  cartThumb: 220,
+  catalog: 1200,
+  sizeChartPreview: 520,
+  orderThumb: 360,
+};
+
+function getSupabaseImageSrc(src: string, width: number, quality = 78, height = width, resize = "contain") {
+  if (!src.includes("/storage/v1/object/public/")) return src;
+
+  try {
+    const url = new URL(src, window.location.origin);
+    url.pathname = url.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+    url.searchParams.set("width", String(width));
+    url.searchParams.set("height", String(height));
+    url.searchParams.set("resize", resize);
+    url.searchParams.set("quality", String(quality));
+    return url.toString();
+  } catch {
+    return src;
+  }
+}
 
 function createOrderFileName(date = new Date()) {
   const dateParts = [
@@ -259,7 +282,12 @@ function AdminImageActionField({
         }}
       >
         {hasImage ? (
-          <img src={image.src} alt={image.alt} />
+          <img
+            src={getSupabaseImageSrc(image.src, IMAGE_WIDTHS.adminThumb, 72)}
+            alt={image.alt}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <span className="thumb-empty-state">
             <Plus size={16} aria-hidden="true" />
@@ -402,7 +430,7 @@ function loadOrderImage(src: string) {
     image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
-    image.src = src;
+    image.src = getSupabaseImageSrc(src, IMAGE_WIDTHS.orderThumb, 76);
   });
 }
 
@@ -1025,7 +1053,13 @@ function App() {
                       type="button"
                       onClick={() => openProduct(product)}
                     >
-                      <img src={coverImage.src} alt={coverImage.alt} loading="lazy" />
+                      <img
+                        src={getSupabaseImageSrc(coverImage.src, IMAGE_WIDTHS.catalog, 80)}
+                        sizes="(max-width: 760px) 50vw, 50vw"
+                        alt={coverImage.alt}
+                        loading="lazy"
+                        decoding="async"
+                      />
                       <span className="storefront-product-info">
                         <span>{productTitle}</span>
                         <strong>{formatPrice(getProductPrice(product, catalogProductTypes))}</strong>
@@ -1204,7 +1238,12 @@ function App() {
             </button>
           ) : null}
           <div className="lightbox-media" onClick={(event) => event.stopPropagation()}>
-            <img src={activeImage.src} alt={activeImage.alt} />
+            <img
+              src={getSupabaseImageSrc(activeImage.src, IMAGE_WIDTHS.catalog, 80)}
+              sizes="100vw"
+              alt={activeImage.alt}
+              decoding="async"
+            />
             <span className="lightbox-caption">{activeImage.caption}</span>
             {activeImage.cartItem ? (
               <button
@@ -1290,7 +1329,12 @@ function ProductCard({
                   <h4>Bảng size chi tiết</h4>
                   <span>Tap để xem lớn</span>
                 </div>
-                <img loading="lazy" src={sizeChartImage.src} alt={sizeChartImage.alt} />
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={getSupabaseImageSrc(sizeChartImage.src, IMAGE_WIDTHS.sizeChartPreview, 82)}
+                  alt={sizeChartImage.alt}
+                />
               </button>
               <h3 className="size-selector-title">Chọn size để xem mẫu</h3>
               <div className="size-options" role="radiogroup" aria-label="Chọn size">
@@ -1342,7 +1386,13 @@ function ProductCard({
                         })
                       }
                     >
-                      <img loading="lazy" src={pattern.image.src} alt={pattern.image.alt} />
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={getSupabaseImageSrc(pattern.image.src, IMAGE_WIDTHS.catalog, 80)}
+                        sizes="(max-width: 760px) 50vw, 50vw"
+                        alt={pattern.image.alt}
+                      />
                       <span>{pattern.name}</span>
                     </button>
                     <button
@@ -1380,7 +1430,13 @@ function ProductCard({
                     })
                   }
                 >
-                  <img loading="lazy" src={image.src} alt={image.alt} />
+                  <img
+                    loading="lazy"
+                    decoding="async"
+                    src={getSupabaseImageSrc(image.src, IMAGE_WIDTHS.catalog, 80)}
+                    sizes="(max-width: 760px) 33vw, 33vw"
+                    alt={image.alt}
+                  />
                 </button>
               ))}
             </div>
@@ -1403,7 +1459,12 @@ function ProductCard({
                   <h4>Bảng size chi tiết</h4>
                   <span>Tap để xem lớn</span>
                 </div>
-                <img loading="lazy" src={product.sizeChartImage.src} alt={product.sizeChartImage.alt} />
+                <img
+                  loading="lazy"
+                  decoding="async"
+                  src={getSupabaseImageSrc(product.sizeChartImage.src, IMAGE_WIDTHS.sizeChartPreview, 82)}
+                  alt={product.sizeChartImage.alt}
+                />
               </button>
             </section>
           ) : null}
@@ -1505,7 +1566,12 @@ function CartOverlay({
             <div className="cart-list">
               {cartItems.map((item) => (
                 <article className="cart-row" key={item.id}>
-                  <img src={item.image.src} alt={item.image.alt} />
+                  <img
+                    src={getSupabaseImageSrc(item.image.src, IMAGE_WIDTHS.cartThumb, 74)}
+                    alt={item.image.alt}
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <div className="cart-row-info">
                     <h3>{item.productName}</h3>
                     <p>{item.patternName} · {formatSelectedSize(item.sizeId)}</p>
@@ -2693,7 +2759,12 @@ function AdminPage({
             <span className="lightbox-close">
               <X size={22} aria-hidden="true" />
             </span>
-            <img src={previewImage.src} alt={previewImage.alt} />
+            <img
+              src={getSupabaseImageSrc(previewImage.src, IMAGE_WIDTHS.catalog, 80)}
+              sizes="100vw"
+              alt={previewImage.alt}
+              decoding="async"
+            />
             <span className="lightbox-caption">{previewImage.caption}</span>
           </button>
         ) : null}

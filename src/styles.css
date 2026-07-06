@@ -190,7 +190,7 @@ button {
   width: 100%;
   height: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
+  object-fit: contain;
   background: var(--soft);
 }
 
@@ -272,7 +272,7 @@ button {
   filter: none;
   image-rendering: auto;
   mix-blend-mode: normal;
-  object-fit: cover;
+  object-fit: contain;
   opacity: 1;
 }
 
@@ -751,7 +751,7 @@ button {
   filter: none;
   image-rendering: auto;
   mix-blend-mode: normal;
-  object-fit: cover;
+  object-fit: contain;
   opacity: 1;
   background: #f4eadc;
 }
@@ -1340,7 +1340,7 @@ button {
   width: 96px;
   aspect-ratio: 1;
   background: #f6f6f6;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .cart-row-info {
