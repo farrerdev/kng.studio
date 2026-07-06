@@ -581,24 +581,24 @@ function App() {
             <section className="storefront-policy" id="policy" aria-label="Quy định đặt hàng">
               <article id="gift">
                 <h3>Quà tặng</h3>
-                <p>Shop tặng dây buộc tóc scrunchies cùng họa tiết cho mỗi set.</p>
+                <p>Mỗi set được tặng kèm dây buộc tóc scrunchies cùng họa tiết với sản phẩm.</p>
               </article>
               <article id="shipping">
                 <h3>Phí ship</h3>
-                <p>Phí ship 20k. Freeship cho đơn từ 2 bộ.</p>
+                <p>Phí ship đồng giá 20k. Shop miễn phí vận chuyển cho đơn từ 2 bộ.</p>
               </article>
               <article id="payment">
                 <h3>Thanh toán</h3>
-                <p>Thanh toán trước.</p>
+                <p>Khách hàng vui lòng thanh toán trước để shop xác nhận và chuẩn bị đơn.</p>
               </article>
               <article id="returns">
                 <h3>Đổi hàng</h3>
                 <ul>
-                  <li>Khách hàng vui lòng quay lại video khi nhận sản phẩm và bóc hàng.</li>
-                  <li>Đổi với sản phẩm lỗi do nhà sản xuất hoặc giao sai mẫu, KNG chịu trách nhiệm đổi 1-1 và chịu toàn bộ chi phí.</li>
-                  <li>Đổi với sản phẩm không ưng hoặc không vừa hoàn toàn có thể đổi qua sản phẩm khác ngang giá hoặc bằng giá sản phẩm cũ, đổi trong vòng 3 ngày tính từ ngày nhận hàng.</li>
-                  <li>Khách hàng chịu 1 đầu phí ship đổi, KNG hỗ trợ khách 1 đầu ship quay về.</li>
-                  <li>Lưu ý: chỉ hỗ trợ đổi 1 lần duy nhất.</li>
+                  <li>Khách hàng vui lòng quay video khi nhận hàng và mở gói sản phẩm.</li>
+                  <li>Với sản phẩm lỗi do nhà sản xuất hoặc shop giao sai mẫu, KNG hỗ trợ đổi 1-1 và chịu toàn bộ chi phí đổi hàng.</li>
+                  <li>Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác ngang giá hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.</li>
+                  <li>Khách hàng chịu 1 đầu phí ship đổi hàng, KNG hỗ trợ 1 đầu ship gửi lại.</li>
+                  <li>Lưu ý: shop chỉ hỗ trợ đổi 1 lần duy nhất.</li>
                 </ul>
               </article>
             </section>
