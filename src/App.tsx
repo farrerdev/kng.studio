@@ -8,8 +8,10 @@ import {
   ChevronUp,
   Eye,
   Menu,
+  Star,
   Image,
   Instagram,
+  MapPin,
   PackageCheck,
   Plus,
   RotateCcw,
@@ -56,32 +58,14 @@ function getProductPrice(product: Product, productTypes: ProductType[]) {
   return getProductType(product, productTypes)?.price ?? product.price;
 }
 
-function getProductTypeCoverImage(productType: ProductType, products: Product[]): ProductImage {
-  if (productType.coverImage.src.trim()) {
-    return productType.coverImage;
-  }
-
-  const firstPatternImage = products.find((product) => product.productTypeId === productType.id)?.patterns[0]?.image;
-  return (
-    firstPatternImage ?? {
-      id: `${productType.id}-cover-fallback`,
-      src: "/images/shop-info.webp",
-      alt: `Ảnh bìa ${productType.name || "loại sản phẩm"}`,
-    }
-  );
-}
-
-function getProductCoverImage(product: Product, productTypes: ProductType[], products: Product[]): ProductImage {
+function getProductCoverImage(product: Product, productTypes: ProductType[], _products: Product[]): ProductImage {
   const firstPatternImage = product.patterns[0]?.image;
   if (firstPatternImage) return firstPatternImage;
-
-  const productType = getProductType(product, productTypes);
-  if (productType) return getProductTypeCoverImage(productType, products);
 
   return {
     id: `${product.id}-cover-fallback`,
     src: "/images/shop-info.webp",
-    alt: `Ảnh bìa ${product.name || "sản phẩm"}`,
+    alt: `Ảnh bìa ${getProductTitle(product, productTypes)}`,
   };
 }
 
@@ -262,6 +246,43 @@ function MessengerIcon() {
   );
 }
 
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M15.12 8.18h-2.02V6.86c0-.49.33-.61.56-.61h1.43V4.01L13.12 4c-2.19 0-2.69 1.64-2.69 2.69v1.49H8.98v2.31h1.45V17h2.67v-6.51h1.8l.22-2.31Z"
+      />
+    </svg>
+  );
+}
+
+function InstagramBrandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M7.75 2h8.5A5.76 5.76 0 0 1 22 7.75v8.5A5.76 5.76 0 0 1 16.25 22h-8.5A5.76 5.76 0 0 1 2 16.25v-8.5A5.76 5.76 0 0 1 7.75 2Zm0 2A3.75 3.75 0 0 0 4 7.75v8.5A3.75 3.75 0 0 0 7.75 20h8.5A3.75 3.75 0 0 0 20 16.25v-8.5A3.75 3.75 0 0 0 16.25 4h-8.5Zm8.8 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+      />
+    </svg>
+  );
+}
+
+function ThreadsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M17.86 10.3c-.11-1.95-.78-3.49-1.98-4.55C14.9 4.88 13.57 4.43 12 4.43c-2.66 0-4.57 1.52-5.32 4.18l1.89.51c.5-1.83 1.63-2.75 3.4-2.75 2.15 0 3.42 1.25 3.67 3.61a8.9 8.9 0 0 0-3.08-.44c-2.72.16-4.46 1.52-4.35 3.4.06.96.59 1.79 1.48 2.34.76.47 1.73.69 2.74.63 1.34-.08 2.39-.66 3.03-1.68.49-.78.7-1.79.65-2.96 1.33.8 2.04 1.95 1.89 3.28-.2 1.77-1.78 3.57-5.66 3.84-3.52.25-6.18-1.02-7.5-3.57-1.2-2.33-1.25-6.15 1.68-8.86C8.02 4.58 9.89 3.91 12.09 3.9c2.22-.02 4.02.69 5.35 2.1 1.33 1.4 2.04 3.42 2.12 6h1.94c-.08-3.08-.98-5.53-2.65-7.29C17.14 2.92 14.88 2 12.08 2 9.4 2.02 7.06 2.87 5.31 4.49 1.78 7.74 1.84 12.49 3.11 15.3c1.53 3.38 4.91 5.19 9.36 4.88 4.57-.32 7.07-2.55 7.43-5.39.25-2.03-.52-3.56-2.04-4.49Zm-5.53 3.68c-1.12.07-2.11-.38-2.16-1.16-.04-.58.4-1.24 2.5-1.36.27-.02.54-.03.79-.03.85 0 1.6.11 2.22.31-.06 1.46-.78 2.15-2.35 2.24Z"
+      />
+    </svg>
+  );
+}
+
+function ZaloIcon() {
+  return <span className="zalo-mark" aria-hidden="true">Zalo</span>;
+}
+
 function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
   return catalogProducts
     .map((product) => ({
@@ -280,7 +301,7 @@ function getProductGalleryImages(product: Product, productTypes: ProductType[]):
     })),
     ...product.modelImages.map((image, index) => ({
       ...image,
-      caption: `${productTitle} - ảnh mẫu ${index + 1}`,
+      caption: `${productTitle} - ảnh mẫu & chi tiết ${index + 1}`,
     })),
   ];
 }
@@ -571,8 +592,14 @@ function App() {
                 <p>Thanh toán trước.</p>
               </article>
               <article id="returns">
-                <h3>Đổi trả</h3>
-                <p>Shop hỗ trợ trả hàng trong trường hợp sai sản phẩm hoặc sản phẩm lỗi.</p>
+                <h3>Đổi hàng</h3>
+                <ul>
+                  <li>Khách hàng vui lòng quay lại video khi nhận sản phẩm và bóc hàng.</li>
+                  <li>Đổi với sản phẩm lỗi do nhà sản xuất hoặc giao sai mẫu, KNG chịu trách nhiệm đổi 1-1 và chịu toàn bộ chi phí.</li>
+                  <li>Đổi với sản phẩm không ưng hoặc không vừa hoàn toàn có thể đổi qua sản phẩm khác ngang giá hoặc bằng giá sản phẩm cũ, đổi trong vòng 3 ngày tính từ ngày nhận hàng.</li>
+                  <li>Khách hàng chịu 1 đầu phí ship đổi, KNG hỗ trợ khách 1 đầu ship quay về.</li>
+                  <li>Lưu ý: chỉ hỗ trợ đổi 1 lần duy nhất.</li>
+                </ul>
               </article>
             </section>
           </>
@@ -614,6 +641,8 @@ function App() {
         ) : null}
       </main>
 
+      <StorefrontFooter />
+
       <div className={isSidebarOpen ? "storefront-sidebar-backdrop open" : "storefront-sidebar-backdrop"} onClick={() => setIsSidebarOpen(false)} />
       <aside className={isSidebarOpen ? "storefront-sidebar open" : "storefront-sidebar"} aria-label="Menu điều hướng" aria-hidden={!isSidebarOpen}>
         <div className="storefront-sidebar-header">
@@ -653,7 +682,7 @@ function App() {
           <button type="button" onClick={() => goHomeSection("gift")}>Quà tặng</button>
           <button type="button" onClick={() => goHomeSection("shipping")}>Phí ship</button>
           <button type="button" onClick={() => goHomeSection("payment")}>Thanh toán</button>
-          <button type="button" onClick={() => goHomeSection("returns")}>Đổi trả</button>
+          <button type="button" onClick={() => goHomeSection("returns")}>Đổi hàng</button>
         </nav>
       </aside>
 
@@ -803,9 +832,9 @@ function ProductCard({
           </section>
 
           {product.modelImages.length > 0 ? (
-          <section aria-label={`Ảnh mẫu mặc ${productTitle}`}>
+          <section aria-label={`Ảnh mẫu & chi tiết sản phẩm ${productTitle}`}>
             <div className="section-title">
-              <h4>Ảnh mẫu mặc</h4>
+              <h4>Ảnh mẫu &amp; chi tiết sản phẩm</h4>
               <span>Tap để xem lớn</span>
             </div>
             <div className="model-grid">
@@ -817,7 +846,7 @@ function ProductCard({
                   onClick={() =>
                     onImageOpen({
                       ...image,
-                      caption: `${productTitle} - ảnh mẫu ${index + 1}`,
+                      caption: `${productTitle} - ảnh mẫu & chi tiết ${index + 1}`,
                     })
                   }
                 >
@@ -858,7 +887,7 @@ function ContactButtons() {
     <div className="contact-buttons" aria-label="Nhắn tin đặt hàng">
       <a
         className="contact-button instagram"
-        href={shopConfig.contacts.instagram}
+        href={shopConfig.contacts.instagramMessage}
         target="_blank"
         rel="noreferrer"
         aria-label="Nhắn tin KNG.studio qua Instagram"
@@ -877,6 +906,45 @@ function ContactButtons() {
         <span>Messenger</span>
       </a>
     </div>
+  );
+}
+
+function StorefrontFooter() {
+  const footerLinks = [
+    { icon: <FacebookIcon />, name: "Facebook", href: shopConfig.contacts.facebook, className: "facebook" },
+    { icon: <InstagramBrandIcon />, name: "Instagram", href: shopConfig.contacts.instagram, className: "instagram" },
+    { icon: <ZaloIcon />, name: "Zalo", href: shopConfig.contacts.zalo, className: "zalo" },
+    { icon: <ThreadsIcon />, name: "Threads", href: shopConfig.contacts.threads, className: "threads" },
+  ];
+
+  return (
+    <footer className="storefront-footer" aria-label="Thông tin KNG.studio">
+      <div className="storefront-footer-inner">
+        <div className="storefront-footer-brand">
+          <span>{shopConfig.subtitle}</span>
+          <h2>{shopConfig.brand}</h2>
+        </div>
+        <address className="storefront-footer-address">
+          <MapPin size={16} aria-hidden="true" />
+          <span>Ngũ Hành Sơn, Đà Nẵng</span>
+        </address>
+        <nav className="storefront-footer-socials" aria-label="Kênh liên hệ">
+          {footerLinks.map((link) => (
+            <a
+              className={`storefront-footer-social ${link.className}`}
+              href={link.href}
+              key={link.name}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={link.name}
+            >
+              {link.icon}
+            </a>
+          ))}
+        </nav>
+        <p>©2026 KNG.studio. Cảm ơn bạn đã ủng hộ shop.</p>
+      </div>
+    </footer>
   );
 }
 
@@ -1137,6 +1205,20 @@ function AdminPage({
     updatePattern(productId, pattern.id, { availableSizes });
   };
 
+  const setPatternAsCover = (productId: string, patternId: string) => {
+    onProductsChange((currentProducts) =>
+      currentProducts.map((product) => {
+        if (product.id !== productId) return product;
+        const patternIndex = product.patterns.findIndex((pattern) => pattern.id === patternId);
+        if (patternIndex <= 0) return product;
+        const nextPatterns = [...product.patterns];
+        const [coverPattern] = nextPatterns.splice(patternIndex, 1);
+        nextPatterns.unshift(coverPattern);
+        return { ...product, patterns: nextPatterns };
+      }),
+    );
+  };
+
   const addProduct = (productTypeId = selectedAdminProductType?.id ?? defaultProductType?.id) => {
     const id = createId("product");
     const productType =
@@ -1196,7 +1278,7 @@ function AdminPage({
   };
 
   const addModelImage = (productId: string, src: string) => {
-    const newImage = createImage(createId("model-image"), src, "Ảnh mẫu mặc");
+    const newImage = createImage(createId("model-image"), src, "Ảnh mẫu & chi tiết sản phẩm");
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
         product.id === productId ? { ...product, modelImages: [...product.modelImages, newImage] } : product,
@@ -1205,7 +1287,7 @@ function AdminPage({
   };
 
   const addModelImages = (productId: string, urls: string[]) => {
-    const newImages = urls.map((url) => createImage(createId("model-image"), url, "Ảnh mẫu mặc"));
+    const newImages = urls.map((url) => createImage(createId("model-image"), url, "Ảnh mẫu & chi tiết sản phẩm"));
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
         product.id === productId ? { ...product, modelImages: [...product.modelImages, ...newImages] } : product,
@@ -1229,6 +1311,17 @@ function AdminPage({
           ? { ...product, modelImages: product.modelImages.filter((image) => image.id !== imageId) }
           : product,
       ),
+    );
+  };
+
+  const reorderModelImage = (productId: string, imageId: string, direction: -1 | 1) => {
+    onProductsChange((currentProducts) =>
+      currentProducts.map((product) => {
+        if (product.id !== productId) return product;
+        const imageIndex = product.modelImages.findIndex((image) => image.id === imageId);
+        if (imageIndex === -1) return product;
+        return { ...product, modelImages: moveItem(product.modelImages, imageIndex, direction) };
+      }),
     );
   };
 
@@ -1478,24 +1571,6 @@ function AdminPage({
                     {isTypeExpanded ? (
                       <div className="product-type-row">
                         <AdminImageActionField
-                          ariaLabel={`Mở tùy chọn ảnh bìa ${productType.name || "loại sản phẩm"}`}
-                          caption={`Ảnh bìa ${productType.name || "loại sản phẩm"}`}
-                          className="product-type-cover-field"
-                          image={productType.coverImage}
-                          onPreview={setPreviewImage}
-                          onFileSelected={(file) =>
-                            uploadImage(file, `product-types/${productType.id}`, (url) =>
-                              updateProductType(productType.id, {
-                                coverImage: {
-                                  ...productType.coverImage,
-                                  src: url,
-                                  alt: productType.coverImage.alt || `Ảnh bìa ${productType.name}`,
-                                },
-                              }),
-                            )
-                          }
-                        />
-                        <AdminImageActionField
                           ariaLabel={`Mở tùy chọn bảng size ${productType.name || "loại sản phẩm"}`}
                           caption={`Bảng size ${productType.name || "loại sản phẩm"}`}
                           className="product-type-size-field"
@@ -1677,7 +1752,7 @@ function AdminPage({
                   <div className="admin-card">
                     <h3>Họa tiết &amp; tồn size</h3>
                     <div className="pattern-row-list">
-                      {product.patterns.map((pattern) => (
+                      {product.patterns.map((pattern, patternIndex) => (
                         <article className="pattern-row" key={pattern.id}>
                           <AdminImageActionField
                             ariaLabel={`Mở tùy chọn ảnh ${pattern.name || "họa tiết"}`}
@@ -1721,14 +1796,26 @@ function AdminPage({
                             </div>
                           </div>
 
-                          <button
-                            className="icon-button danger pattern-delete"
-                            type="button"
-                            aria-label={`Xóa ${pattern.name}`}
-                            onClick={() => removePattern(product.id, pattern.id)}
-                          >
-                            <Trash2 size={16} aria-hidden="true" />
-                          </button>
+                          <div className="pattern-actions">
+                            <button
+                              className={patternIndex === 0 ? "icon-button active cover-pattern-button" : "icon-button cover-pattern-button"}
+                              type="button"
+                              aria-label={`${patternIndex === 0 ? "Đang là" : "Đặt làm"} ảnh bìa ${pattern.name || "họa tiết"}`}
+                              aria-pressed={patternIndex === 0}
+                              onClick={() => setPatternAsCover(product.id, pattern.id)}
+                              title={patternIndex === 0 ? "Ảnh bìa" : "Đặt làm ảnh bìa"}
+                            >
+                              <Star size={15} aria-hidden="true" fill={patternIndex === 0 ? "currentColor" : "none"} />
+                            </button>
+                            <button
+                              className="icon-button danger pattern-delete"
+                              type="button"
+                              aria-label={`Xóa ${pattern.name}`}
+                              onClick={() => removePattern(product.id, pattern.id)}
+                            >
+                              <Trash2 size={16} aria-hidden="true" />
+                            </button>
+                          </div>
                         </article>
                       ))}
                     </div>
@@ -1750,13 +1837,13 @@ function AdminPage({
                   </div>
 
                   <div className="admin-card">
-                    <h3>Ảnh mẫu mặc</h3>
+                    <h3>Ảnh mẫu &amp; chi tiết sản phẩm</h3>
                     <div className="admin-image-wrap">
-                      {product.modelImages.map((image) => (
+                      {product.modelImages.map((image, imageIndex) => (
                         <div className="admin-image-wrap-item" key={image.id}>
                           <AdminImageActionField
-                            ariaLabel="Mở tùy chọn ảnh mẫu mặc"
-                            caption="Ảnh mẫu mặc"
+                            ariaLabel="Mở tùy chọn ảnh mẫu & chi tiết sản phẩm"
+                            caption="Ảnh mẫu & chi tiết sản phẩm"
                             image={image}
                             onPreview={setPreviewImage}
                             onFileSelected={(file) =>
@@ -1765,20 +1852,40 @@ function AdminPage({
                               )
                             }
                           />
-                          <button
-                            className="icon-button danger pattern-delete"
-                            type="button"
-                            onClick={() => removeModelImage(product.id, image.id)}
-                            aria-label="Xóa ảnh mẫu mặc"
-                          >
-                            <Trash2 size={14} aria-hidden="true" />
-                          </button>
+                          <div className="model-image-actions" aria-label="Sắp xếp ảnh mẫu & chi tiết sản phẩm">
+                            <button
+                              className="icon-button"
+                              type="button"
+                              disabled={imageIndex === 0}
+                              onClick={() => reorderModelImage(product.id, image.id, -1)}
+                              aria-label="Đưa ảnh lên trước"
+                            >
+                              <ArrowUp size={13} aria-hidden="true" />
+                            </button>
+                            <button
+                              className="icon-button"
+                              type="button"
+                              disabled={imageIndex === product.modelImages.length - 1}
+                              onClick={() => reorderModelImage(product.id, image.id, 1)}
+                              aria-label="Đưa ảnh xuống sau"
+                            >
+                              <ArrowDown size={13} aria-hidden="true" />
+                            </button>
+                            <button
+                              className="icon-button danger model-delete"
+                              type="button"
+                              onClick={() => removeModelImage(product.id, image.id)}
+                              aria-label="Xóa ảnh mẫu & chi tiết sản phẩm"
+                            >
+                              <Trash2 size={13} aria-hidden="true" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                     <label className="admin-button small full-width file-button">
                       <Plus size={16} aria-hidden="true" />
-                      Thêm ảnh mẫu mặc
+                      Thêm ảnh mẫu & chi tiết sản phẩm
                       <input
                         type="file"
                         accept="image/*"
@@ -1801,7 +1908,7 @@ function AdminPage({
             {selectedTypeProducts.length === 0 ? (
               <section className="admin-empty compact">
                 <h2>Chưa có sản phẩm trong loại này</h2>
-                <p>Thêm sản phẩm mới để bắt đầu nhập họa tiết và ảnh mẫu mặc.</p>
+                <p>Thêm sản phẩm mới để bắt đầu nhập họa tiết và ảnh mẫu & chi tiết sản phẩm.</p>
               </section>
             ) : null}
 

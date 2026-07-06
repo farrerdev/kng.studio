@@ -158,7 +158,7 @@ async function fetchStorageModelImages(productIds: string[]) {
           return {
             id: `storage-${productId}-${file.id ?? file.name}`,
             src: publicUrl.data.publicUrl,
-            alt: `Ảnh mẫu mặc ${index + 1}`,
+            alt: `Ảnh mẫu & chi tiết sản phẩm ${index + 1}`,
           };
         });
 
@@ -278,8 +278,8 @@ export async function saveCatalog(catalog: {
     id: productType.id,
     name: productType.name,
     price: productType.price,
-    cover_image_src: productType.coverImage.src,
-    cover_image_alt: productType.coverImage.alt,
+    cover_image_src: "",
+    cover_image_alt: "",
     size_chart_image_src: productType.sizeChartImage.src,
     size_chart_image_alt: productType.sizeChartImage.alt,
     sort_order: index,
