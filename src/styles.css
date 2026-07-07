@@ -302,23 +302,25 @@ button {
 }
 
 .cart-checkout-cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
 
 .cart-checkout-cta.compact {
-  margin-top: 18px;
+  margin-top: 4px;
+  border-top: 0;
 }
 
 .cart-checkout-cta div {
   display: grid;
+  justify-items: center;
   gap: 3px;
   min-width: 0;
+  text-align: center;
 }
 
 .cart-checkout-cta span {
@@ -1630,25 +1632,6 @@ button {
   line-height: 1.45;
 }
 
-.cart-toast {
-  position: fixed;
-  right: 16px;
-  bottom: 72px;
-  z-index: 120;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: min(320px, calc(100vw - 32px));
-  min-height: 42px;
-  padding: 0 14px;
-  background: #111111;
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
-  animation: cart-toast-in 1.5s ease both;
-}
-
 .order-preview-backdrop {
   position: fixed;
   inset: 0;
@@ -1749,21 +1732,21 @@ button {
   cursor: pointer;
 }
 
-@keyframes cart-toast-in {
+@keyframes site-cart-tooltip-in {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(-4px) scale(0.98);
   }
 
-  14%,
-  82% {
+  12%,
+  84% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 
   100% {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(-3px) scale(0.98);
   }
 }
 
@@ -1892,7 +1875,7 @@ button {
   cursor: pointer;
 }
 
-.site-cart-button span {
+.site-cart-badge {
   position: absolute;
   top: 2px;
   right: 0;
@@ -1908,6 +1891,40 @@ button {
   font-size: 0.62rem;
   font-weight: 800;
   line-height: 1;
+}
+
+.site-cart-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 32px));
+  min-height: 32px;
+  padding: 7px 11px;
+  background: var(--store-ink);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 720;
+  line-height: 1.25;
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+  animation: site-cart-tooltip-in 2.8s ease both;
+}
+
+.site-cart-tooltip::before {
+  position: absolute;
+  top: -5px;
+  right: 13px;
+  width: 10px;
+  height: 10px;
+  background: var(--store-ink);
+  content: "";
+  transform: rotate(45deg);
 }
 
 .storefront .location-pill {
@@ -3930,16 +3947,6 @@ button {
 }
 
 @media (max-width: 480px) {
-  .cart-checkout-cta {
-    display: grid;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .cart-checkout-cta button {
-    width: 100%;
-  }
-
   .site-title-button h1 {
     font-size: 1.2rem;
   }

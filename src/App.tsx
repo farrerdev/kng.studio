@@ -365,12 +365,11 @@ function CartCheckoutCta({ cartQuantity, onClick, compact = false }: CartCheckou
   return (
     <section className={compact ? "cart-checkout-cta compact" : "cart-checkout-cta"} aria-label="Đi tới giỏ hàng">
       <div>
-        <span>Đã chọn {cartQuantity} sản phẩm</span>
-        <strong>Sẵn sàng chốt đơn?</strong>
+        <span>{cartQuantity} sản phẩm trong giỏ hàng</span>
       </div>
       <button type="button" onClick={onClick}>
         <ShoppingBag size={18} aria-hidden="true" />
-        Xem giỏ hàng
+        Chốt đơn ngay
       </button>
     </section>
   );
@@ -624,6 +623,8 @@ function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCartClosing, setIsCartClosing] = useState(false);
   const [cartToast, setCartToast] = useState("");
+  const [cartToastKey, setCartToastKey] = useState(0);
+  const hasShownStoredCartPrompt = useRef(cartItems.length === 0);
   const [orderImageBlob, setOrderImageBlob] = useState<Blob | null>(null);
   const [orderImageFileName, setOrderImageFileName] = useState("");
   const [isOrderImagePreparing, setIsOrderImagePreparing] = useState(false);
@@ -722,6 +723,10 @@ function App() {
     setIsCartClosing(false);
     setIsCartOpen(true);
   };
+  const showCartTooltip = (message: string) => {
+    setCartToast(message);
+    setCartToastKey((currentKey) => currentKey + 1);
+  };
   const closeCart = () => {
     if (!isCartOpen || isCartClosing) return;
     setIsCartClosing(true);
@@ -794,7 +799,7 @@ function App() {
       }
       return [...currentItems, { ...item, quantity: 1 }];
     });
-    setCartToast(`Đã thêm ${item.patternName}`);
+    showCartTooltip(`Đã thêm ${item.patternName}`);
   };
   const updateCartQuantity = (itemId: string, quantity: number) => {
     setCartItems((currentItems) =>
@@ -922,9 +927,19 @@ function App() {
 
   useEffect(() => {
     if (!cartToast) return;
-    const timeoutId = window.setTimeout(() => setCartToast(""), 1500);
+    const timeoutId = window.setTimeout(() => setCartToast(""), 2800);
     return () => window.clearTimeout(timeoutId);
   }, [cartToast]);
+
+  useEffect(() => {
+    if (hasShownStoredCartPrompt.current || cartQuantity <= 0 || isCartOpen) return;
+    const timeoutId = window.setTimeout(() => {
+      if (hasShownStoredCartPrompt.current) return;
+      hasShownStoredCartPrompt.current = true;
+      showCartTooltip(`${cartQuantity} sản phẩm trong giỏ hàng, chốt đơn ngay`);
+    }, 600);
+    return () => window.clearTimeout(timeoutId);
+  }, [cartQuantity, isCartOpen]);
 
   useEffect(() => {
     const syncProductTypeFromRoute = () => {
@@ -1050,7 +1065,12 @@ function App() {
             onClick={openCart}
           >
             <ShoppingBag size={20} aria-hidden="true" />
-            {cartQuantity > 0 ? <span>{cartQuantity}</span> : null}
+            {cartQuantity > 0 ? <span className="site-cart-badge">{cartQuantity}</span> : null}
+            {cartToast ? (
+              <span className="site-cart-tooltip" key={cartToastKey} role="status" aria-live="polite">
+                {cartToast}
+              </span>
+            ) : null}
           </button>
         </header>
 
@@ -1222,13 +1242,6 @@ function App() {
         onRemove={removeCartItem}
         shippingFee={shippingFee}
       />
-
-      {cartToast ? (
-        <div className="cart-toast" role="status" aria-live="polite">
-          <ShoppingBag size={17} aria-hidden="true" />
-          {cartToast}
-        </div>
-      ) : null}
 
       {orderImagePreviewUrl ? (
         <OrderImagePreview
