@@ -167,7 +167,7 @@ button {
 
 .product-type-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   gap: 14px;
 }
 
@@ -246,7 +246,7 @@ button {
 
 .storefront-product-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
   gap: 28px 10px;
 }
 
@@ -764,11 +764,11 @@ button {
 }
 
 .pattern-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 156px), 1fr));
 }
 
 .model-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
 }
 
 .image-tile,
@@ -2177,6 +2177,7 @@ button {
 }
 
 .storefront .storefront-product-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
   gap: 28px 10px;
 }
 
@@ -2384,12 +2385,12 @@ button {
 }
 
 .storefront .pattern-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 176px), 1fr));
   gap: 16px;
 }
 
 .storefront .model-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr));
   gap: 16px;
 }
 
@@ -3038,25 +3039,27 @@ button {
 
 .pattern-row-list {
   display: grid;
-  gap: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   min-width: 0;
 }
 
 .pattern-row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 38px;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
   align-items: start;
   gap: 12px;
   min-width: 0;
   padding: 12px;
-  border-bottom: 1px solid rgba(234, 223, 206, 0.78);
+  border: 1px solid rgba(234, 223, 206, 0.78);
+  background: var(--paper);
 }
 
 .pattern-row:last-child {
-  border-bottom: 0;
+  border-bottom: 1px solid rgba(234, 223, 206, 0.78);
 }
 
 .pattern-thumb-field {
@@ -3232,8 +3235,8 @@ button {
 
 
 .admin-image-wrap {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 84px);
   gap: 16px;
   padding: 8px 0;
 }
@@ -3712,10 +3715,22 @@ button {
 
   .pattern-grid,
   .model-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
   }
 
   .pattern-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storefront .pattern-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storefront .model-grid {
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  }
+
+  .storefront .storefront-product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3884,7 +3899,7 @@ button {
   }
 
   .product-type-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
 
   .catalog-layout {
@@ -3942,7 +3957,7 @@ button {
 
 @media (min-width: 1180px) {
   .product-type-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   }
 }
 
@@ -3957,10 +3972,22 @@ button {
 
   .pattern-grid,
   .model-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   }
 
   .pattern-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storefront .pattern-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storefront .model-grid {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  }
+
+  .storefront .storefront-product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
