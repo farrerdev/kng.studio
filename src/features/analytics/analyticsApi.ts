@@ -25,8 +25,27 @@ export type StorefrontEventRow = {
   created_at: string;
 };
 
+const ANALYTICS_OPT_OUT_STORAGE_KEY = "kng_analytics_opt_out";
+const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function isBrowserLocalhost() {
+  if (typeof window === "undefined") return false;
+  return LOCALHOST_NAMES.has(window.location.hostname);
+}
+
+function isAnalyticsOptedOutDevice() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "1";
+}
+
+export function markAnalyticsOptOutDevice() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "1");
+}
+
 export async function trackStorefrontEvent(event: StorefrontEventInput): Promise<void> {
   if (!supabase) return;
+  if (isBrowserLocalhost() || isAnalyticsOptedOutDevice()) return;
 
   try {
     await supabase.from("storefront_events").insert({

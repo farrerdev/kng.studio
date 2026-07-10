@@ -2,7 +2,6 @@ import type { StorefrontEventRow, StorefrontEventType } from "../../analytics/an
 import {
   getLocalDateInputValue,
   getLocalMonthInputValue,
-  getStorefrontStatsFilterLabel,
   type StorefrontStatsFilter,
 } from "../../analytics/statsFilters";
 import {
@@ -19,26 +18,9 @@ type InterestRow = {
   total: number;
 };
 
-const STOREFRONT_EVENT_LABELS: Record<StorefrontEventType, string> = {
-  site_visit: "Truy cập",
-  product_view: "Xem sản phẩm",
-  pattern_view: "Xem họa tiết",
-  add_to_cart: "Thêm giỏ",
-  order_image_created: "Tạo ảnh đơn",
-  message_click: "Mở nhắn tin",
-};
-
-const CHART_EVENT_TYPES: StorefrontEventType[] = [
-  "site_visit",
-  "product_view",
-  "add_to_cart",
-  "order_image_created",
-  "message_click",
-];
-
 const FILTER_TABS: Array<{ mode: StorefrontStatsFilter["mode"]; label: string }> = [
-  { mode: "yesterday", label: "Hôm qua" },
   { mode: "today", label: "Hôm nay" },
+  { mode: "yesterday", label: "Hôm qua" },
   { mode: "7d", label: "7 ngày" },
   { mode: "30d", label: "30 ngày" },
   { mode: "day", label: "Theo ngày" },
@@ -120,101 +102,79 @@ export function AdminStatsDashboard({
     { id: "order_image_created", label: "Tạo ảnh đơn", value: eventCounts.order_image_created },
     { id: "message_click", label: "Mở tin nhắn", value: eventCounts.message_click },
   ];
-  const maxEventCount = Math.max(1, ...CHART_EVENT_TYPES.map((eventType) => eventCounts[eventType]));
   const selectedDate = filter.mode === "day" ? filter.date : getLocalDateInputValue();
   const selectedMonth = filter.mode === "month" ? filter.month : getLocalMonthInputValue();
 
   return (
     <section className="admin-dashboard admin-stats-screen" aria-label="Thống kê hành vi khách">
-      <header className="admin-stats-header">
-        <div>
-          <span className="eyebrow">Behavior analytics</span>
-          <h2>Thống kê hành vi khách</h2>
-          <p>{isLoading ? "Đang tải số liệu..." : `Dữ liệu ẩn danh trong ${getStorefrontStatsFilterLabel(filter)}.`}</p>
-        </div>
-        <div className="admin-stats-controls">
-          <div className="admin-segmented" aria-label="Khoảng thời gian thống kê">
-            {FILTER_TABS.map((tab) => (
-              <button
-                className={filter.mode === tab.mode ? "active" : ""}
-                key={tab.mode}
-                type="button"
-                onClick={() => {
-                  if (tab.mode === "day") {
-                    onFilterChange({ mode: "day", date: selectedDate });
-                    return;
-                  }
-                  if (tab.mode === "month") {
-                    onFilterChange({ mode: "month", month: selectedMonth });
-                    return;
-                  }
-                  onFilterChange({ mode: tab.mode });
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          {filter.mode === "day" ? (
-            <input
-              aria-label="Chọn ngày thống kê"
-              type="date"
-              value={selectedDate}
-              onChange={(event) => {
-                if (event.target.value) onFilterChange({ mode: "day", date: event.target.value });
+      <div className="admin-stats-filterbar" aria-busy={isLoading}>
+        <div className="admin-segmented" aria-label="Khoảng thời gian thống kê">
+          {FILTER_TABS.map((tab) => (
+            <button
+              className={filter.mode === tab.mode ? "active" : ""}
+              key={tab.mode}
+              type="button"
+              onClick={() => {
+                if (tab.mode === "day") {
+                  onFilterChange({ mode: "day", date: selectedDate });
+                  return;
+                }
+                if (tab.mode === "month") {
+                  onFilterChange({ mode: "month", month: selectedMonth });
+                  return;
+                }
+                onFilterChange({ mode: tab.mode });
               }}
-            />
-          ) : null}
-          {filter.mode === "month" ? (
-            <input
-              aria-label="Chọn tháng thống kê"
-              type="month"
-              value={selectedMonth}
-              onChange={(event) => {
-                if (event.target.value) onFilterChange({ mode: "month", month: event.target.value });
-              }}
-            />
-          ) : null}
-        </div>
-      </header>
-
-      <section className="admin-overview-section" aria-label="Tổng quan hành vi khách">
-        <h3>Tổng quan</h3>
-        <div className="admin-stats event-stats" aria-label="Hành vi khách">
-          {overviewItems.map((item) => (
-            <div key={item.id}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
-      </section>
+        {filter.mode === "day" ? (
+          <input
+            aria-label="Chọn ngày thống kê"
+            type="date"
+            value={selectedDate}
+            onChange={(event) => {
+              if (event.target.value) onFilterChange({ mode: "day", date: event.target.value });
+            }}
+          />
+        ) : null}
+        {filter.mode === "month" ? (
+          <input
+            aria-label="Chọn tháng thống kê"
+            type="month"
+            value={selectedMonth}
+            onChange={(event) => {
+              if (event.target.value) onFilterChange({ mode: "month", month: event.target.value });
+            }}
+          />
+        ) : null}
+      </div>
 
-      <section className="admin-chart-card" aria-label="Biểu đồ hành vi khách">
-        <h3>Hành vi theo loại tương tác</h3>
-        <div className="admin-bar-chart">
-          {CHART_EVENT_TYPES.map((eventType) => {
-            const count = eventCounts[eventType];
-            return (
-              <div className="admin-bar-row" key={eventType}>
-                <span>{STOREFRONT_EVENT_LABELS[eventType]}</span>
-                <div>
-                  <i style={{ width: count === 0 ? "0%" : `${Math.max(4, (count / maxEventCount) * 100)}%` }} />
-                </div>
-                <strong>{count}</strong>
+      <section className="admin-dashboard-group" aria-label="Tổng quan hành vi khách">
+        <h3>Tổng quan</h3>
+        <div className="admin-overview-section">
+          <div className="admin-stats event-stats" aria-label="Hành vi khách">
+            {overviewItems.map((item) => (
+              <div key={item.id}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </section>
 
-      <div className="admin-insight-grid single">
-        <AdminInterestTable
-          emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
-          rows={productRows}
-          title="Sản phẩm được quan tâm"
-        />
-      </div>
+      <section className="admin-dashboard-group" aria-label="Sản phẩm được quan tâm">
+        <h3>Sản phẩm được quan tâm</h3>
+        <div className="admin-insight-grid single">
+          <AdminInterestTable
+            emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
+            rows={productRows}
+          />
+        </div>
+      </section>
     </section>
   );
 }
@@ -222,15 +182,12 @@ export function AdminStatsDashboard({
 function AdminInterestTable({
   emptyText,
   rows,
-  title,
 }: {
   emptyText: string;
   rows: InterestRow[];
-  title: string;
 }) {
   return (
     <section className="admin-interest-card">
-      <h3>{title}</h3>
       {rows.length > 0 ? (
         <table>
           <thead>

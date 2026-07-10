@@ -23,6 +23,7 @@ import { shopConfig } from "../config/shop";
 import { sizeOptions } from "../data/mockCatalog";
 import {
   fetchStorefrontStats,
+  markAnalyticsOptOutDevice,
   trackStorefrontEvent,
   type StorefrontEventRow,
 } from "../features/analytics/analyticsApi";
@@ -916,12 +917,16 @@ function AdminPage({
     supabase.auth
       .getSession()
       .then(({ data }) => {
-        setIsSignedIn(Boolean(data.session));
+        const hasSession = Boolean(data.session);
+        if (hasSession) markAnalyticsOptOutDevice();
+        setIsSignedIn(hasSession);
       })
       .finally(() => setIsAuthLoading(false));
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsSignedIn(Boolean(session));
+      const hasSession = Boolean(session);
+      if (hasSession) markAnalyticsOptOutDevice();
+      setIsSignedIn(hasSession);
       setIsAuthLoading(false);
     });
 

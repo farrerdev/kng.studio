@@ -3838,30 +3838,30 @@ button {
 
 .admin-dashboard {
   display: grid;
-  gap: 14px;
+  gap: 24px;
   margin-top: 14px;
 }
 
-.admin-stats-header,
-.admin-overview-section,
-.admin-chart-card,
 .admin-interest-card {
   border: 1px solid var(--line);
   background: #ffffff;
 }
 
-.admin-stats-header {
+.admin-stats-filterbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.admin-stats-header h2,
-.admin-overview-section h3,
-.admin-chart-card h3,
-.admin-interest-card h3 {
+.admin-dashboard-group {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-dashboard-group > h3 {
   margin: 0;
   color: var(--ink);
   font-size: 0.78rem;
@@ -3870,7 +3870,6 @@ button {
   text-transform: uppercase;
 }
 
-.admin-stats-header p,
 .admin-interest-card p {
   margin: 5px 0 0;
   color: var(--muted);
@@ -3880,10 +3879,10 @@ button {
 
 .admin-segmented {
   display: flex;
-  max-width: min(620px, calc(100vw - 48px));
+  max-width: 100%;
+  gap: 6px;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  border: 1px solid var(--ink);
   scrollbar-width: none;
 }
 
@@ -3895,8 +3894,7 @@ button {
   flex: 0 0 auto;
   min-height: 36px;
   padding: 0 12px;
-  border: 0;
-  border-right: 1px solid var(--ink);
+  border: 1px solid var(--line);
   background: #ffffff;
   color: var(--ink);
   cursor: pointer;
@@ -3906,23 +3904,14 @@ button {
   text-transform: uppercase;
 }
 
-.admin-segmented button:last-child {
-  border-right: 0;
-}
-
 .admin-segmented button.active {
+  border-color: var(--ink);
   background: var(--ink);
   color: #ffffff;
 }
 
-.admin-stats-controls {
-  display: grid;
-  justify-items: end;
-  gap: 8px;
-  min-width: 0;
-}
-
-.admin-stats-controls input {
+.admin-stats-filterbar input {
+  flex: 0 0 auto;
   width: 180px;
   min-height: 36px;
   padding: 0 10px;
@@ -3937,7 +3926,6 @@ button {
 .admin-overview-section {
   display: grid;
   gap: 12px;
-  padding: 14px;
 }
 
 .admin-stats.event-stats {
@@ -3948,54 +3936,14 @@ button {
 .admin-stats.event-stats > div {
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #ffffff;
 }
 
 .admin-stats.event-stats strong {
   grid-column: auto;
-}
-
-.admin-chart-card {
-  padding: 14px;
-}
-
-.admin-bar-chart {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.admin-bar-row {
-  display: grid;
-  grid-template-columns: minmax(92px, 0.22fr) minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: 10px;
-}
-
-.admin-bar-row span {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.admin-bar-row div {
-  height: 18px;
-  border: 1px solid var(--line);
-  background: var(--soft);
-}
-
-.admin-bar-row i {
-  display: block;
-  min-width: 0;
-  height: 100%;
-  background: var(--ink);
-}
-
-.admin-bar-row strong {
-  color: var(--ink);
-  font-size: 0.9rem;
-  font-weight: 750;
-  text-align: right;
 }
 
 .admin-insight-grid {
@@ -4015,7 +3963,7 @@ button {
 
 .admin-interest-card table {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 0;
   border-collapse: collapse;
   font-size: 0.86rem;
 }
@@ -4041,6 +3989,10 @@ button {
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.admin-interest-card thead th {
+  border-top: 0;
 }
 
 .admin-interest-card td {
@@ -4326,13 +4278,9 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .admin-stats-header {
+  .admin-stats-filterbar {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .admin-stats-controls {
-    justify-items: stretch;
   }
 
   .admin-segmented {
@@ -4344,21 +4292,12 @@ button {
     flex: 0 0 auto;
   }
 
-  .admin-stats-controls input {
+  .admin-stats-filterbar input {
     width: 100%;
   }
 
   .admin-insight-grid {
     grid-template-columns: 1fr;
-  }
-
-  .admin-bar-row {
-    grid-template-columns: 1fr 38px;
-    gap: 6px 10px;
-  }
-
-  .admin-bar-row span {
-    grid-column: 1 / -1;
   }
 
   .admin-interest-card {
