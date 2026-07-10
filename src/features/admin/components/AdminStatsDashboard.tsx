@@ -1,11 +1,14 @@
-import { BarChart3 } from "lucide-react";
 import type { StorefrontEventRow, StorefrontEventType } from "../../analytics/analyticsApi";
+import {
+  getLocalDateInputValue,
+  getLocalMonthInputValue,
+  getStorefrontStatsFilterLabel,
+  type StorefrontStatsFilter,
+} from "../../analytics/statsFilters";
 import {
   getProductTitle,
 } from "../../catalog/catalogUtils";
 import type { Product, ProductType } from "../../../types/catalog";
-
-export type StatsWindowDays = 7 | 30;
 
 type InterestRow = {
   id: string;
@@ -17,6 +20,7 @@ type InterestRow = {
 };
 
 const STOREFRONT_EVENT_LABELS: Record<StorefrontEventType, string> = {
+  site_visit: "Truy cập",
   product_view: "Xem sản phẩm",
   pattern_view: "Xem họa tiết",
   add_to_cart: "Thêm giỏ",
@@ -24,8 +28,26 @@ const STOREFRONT_EVENT_LABELS: Record<StorefrontEventType, string> = {
   message_click: "Mở nhắn tin",
 };
 
+const CHART_EVENT_TYPES: StorefrontEventType[] = [
+  "site_visit",
+  "product_view",
+  "add_to_cart",
+  "order_image_created",
+  "message_click",
+];
+
+const FILTER_TABS: Array<{ mode: StorefrontStatsFilter["mode"]; label: string }> = [
+  { mode: "yesterday", label: "Hôm qua" },
+  { mode: "today", label: "Hôm nay" },
+  { mode: "7d", label: "7 ngày" },
+  { mode: "30d", label: "30 ngày" },
+  { mode: "day", label: "Theo ngày" },
+  { mode: "month", label: "Theo tháng" },
+];
+
 function createEmptyEventCounts(): Record<StorefrontEventType, number> {
   return {
+    site_visit: 0,
     product_view: 0,
     pattern_view: 0,
     add_to_cart: 0,
@@ -72,57 +94,35 @@ function getProductInterestRows(events: StorefrontEventRow[], products: Product[
     .slice(0, 6);
 }
 
-function getPatternInterestRows(events: StorefrontEventRow[], products: Product[], productTypes: ProductType[]) {
-  const rows = new Map<string, InterestRow>();
-
-  products.forEach((product) => {
-    product.patterns.forEach((pattern) => {
-      rows.set(pattern.id, {
-        id: pattern.id,
-        name: `${getProductTitle(product, productTypes)} · ${pattern.name || "Họa tiết"}`,
-        views: 0,
-        adds: 0,
-        messages: 0,
-        total: 0,
-      });
-    });
-  });
-
-  events.forEach((event) => {
-    if (!event.pattern_id) return;
-    const row = rows.get(event.pattern_id);
-    if (!row) return;
-
-    if (event.event_type === "pattern_view") row.views += 1;
-    if (event.event_type === "add_to_cart") row.adds += 1;
-    row.total = row.views + row.adds;
-  });
-
-  return Array.from(rows.values())
-    .filter((row) => row.total > 0)
-    .sort((a, b) => b.total - a.total || b.adds - a.adds || b.views - a.views)
-    .slice(0, 6);
-}
-
 export function AdminStatsDashboard({
-  days,
   events,
+  filter,
   isLoading,
-  onDaysChange,
+  onFilterChange,
   products,
   productTypes,
 }: {
-  days: StatsWindowDays;
   events: StorefrontEventRow[];
+  filter: StorefrontStatsFilter;
   isLoading: boolean;
-  onDaysChange: (days: StatsWindowDays) => void;
+  onFilterChange: (filter: StorefrontStatsFilter) => void;
   products: Product[];
   productTypes: ProductType[];
 }) {
   const eventCounts = getEventCounts(events);
   const productRows = getProductInterestRows(events, products, productTypes);
-  const patternRows = getPatternInterestRows(events, products, productTypes);
-  const maxEventCount = Math.max(1, ...Object.values(eventCounts));
+  const addToCartRate = eventCounts.product_view > 0 ? Math.round((eventCounts.add_to_cart / eventCounts.product_view) * 100) : 0;
+  const overviewItems = [
+    { id: "site_visit", label: "Truy cập", value: eventCounts.site_visit },
+    { id: "product_view", label: "Xem sản phẩm", value: eventCounts.product_view },
+    { id: "add_to_cart", label: "Thêm giỏ", value: eventCounts.add_to_cart },
+    { id: "add_to_cart_rate", label: "Tỉ lệ thêm vào giỏ", value: `${addToCartRate}%` },
+    { id: "order_image_created", label: "Tạo ảnh đơn", value: eventCounts.order_image_created },
+    { id: "message_click", label: "Mở tin nhắn", value: eventCounts.message_click },
+  ];
+  const maxEventCount = Math.max(1, ...CHART_EVENT_TYPES.map((eventType) => eventCounts[eventType]));
+  const selectedDate = filter.mode === "day" ? filter.date : getLocalDateInputValue();
+  const selectedMonth = filter.mode === "month" ? filter.month : getLocalMonthInputValue();
 
   return (
     <section className="admin-dashboard admin-stats-screen" aria-label="Thống kê hành vi khách">
@@ -130,36 +130,70 @@ export function AdminStatsDashboard({
         <div>
           <span className="eyebrow">Behavior analytics</span>
           <h2>Thống kê hành vi khách</h2>
-          <p>{isLoading ? "Đang tải số liệu..." : `Dữ liệu ẩn danh trong ${days} ngày gần nhất.`}</p>
+          <p>{isLoading ? "Đang tải số liệu..." : `Dữ liệu ẩn danh trong ${getStorefrontStatsFilterLabel(filter)}.`}</p>
         </div>
-        <div className="admin-segmented" aria-label="Khoảng thời gian thống kê">
-          {[7, 30].map((option) => (
-            <button
-              className={days === option ? "active" : ""}
-              key={option}
-              type="button"
-              onClick={() => onDaysChange(option as StatsWindowDays)}
-            >
-              {option} ngày
-            </button>
-          ))}
+        <div className="admin-stats-controls">
+          <div className="admin-segmented" aria-label="Khoảng thời gian thống kê">
+            {FILTER_TABS.map((tab) => (
+              <button
+                className={filter.mode === tab.mode ? "active" : ""}
+                key={tab.mode}
+                type="button"
+                onClick={() => {
+                  if (tab.mode === "day") {
+                    onFilterChange({ mode: "day", date: selectedDate });
+                    return;
+                  }
+                  if (tab.mode === "month") {
+                    onFilterChange({ mode: "month", month: selectedMonth });
+                    return;
+                  }
+                  onFilterChange({ mode: tab.mode });
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {filter.mode === "day" ? (
+            <input
+              aria-label="Chọn ngày thống kê"
+              type="date"
+              value={selectedDate}
+              onChange={(event) => {
+                if (event.target.value) onFilterChange({ mode: "day", date: event.target.value });
+              }}
+            />
+          ) : null}
+          {filter.mode === "month" ? (
+            <input
+              aria-label="Chọn tháng thống kê"
+              type="month"
+              value={selectedMonth}
+              onChange={(event) => {
+                if (event.target.value) onFilterChange({ mode: "month", month: event.target.value });
+              }}
+            />
+          ) : null}
         </div>
       </header>
 
-      <div className="admin-stats event-stats" aria-label="Hành vi khách">
-        {(Object.keys(STOREFRONT_EVENT_LABELS) as StorefrontEventType[]).map((eventType) => (
-          <div key={eventType}>
-            <BarChart3 size={20} aria-hidden="true" />
-            <span>{STOREFRONT_EVENT_LABELS[eventType]}</span>
-            <strong>{eventCounts[eventType]}</strong>
-          </div>
-        ))}
-      </div>
+      <section className="admin-overview-section" aria-label="Tổng quan hành vi khách">
+        <h3>Tổng quan</h3>
+        <div className="admin-stats event-stats" aria-label="Hành vi khách">
+          {overviewItems.map((item) => (
+            <div key={item.id}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="admin-chart-card" aria-label="Biểu đồ hành vi khách">
         <h3>Hành vi theo loại tương tác</h3>
         <div className="admin-bar-chart">
-          {(Object.keys(STOREFRONT_EVENT_LABELS) as StorefrontEventType[]).map((eventType) => {
+          {CHART_EVENT_TYPES.map((eventType) => {
             const count = eventCounts[eventType];
             return (
               <div className="admin-bar-row" key={eventType}>
@@ -174,16 +208,11 @@ export function AdminStatsDashboard({
         </div>
       </section>
 
-      <div className="admin-insight-grid">
+      <div className="admin-insight-grid single">
         <AdminInterestTable
           emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
           rows={productRows}
           title="Sản phẩm được quan tâm"
-        />
-        <AdminInterestTable
-          emptyText="Chưa có họa tiết nào được ghi nhận trong khoảng thời gian này."
-          rows={patternRows}
-          title="Họa tiết được quan tâm"
         />
       </div>
     </section>

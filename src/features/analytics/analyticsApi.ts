@@ -1,7 +1,9 @@
 import { supabase } from "../../lib/supabase";
 import type { SizeId } from "../../types/catalog";
+import type { StorefrontStatsRange } from "./statsFilters";
 
 export type StorefrontEventType =
+  | "site_visit"
   | "product_view"
   | "pattern_view"
   | "add_to_cart"
@@ -38,14 +40,14 @@ export async function trackStorefrontEvent(event: StorefrontEventInput): Promise
   }
 }
 
-export async function fetchStorefrontStats(days: 7 | 30): Promise<StorefrontEventRow[]> {
+export async function fetchStorefrontStats(range: StorefrontStatsRange): Promise<StorefrontEventRow[]> {
   if (!supabase) return [];
 
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const result = await supabase
     .from("storefront_events")
     .select("event_type, product_id, pattern_id, size_id, created_at")
-    .gte("created_at", since)
+    .gte("created_at", range.from)
+    .lt("created_at", range.to)
     .order("created_at", { ascending: false })
     .limit(5000);
 

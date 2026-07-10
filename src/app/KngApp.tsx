@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronUp,
   Eye,
+  LogOut,
   Menu,
   Star,
   Plus,
@@ -25,8 +26,13 @@ import {
   trackStorefrontEvent,
   type StorefrontEventRow,
 } from "../features/analytics/analyticsApi";
+import {
+  DEFAULT_STOREFRONT_STATS_FILTER,
+  getStorefrontStatsRange,
+  type StorefrontStatsFilter,
+} from "../features/analytics/statsFilters";
 import { AdminImageActionField } from "../features/admin/components/AdminImageActionField";
-import { AdminStatsDashboard, type StatsWindowDays } from "../features/admin/components/AdminStatsDashboard";
+import { AdminStatsDashboard } from "../features/admin/components/AdminStatsDashboard";
 import { CartCheckoutCta } from "../features/storefront/cart/CartCheckoutCta";
 import { CartOverlay, OrderImagePreview } from "../features/storefront/cart/CartOverlay";
 import {
@@ -95,6 +101,7 @@ function App() {
   const shouldRestoreHomeScrollRef = useRef(false);
   const cartCloseTimeoutRef = useRef<number | null>(null);
   const trackedProductViewRef = useRef<string | null>(null);
+  const trackedSiteVisitRef = useRef(false);
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
   const storefrontProducts = useMemo(() => {
@@ -422,6 +429,12 @@ function App() {
     shouldRestoreHomeScrollRef.current = false;
     restoreHomeScroll();
   }, [selectedProductSlug]);
+
+  useEffect(() => {
+    if (isAdminRoute || trackedSiteVisitRef.current) return;
+    trackedSiteVisitRef.current = true;
+    void trackStorefrontEvent({ eventType: "site_visit" });
+  }, [isAdminRoute]);
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -813,15 +826,14 @@ function AdminPage({
   shopInfoImage: adminShopInfoImage,
   onProductTypesChange,
   onProductsChange,
-  onShopInfoImageChange,
   onRefresh,
 }: AdminPageProps) {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [expandedProductTypeId, setExpandedProductTypeId] = useState<string | null>(null);
   const [selectedAdminProductTypeId, setSelectedAdminProductTypeId] = useState<string | null>(null);
   const [adminProductTypeSlug, setAdminProductTypeSlug] = useState<string | null>(() => getAdminProductTypeSlugFromPath());
-  const [adminScreen, setAdminScreen] = useState<AdminScreen>("catalog");
-  const [statsDays, setStatsDays] = useState<StatsWindowDays>(7);
+  const [adminScreen, setAdminScreen] = useState<AdminScreen>(() => (getAdminProductTypeSlugFromPath() ? "catalog" : "stats"));
+  const [statsFilter, setStatsFilter] = useState<StorefrontStatsFilter>(DEFAULT_STOREFRONT_STATS_FILTER);
   const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
@@ -916,11 +928,11 @@ function AdminPage({
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const loadStorefrontStats = async (days = statsDays) => {
+  const loadStorefrontStats = async (filter = statsFilter) => {
     if (!isSignedIn) return;
     setIsStatsLoading(true);
     try {
-      setStorefrontEvents(await fetchStorefrontStats(days));
+      setStorefrontEvents(await fetchStorefrontStats(getStorefrontStatsRange(filter)));
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "Không tải được thống kê.");
     } finally {
@@ -930,8 +942,8 @@ function AdminPage({
 
   useEffect(() => {
     if (!isSignedIn || adminScreen !== "stats") return;
-    void loadStorefrontStats(statsDays);
-  }, [adminScreen, isSignedIn, statsDays]);
+    void loadStorefrontStats(statsFilter);
+  }, [adminScreen, isSignedIn, statsFilter]);
 
   const updateProduct = (productId: string, patch: Partial<Product>) => {
     onProductsChange((currentProducts) =>
@@ -1218,7 +1230,7 @@ function AdminPage({
     try {
       await onRefresh();
       if (adminScreen === "stats") {
-        await loadStorefrontStats(statsDays);
+        await loadStorefrontStats(statsFilter);
       }
       setAdminMessage("Đã tải lại dữ liệu từ Supabase.");
     } catch (error) {
@@ -1322,54 +1334,59 @@ function AdminPage({
           <span className="eyebrow">Supabase admin</span>
           <h1>KNG.studio</h1>
         </div>
-        <div className="admin-actions">
-          {adminScreen === "stats" ? (
-            <button className="admin-button ghost" type="button" onClick={() => setAdminScreen("catalog")}>
-              <ChevronLeft size={17} aria-hidden="true" />
-              Catalog
+        <div className="admin-toolbar">
+          <div className="admin-actions admin-actions-main">
+            <a className="admin-link" href="/">
+              <Eye size={17} aria-hidden="true" />
+              Xem site
+            </a>
+            <button className="admin-button ghost" type="button" disabled={isBusy || isStatsLoading} onClick={refreshFromSupabase}>
+              <RotateCcw size={17} aria-hidden="true" />
+              Reload DB
             </button>
-          ) : null}
-          <button
-            className={adminScreen === "stats" ? "icon-button active" : "icon-button"}
-            type="button"
-            onClick={() => {
-              setAdminScreen("stats");
-              setSelectedAdminProductTypeId(null);
-              setAdminProductTypeSlug(null);
-              setExpandedProductId(null);
-              window.history.pushState(null, "", "/admin");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            aria-label="Thống kê hành vi khách"
-          >
-            <BarChart3 size={17} aria-hidden="true" />
-          </button>
-          <a className="admin-link" href="/">
-            <Eye size={17} aria-hidden="true" />
-            Xem site
-          </a>
-          <button className="admin-button ghost" type="button" disabled={isBusy || isStatsLoading} onClick={refreshFromSupabase}>
-            <RotateCcw size={17} aria-hidden="true" />
-            Reload DB
-          </button>
-          <button className="admin-button ghost" type="button" disabled={isBusy} onClick={signOut}>
-            Đăng xuất
-          </button>
-          {adminScreen === "catalog" ? (
-            <button className="admin-button primary" type="button" disabled={isBusy} onClick={saveToSupabase}>
-              <Save size={17} aria-hidden="true" />
-              Lưu Supabase
+            <button className="icon-button" type="button" disabled={isBusy} onClick={signOut} aria-label="Đăng xuất">
+              <LogOut size={17} aria-hidden="true" />
             </button>
-          ) : null}
+          </div>
+          <div className="admin-actions admin-actions-secondary">
+            {adminScreen === "stats" ? (
+              <button className="admin-button primary full-width" type="button" onClick={() => setAdminScreen("catalog")}>
+                <ShoppingBag size={17} aria-hidden="true" />
+                Quản lý sản phẩm
+              </button>
+            ) : (
+              <>
+                <button
+                  className="admin-button ghost"
+                  type="button"
+                  onClick={() => {
+                    setAdminScreen("stats");
+                    setSelectedAdminProductTypeId(null);
+                    setAdminProductTypeSlug(null);
+                    setExpandedProductId(null);
+                    window.history.pushState(null, "", "/admin");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  <BarChart3 size={17} aria-hidden="true" />
+                  Thống kê
+                </button>
+                <button className="admin-button primary" type="button" disabled={isBusy} onClick={saveToSupabase}>
+                  <Save size={17} aria-hidden="true" />
+                  Lưu Supabase
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       {adminScreen === "stats" ? (
         <AdminStatsDashboard
-          days={statsDays}
           events={storefrontEvents}
+          filter={statsFilter}
           isLoading={isStatsLoading}
-          onDaysChange={setStatsDays}
+          onFilterChange={setStatsFilter}
           products={products}
           productTypes={productTypes}
         />
@@ -1783,25 +1800,6 @@ function AdminPage({
             </button>
           </section>
         )}
-
-        {!adminProductTypeSlug ? (
-          <div className="admin-card" style={{ marginTop: "16px" }}>
-            <div className="admin-card-header">
-              <h3>Bảng giá & Quy định chung</h3>
-              <AdminImageActionField
-                ariaLabel="Mở tùy chọn bảng giá chung"
-                caption="Bảng giá & Quy định chung"
-                image={adminShopInfoImage}
-                onPreview={setPreviewImage}
-                onFileSelected={(file) =>
-                  uploadImage(file, "shop-info", (url) =>
-                    onShopInfoImageChange((image) => ({ ...image, src: url })),
-                  )
-                }
-              />
-            </div>
-          </div>
-        ) : null}
 
         {saveState.status !== "idle" ? (
           <div

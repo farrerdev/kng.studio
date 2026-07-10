@@ -96,6 +96,7 @@ create table if not exists public.storefront_events (
   id uuid primary key default gen_random_uuid(),
   event_type text not null check (
     event_type in (
+      'site_visit',
       'product_view',
       'pattern_view',
       'add_to_cart',
