@@ -26,6 +26,7 @@ export type StorefrontEventRow = {
 };
 
 const ANALYTICS_OPT_OUT_STORAGE_KEY = "kng_analytics_opt_out";
+export const LEGACY_SITE_VISIT_PRODUCT_ID = "__site_visit";
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 function isBrowserLocalhost() {
@@ -48,12 +49,22 @@ export async function trackStorefrontEvent(event: StorefrontEventInput): Promise
   if (isBrowserLocalhost() || isAnalyticsOptedOutDevice()) return;
 
   try {
-    await supabase.from("storefront_events").insert({
+    const result = await supabase.from("storefront_events").insert({
       event_type: event.eventType,
       product_id: event.productId ?? null,
       pattern_id: event.patternId ?? null,
       size_id: event.sizeId ?? null,
     });
+    if (!result.error) return;
+
+    if (event.eventType === "site_visit") {
+      await supabase.from("storefront_events").insert({
+        event_type: "product_view",
+        product_id: LEGACY_SITE_VISIT_PRODUCT_ID,
+        pattern_id: null,
+        size_id: null,
+      });
+    }
   } catch {
     // Analytics should never block storefront actions.
   }
@@ -71,5 +82,9 @@ export async function fetchStorefrontStats(range: StorefrontStatsRange): Promise
     .limit(5000);
 
   if (result.error) throw result.error;
-  return (result.data ?? []) as StorefrontEventRow[];
+  return ((result.data ?? []) as StorefrontEventRow[]).map((event) =>
+    event.event_type === "product_view" && event.product_id === LEGACY_SITE_VISIT_PRODUCT_ID
+      ? { ...event, event_type: "site_visit", product_id: null }
+      : event,
+  );
 }
