@@ -9,11 +9,9 @@ import {
   Eye,
   Menu,
   Star,
-  Image,
   Instagram,
   MapPin,
   Minus,
-  PackageCheck,
   Plus,
   RotateCcw,
   Save,
@@ -28,10 +26,13 @@ import { supabase } from "./lib/supabase";
 import {
   fallbackCatalog,
   fetchCatalog,
+  fetchStorefrontStats,
   isSupabaseConfigured,
   saveCatalog,
+  trackStorefrontEvent,
   uploadCatalogImage,
 } from "./services/catalogApi";
+import type { StorefrontEventRow, StorefrontEventType } from "./services/catalogApi";
 import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "./types/catalog";
 
 function formatPrice(raw: string): string {
@@ -62,6 +63,58 @@ const IMAGE_WIDTHS = {
   sizeChartPreview: 520,
   orderThumb: 360,
 };
+type PolicySection =
+  | {
+      id: string;
+      title: string;
+      body: string;
+      items?: never;
+    }
+  | {
+      id: string;
+      title: string;
+      body?: never;
+      items: string[];
+    };
+
+const POLICY_SECTIONS: PolicySection[] = [
+  {
+    id: "gift",
+    title: "Quà tặng",
+    body: "Mỗi set được tặng kèm dây buộc tóc scrunchies cùng họa tiết với sản phẩm.",
+  },
+  {
+    id: "shipping",
+    title: "Phí ship",
+    body: "Phí ship đồng giá 20k. Shop miễn phí vận chuyển cho đơn từ 2 bộ.",
+  },
+  {
+    id: "payment",
+    title: "Thanh toán",
+    body: "Khách hàng vui lòng thanh toán trước để shop xác nhận và chuẩn bị đơn.",
+  },
+  {
+    id: "returns",
+    title: "Đổi hàng",
+    items: [
+      "Khách hàng vui lòng quay video khi nhận hàng và mở gói sản phẩm.",
+      "Với sản phẩm lỗi do nhà sản xuất hoặc shop giao sai mẫu, KNG hỗ trợ đổi 1-1 và chịu toàn bộ chi phí đổi hàng.",
+      "Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác giá thấp hơn hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.",
+      "Khách hàng chịu 1 đầu phí ship đổi hàng, KNG hỗ trợ 1 đầu ship gửi lại.",
+      "Lưu ý: shop chỉ hỗ trợ đổi 1 lần duy nhất.",
+    ],
+  },
+  {
+    id: "care",
+    title: "Hướng dẫn bảo quản",
+    items: [
+      "Giặt máy ở chế độ nhẹ và không dùng chất tẩy.",
+      "Phơi nơi thoáng mát, tránh nắng gắt.",
+      "Hạn chế sấy nóng để vải không bị khô cứng hoặc co rút.",
+      "Ưu tiên ủi hơi nước. Vải muslin mềm hơn sau mỗi lần giặt.",
+    ],
+  },
+];
 
 function getSupabaseImageSrc(src: string, width: number, quality = 78, height = width, resize = "contain") {
   if (!src.includes("/storage/v1/object/public/")) return src;
@@ -572,12 +625,10 @@ async function createOrderImageBlob(cartItems: CartItem[], createdAt = new Date(
 }
 
 function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
-  return catalogProducts
-    .map((product) => ({
-      ...product,
-      patterns: product.patterns.filter((pattern) => pattern.availableSizes.includes(selectedSize)),
-    }))
-    .filter((product) => product.patterns.length > 0);
+  return catalogProducts.map((product) => ({
+    ...product,
+    patterns: product.patterns.filter((pattern) => pattern.availableSizes.includes(selectedSize)),
+  }));
 }
 
 function getProductGalleryImages(product: Product, productTypes: ProductType[], selectedSize: SizeId): GalleryImage[] {
@@ -622,6 +673,7 @@ function App() {
   const [cartItems, setCartItems] = useState<CartItem[]>(() => loadStoredCartItems());
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCartClosing, setIsCartClosing] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [cartToast, setCartToast] = useState("");
   const [cartToastKey, setCartToastKey] = useState(0);
   const hasShownStoredCartPrompt = useRef(cartItems.length === 0);
@@ -634,6 +686,7 @@ function App() {
   const homeScrollYRef = useRef(0);
   const shouldRestoreHomeScrollRef = useRef(false);
   const cartCloseTimeoutRef = useRef<number | null>(null);
+  const trackedProductViewRef = useRef<string | null>(null);
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
   const storefrontProducts = useMemo(() => {
@@ -740,12 +793,6 @@ function App() {
     if (!selectedProduct) {
       homeScrollYRef.current = window.scrollY;
     }
-    const hasSelectedSize = product.patterns.some((pattern) => pattern.availableSizes.includes(selectedSize));
-    if (!hasSelectedSize) {
-      const nextSize = product.patterns.flatMap((pattern) => pattern.availableSizes)[0];
-      if (nextSize) setSelectedSize(nextSize);
-    }
-
     const slug = getProductSlug(product, catalogProductTypes);
     setSelectedProductSlug(slug);
     window.history.pushState(null, "", `/${slug}`);
@@ -798,6 +845,12 @@ function App() {
         );
       }
       return [...currentItems, { ...item, quantity: 1 }];
+    });
+    void trackStorefrontEvent({
+      eventType: "add_to_cart",
+      productId: item.productId,
+      patternId: item.patternId,
+      sizeId: item.sizeId,
     });
     showCartTooltip(`Đã thêm ${item.patternName}`);
   };
@@ -862,6 +915,7 @@ function App() {
       setOrderImageBlob(blob);
       setOrderImageFileName(createOrderFileName(createdAt));
       showOrderImagePreview(blob);
+      void trackStorefrontEvent({ eventType: "order_image_created" });
     } finally {
       setIsOrderImagePreparing(false);
     }
@@ -880,6 +934,7 @@ function App() {
   };
   const openOrderMessage = (channel: ShareChannel) => {
     const targetUrl = channel === "instagram" ? shopConfig.contacts.instagramMessage : shopConfig.contacts.messenger;
+    void trackStorefrontEvent({ eventType: "message_click" });
     window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -905,13 +960,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isCartOpen) return;
+    if (!isCartOpen && !isPolicyModalOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isCartOpen]);
+  }, [isCartOpen, isPolicyModalOpen]);
 
   useEffect(() => {
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
@@ -961,11 +1016,14 @@ function App() {
   }, [selectedProductSlug]);
 
   useEffect(() => {
-    if (!selectedProduct) return;
-    if (selectedProduct.patterns.some((pattern) => pattern.availableSizes.includes(selectedSize))) return;
-    const nextSize = selectedProduct.patterns.flatMap((pattern) => pattern.availableSizes)[0];
-    if (nextSize) setSelectedSize(nextSize);
-  }, [selectedProduct, selectedSize]);
+    if (!selectedProduct) {
+      trackedProductViewRef.current = null;
+      return;
+    }
+    if (trackedProductViewRef.current === selectedProduct.id) return;
+    trackedProductViewRef.current = selectedProduct.id;
+    void trackStorefrontEvent({ eventType: "product_view", productId: selectedProduct.id });
+  }, [selectedProduct]);
 
   useEffect(() => {
     if (!activeImage) return;
@@ -1075,14 +1133,21 @@ function App() {
         </header>
 
         <section className="shipping-promo" aria-label="Ưu đãi vận chuyển">
-          <span>Miễn phí vận chuyển đơn từ 2 bộ</span>
+          <span>Miễn phí vận chuyển từ 2 bộ</span>
+          <button type="button" onClick={() => setIsPolicyModalOpen(true)}>
+            Xem chi tiết
+          </button>
         </section>
 
         {catalogLoadState === "loading" ? <LoadingPanel /> : null}
 
         {catalogLoadState !== "loading" && !selectedProduct ? (
           <>
-            <section className="product-type-showcase" id="products" aria-label="Sản phẩm">
+            <section
+              className={cartQuantity > 0 ? "product-type-showcase has-cart-cta" : "product-type-showcase"}
+              id="products"
+              aria-label="Sản phẩm"
+            >
               <div className="section-title">
                 <h2>Sản phẩm</h2>
                 <span>{storefrontProducts.length} mẫu</span>
@@ -1116,30 +1181,7 @@ function App() {
               <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} />
             </section>
 
-            <section className="storefront-policy" id="policy" aria-label="Quy định đặt hàng">
-              <article id="gift">
-                <h3>Quà tặng</h3>
-                <p>Mỗi set được tặng kèm dây buộc tóc scrunchies cùng họa tiết với sản phẩm.</p>
-              </article>
-              <article id="shipping">
-                <h3>Phí ship</h3>
-                <p>Phí ship đồng giá 20k. Shop miễn phí vận chuyển cho đơn từ 2 bộ.</p>
-              </article>
-              <article id="payment">
-                <h3>Thanh toán</h3>
-                <p>Khách hàng vui lòng thanh toán trước để shop xác nhận và chuẩn bị đơn.</p>
-              </article>
-              <article id="returns">
-                <h3>Đổi hàng</h3>
-                <ul>
-                  <li>Khách hàng vui lòng quay video khi nhận hàng và mở gói sản phẩm.</li>
-                  <li>Với sản phẩm lỗi do nhà sản xuất hoặc shop giao sai mẫu, KNG hỗ trợ đổi 1-1 và chịu toàn bộ chi phí đổi hàng.</li>
-                  <li>Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác giá thấp hơn hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.</li>
-                  <li>Khách hàng chịu 1 đầu phí ship đổi hàng, KNG hỗ trợ 1 đầu ship gửi lại.</li>
-                  <li>Lưu ý: shop chỉ hỗ trợ đổi 1 lần duy nhất.</li>
-                </ul>
-              </article>
-            </section>
+            <PolicySections className="storefront-policy" includeIds />
           </>
         ) : null}
 
@@ -1154,30 +1196,38 @@ function App() {
             <strong>{formatPrice(getProductPrice(selectedProduct, catalogProductTypes))}</strong>
           </header>
           <div className="catalog-layout">
-          <section className="catalog-list" aria-label="Danh sách sản phẩm">
-            {visibleProduct ? (
-              <ProductCard
-                key={visibleProduct.id}
-                onImageOpen={setActiveImage}
-                onAddToCart={addToCart}
-                getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
-                product={visibleProduct}
+            <section className="catalog-list" aria-label="Danh sách sản phẩm">
+              {visibleProduct ? (
+                <ProductCard
+                  key={visibleProduct.id}
+                  onImageOpen={setActiveImage}
+                  onAddToCart={addToCart}
+                  getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
+                  onOpenPolicy={() => setIsPolicyModalOpen(true)}
+                  product={visibleProduct}
+                  productTypes={catalogProductTypes}
+                  selectedSize={selectedSize}
+                  onSizeChange={setSelectedSize}
+                  sizeChartCaption={`${selectedProductType.name || "Loại sản phẩm"} - bảng size`}
+                  sizeChartImage={getProductTypeSizeChartImage(selectedProductType, catalogProducts)}
+                  compact
+                />
+              ) : (
+                <section className="empty-state">
+                  <h3>Size này tạm hết hàng</h3>
+                  <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
+                </section>
+              )}
+              <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} compact />
+              <OtherProductsCarousel
+                allProducts={catalogProducts}
+                currentProductId={selectedProduct.id}
+                onProductOpen={openProduct}
+                products={storefrontProducts}
                 productTypes={catalogProductTypes}
-                selectedSize={selectedSize}
-                onSizeChange={setSelectedSize}
-                sizeChartCaption={`${selectedProductType.name || "Loại sản phẩm"} - bảng size`}
-                sizeChartImage={getProductTypeSizeChartImage(selectedProductType, catalogProducts)}
-                compact
               />
-            ) : (
-              <section className="empty-state">
-                <h3>Size này tạm hết hàng</h3>
-                <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
-              </section>
-            )}
-            <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} compact />
-          </section>
-        </div>
+            </section>
+          </div>
         </section>
         ) : null}
       </main>
@@ -1224,6 +1274,7 @@ function App() {
           <button type="button" onClick={() => goHomeSection("shipping")}>Phí ship</button>
           <button type="button" onClick={() => goHomeSection("payment")}>Thanh toán</button>
           <button type="button" onClick={() => goHomeSection("returns")}>Đổi hàng</button>
+          <button type="button" onClick={() => goHomeSection("care")}>Bảo quản</button>
         </nav>
       </aside>
 
@@ -1237,11 +1288,14 @@ function App() {
         onClose={closeCart}
         onCapture={captureOrderImage}
         onOpenMessage={openOrderMessage}
+        onOpenPolicy={() => setIsPolicyModalOpen(true)}
         onClear={clearCart}
         onQuantityChange={updateCartQuantity}
         onRemove={removeCartItem}
         shippingFee={shippingFee}
       />
+
+      {isPolicyModalOpen ? <PolicyModal onClose={() => setIsPolicyModalOpen(false)} /> : null}
 
       {orderImagePreviewUrl ? (
         <OrderImagePreview
@@ -1323,11 +1377,133 @@ type ProductCardProps = {
   onImageOpen: (image: GalleryImage) => void;
   onAddToCart: (item: CartDraft) => void;
   getCartItemQuantity: (itemId: string) => number;
+  onOpenPolicy: () => void;
   onSizeChange?: (sizeId: SizeId) => void;
   sizeChartCaption?: string;
   sizeChartImage?: ProductImage;
   compact?: boolean;
 };
+
+type PolicySectionsProps = {
+  className: string;
+  includeIds?: boolean;
+};
+
+function PolicySections({ className, includeIds = false }: PolicySectionsProps) {
+  return (
+    <section className={className} id={includeIds ? "policy" : undefined} aria-label="Quy định mua hàng">
+      {POLICY_SECTIONS.map((section) => (
+        <article id={includeIds ? section.id : undefined} key={section.id}>
+          <h3>{section.title}</h3>
+          {section.items ? (
+            <ul>
+              {section.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>{section.body}</p>
+          )}
+        </article>
+      ))}
+    </section>
+  );
+}
+
+type PolicyModalProps = {
+  onClose: () => void;
+};
+
+function PolicyModal({ onClose }: PolicyModalProps) {
+  return (
+    <div className="policy-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="policy-modal-title" onClick={onClose}>
+      <section className="policy-modal-panel" onClick={(event) => event.stopPropagation()}>
+        <header className="policy-modal-header">
+          <div>
+            <span>Trước khi mua</span>
+            <h2 id="policy-modal-title">Quy định mua hàng</h2>
+          </div>
+          <button type="button" aria-label="Đóng quy định mua hàng" onClick={onClose}>
+            <X size={21} aria-hidden="true" />
+          </button>
+        </header>
+        <PolicySections className="policy-modal-sections" />
+      </section>
+    </div>
+  );
+}
+
+type OtherProductsCarouselProps = {
+  allProducts: Product[];
+  currentProductId: string;
+  products: Product[];
+  productTypes: ProductType[];
+  onProductOpen: (product: Product) => void;
+};
+
+function OtherProductsCarousel({
+  allProducts,
+  currentProductId,
+  products,
+  productTypes,
+  onProductOpen,
+}: OtherProductsCarouselProps) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const otherProducts = products.filter((product) => product.id !== currentProductId);
+
+  if (otherProducts.length === 0) return null;
+
+  const scrollProducts = (direction: -1 | 1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollBy({
+      left: direction * Math.max(180, track.clientWidth * 0.86),
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <section className="other-products" aria-label="Các sản phẩm khác">
+      <div className="other-products-header">
+        <h2>Các sản phẩm khác</h2>
+        <div className="other-products-controls" aria-label="Điều hướng sản phẩm khác">
+          <button type="button" aria-label="Xem sản phẩm trước" onClick={() => scrollProducts(-1)}>
+            <ChevronLeft size={18} aria-hidden="true" />
+          </button>
+          <button type="button" aria-label="Xem sản phẩm sau" onClick={() => scrollProducts(1)}>
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="other-products-track" ref={trackRef}>
+        {otherProducts.map((product) => {
+          const coverImage = getProductCoverImage(product, productTypes, allProducts);
+          const productTitle = getProductTitle(product, productTypes);
+          return (
+            <button
+              className="storefront-product-card"
+              key={product.id}
+              type="button"
+              onClick={() => onProductOpen(product)}
+            >
+              <img
+                src={getSupabaseImageSrc(coverImage.src, IMAGE_WIDTHS.catalog, 80)}
+                sizes="(max-width: 760px) 42vw, 180px"
+                alt={coverImage.alt}
+                loading="lazy"
+                decoding="async"
+              />
+              <span className="storefront-product-info">
+                <span>{productTitle}</span>
+                <strong>{formatPrice(getProductPrice(product, productTypes))}</strong>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 function ProductCard({
   product,
@@ -1336,6 +1512,7 @@ function ProductCard({
   onImageOpen,
   onAddToCart,
   getCartItemQuantity,
+  onOpenPolicy,
   onSizeChange,
   sizeChartCaption,
   sizeChartImage,
@@ -1400,55 +1577,68 @@ function ProductCard({
               <h4>Họa tiết còn size {selectedSize}</h4>
               <span>{product.patterns.length} mẫu</span>
             </div>
-            <div className="pattern-grid">
-              {product.patterns.map((pattern) => {
-                const cartItem: CartDraft = {
-                  id: createCartItemId(product.id, pattern.id, selectedSize),
-                  productId: product.id,
-                  patternId: pattern.id,
-                  sizeId: selectedSize,
-                  productName: productTitle,
-                  patternName: pattern.name,
-                  price: productPrice,
-                  image: pattern.image,
-                };
-                const cartQuantity = getCartItemQuantity(cartItem.id);
-                return (
-                  <article className={cartQuantity > 0 ? "image-tile in-cart" : "image-tile"} key={pattern.id}>
-                    <button
-                      className="image-tile-preview"
-                      type="button"
-                      onClick={() =>
-                        onImageOpen({
-                          ...pattern.image,
-                          caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
-                          cartItem,
-                        })
-                      }
-                    >
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        src={getSupabaseImageSrc(pattern.image.src, IMAGE_WIDTHS.catalog, 80)}
-                        sizes="(max-width: 760px) 50vw, 50vw"
-                        alt={pattern.image.alt}
-                      />
-                      <span>{pattern.name}</span>
-                    </button>
-                    <button
-                      className={cartQuantity > 0 ? "pattern-add-button active" : "pattern-add-button"}
-                      type="button"
-                      aria-label={`Thêm ${pattern.name} size ${selectedSize} vào giỏ`}
-                      onClick={() => onAddToCart(cartItem)}
-                    >
-                      <Plus size={18} aria-hidden="true" />
-                      {cartQuantity > 0 ? <span>{cartQuantity}</span> : null}
-                    </button>
-                    {cartQuantity > 0 ? <span className="pattern-cart-status">Đã thêm vào giỏ hàng</span> : null}
-                  </article>
-                );
-              })}
-            </div>
+            {product.patterns.length > 0 ? (
+              <div className="pattern-grid">
+                {product.patterns.map((pattern) => {
+                  const cartItem: CartDraft = {
+                    id: createCartItemId(product.id, pattern.id, selectedSize),
+                    productId: product.id,
+                    patternId: pattern.id,
+                    sizeId: selectedSize,
+                    productName: productTitle,
+                    patternName: pattern.name,
+                    price: productPrice,
+                    image: pattern.image,
+                  };
+                  const cartQuantity = getCartItemQuantity(cartItem.id);
+                  return (
+                    <article className={cartQuantity > 0 ? "image-tile in-cart" : "image-tile"} key={pattern.id}>
+                      <button
+                        className="image-tile-preview"
+                        type="button"
+                        onClick={() => {
+                          void trackStorefrontEvent({
+                            eventType: "pattern_view",
+                            productId: product.id,
+                            patternId: pattern.id,
+                            sizeId: selectedSize,
+                          });
+                          onImageOpen({
+                            ...pattern.image,
+                            caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
+                            cartItem,
+                          });
+                        }}
+                      >
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={getSupabaseImageSrc(pattern.image.src, IMAGE_WIDTHS.catalog, 80)}
+                          sizes="(max-width: 760px) 50vw, 50vw"
+                          alt={pattern.image.alt}
+                        />
+                        <span>{pattern.name}</span>
+                      </button>
+                      <button
+                        className={cartQuantity > 0 ? "pattern-add-button active" : "pattern-add-button"}
+                        type="button"
+                        aria-label={`Thêm ${pattern.name} size ${selectedSize} vào giỏ`}
+                        onClick={() => onAddToCart(cartItem)}
+                      >
+                        <Plus size={18} aria-hidden="true" />
+                        {cartQuantity > 0 ? <span>{cartQuantity}</span> : null}
+                      </button>
+                      {cartQuantity > 0 ? <span className="pattern-cart-status">Đã thêm vào giỏ hàng</span> : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <section className="empty-state product-empty-state">
+                <h3>Size này tạm hết hàng</h3>
+                <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
+              </section>
+            )}
           </section>
 
           {product.modelImages.length > 0 ? (
@@ -1482,6 +1672,12 @@ function ProductCard({
             </div>
           </section>
           ) : null}
+
+          <section className="product-policy-cta" aria-label="Quy định mua hàng">
+            <button className="product-policy-button" type="button" onClick={onOpenPolicy}>
+              Xem quy định mua hàng
+            </button>
+          </section>
 
           {!compact ? (
             <section aria-label={`Bảng size ${productTitle}`}>
@@ -1552,6 +1748,7 @@ type CartOverlayProps = {
   onClose: () => void;
   onCapture: () => void;
   onOpenMessage: (channel: ShareChannel) => void;
+  onOpenPolicy: () => void;
   onClear: () => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
@@ -1568,6 +1765,7 @@ function CartOverlay({
   onClose,
   onCapture,
   onOpenMessage,
+  onOpenPolicy,
   onClear,
   onQuantityChange,
   onRemove,
@@ -1651,6 +1849,15 @@ function CartOverlay({
                 <span>Tổng thanh toán</span>
                 <strong>{formatMoney(orderTotal)}</strong>
               </div>
+              <section className="cart-policy-cta" aria-label="Quy định mua hàng">
+                <div>
+                  <span>Quy định mua hàng</span>
+                  <p>Xem quà tặng, phí ship, thanh toán, đổi hàng và bảo quản trước khi chốt đơn.</p>
+                </div>
+                <button type="button" onClick={onOpenPolicy}>
+                  Xem chi tiết
+                </button>
+              </section>
               <div className="checkout-flow">
                 <h3>Quy trình chốt đơn</h3>
                 <div className="checkout-step">
@@ -1785,6 +1992,232 @@ type AdminSaveState = {
   message: string;
 };
 
+type AdminScreen = "catalog" | "stats";
+type StatsWindowDays = 7 | 30;
+
+type InterestRow = {
+  id: string;
+  name: string;
+  views: number;
+  adds: number;
+  messages: number;
+  total: number;
+};
+
+const STOREFRONT_EVENT_LABELS: Record<StorefrontEventType, string> = {
+  product_view: "Xem sản phẩm",
+  pattern_view: "Xem họa tiết",
+  add_to_cart: "Thêm giỏ",
+  order_image_created: "Tạo ảnh đơn",
+  message_click: "Mở nhắn tin",
+};
+
+function createEmptyEventCounts(): Record<StorefrontEventType, number> {
+  return {
+    product_view: 0,
+    pattern_view: 0,
+    add_to_cart: 0,
+    order_image_created: 0,
+    message_click: 0,
+  };
+}
+
+function getEventCounts(events: StorefrontEventRow[]) {
+  return events.reduce((counts, event) => {
+    counts[event.event_type] += 1;
+    return counts;
+  }, createEmptyEventCounts());
+}
+
+function getProductInterestRows(events: StorefrontEventRow[], products: Product[], productTypes: ProductType[]) {
+  const rows = new Map<string, InterestRow>();
+
+  products.forEach((product) => {
+    rows.set(product.id, {
+      id: product.id,
+      name: getProductTitle(product, productTypes),
+      views: 0,
+      adds: 0,
+      messages: 0,
+      total: 0,
+    });
+  });
+
+  events.forEach((event) => {
+    if (!event.product_id) return;
+    const row = rows.get(event.product_id);
+    if (!row) return;
+
+    if (event.event_type === "product_view") row.views += 1;
+    if (event.event_type === "add_to_cart") row.adds += 1;
+    if (event.event_type === "message_click") row.messages += 1;
+    row.total = row.views + row.adds + row.messages;
+  });
+
+  return Array.from(rows.values())
+    .filter((row) => row.total > 0)
+    .sort((a, b) => b.total - a.total || b.adds - a.adds || b.views - a.views)
+    .slice(0, 6);
+}
+
+function getPatternInterestRows(events: StorefrontEventRow[], products: Product[], productTypes: ProductType[]) {
+  const rows = new Map<string, InterestRow>();
+
+  products.forEach((product) => {
+    product.patterns.forEach((pattern) => {
+      rows.set(pattern.id, {
+        id: pattern.id,
+        name: `${getProductTitle(product, productTypes)} · ${pattern.name || "Họa tiết"}`,
+        views: 0,
+        adds: 0,
+        messages: 0,
+        total: 0,
+      });
+    });
+  });
+
+  events.forEach((event) => {
+    if (!event.pattern_id) return;
+    const row = rows.get(event.pattern_id);
+    if (!row) return;
+
+    if (event.event_type === "pattern_view") row.views += 1;
+    if (event.event_type === "add_to_cart") row.adds += 1;
+    row.total = row.views + row.adds;
+  });
+
+  return Array.from(rows.values())
+    .filter((row) => row.total > 0)
+    .sort((a, b) => b.total - a.total || b.adds - a.adds || b.views - a.views)
+    .slice(0, 6);
+}
+
+function AdminStatsDashboard({
+  days,
+  events,
+  isLoading,
+  onDaysChange,
+  products,
+  productTypes,
+}: {
+  days: StatsWindowDays;
+  events: StorefrontEventRow[];
+  isLoading: boolean;
+  onDaysChange: (days: StatsWindowDays) => void;
+  products: Product[];
+  productTypes: ProductType[];
+}) {
+  const eventCounts = getEventCounts(events);
+  const productRows = getProductInterestRows(events, products, productTypes);
+  const patternRows = getPatternInterestRows(events, products, productTypes);
+  const maxEventCount = Math.max(1, ...Object.values(eventCounts));
+
+  return (
+    <section className="admin-dashboard admin-stats-screen" aria-label="Thống kê hành vi khách">
+      <header className="admin-stats-header">
+        <div>
+          <span className="eyebrow">Behavior analytics</span>
+          <h2>Thống kê hành vi khách</h2>
+          <p>{isLoading ? "Đang tải số liệu..." : `Dữ liệu ẩn danh trong ${days} ngày gần nhất.`}</p>
+        </div>
+        <div className="admin-segmented" aria-label="Khoảng thời gian thống kê">
+          {[7, 30].map((option) => (
+            <button
+              className={days === option ? "active" : ""}
+              key={option}
+              type="button"
+              onClick={() => onDaysChange(option as StatsWindowDays)}
+            >
+              {option} ngày
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className="admin-stats event-stats" aria-label="Hành vi khách">
+        {(Object.keys(STOREFRONT_EVENT_LABELS) as StorefrontEventType[]).map((eventType) => (
+          <div key={eventType}>
+            <BarChart3 size={20} aria-hidden="true" />
+            <span>{STOREFRONT_EVENT_LABELS[eventType]}</span>
+            <strong>{eventCounts[eventType]}</strong>
+          </div>
+        ))}
+      </div>
+
+      <section className="admin-chart-card" aria-label="Biểu đồ hành vi khách">
+        <h3>Hành vi theo loại tương tác</h3>
+        <div className="admin-bar-chart">
+          {(Object.keys(STOREFRONT_EVENT_LABELS) as StorefrontEventType[]).map((eventType) => {
+            const count = eventCounts[eventType];
+            return (
+              <div className="admin-bar-row" key={eventType}>
+                <span>{STOREFRONT_EVENT_LABELS[eventType]}</span>
+                <div>
+                  <i style={{ width: count === 0 ? "0%" : `${Math.max(4, (count / maxEventCount) * 100)}%` }} />
+                </div>
+                <strong>{count}</strong>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="admin-insight-grid">
+        <AdminInterestTable
+          emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
+          rows={productRows}
+          title="Sản phẩm được quan tâm"
+        />
+        <AdminInterestTable
+          emptyText="Chưa có họa tiết nào được ghi nhận trong khoảng thời gian này."
+          rows={patternRows}
+          title="Họa tiết được quan tâm"
+        />
+      </div>
+    </section>
+  );
+}
+
+function AdminInterestTable({
+  emptyText,
+  rows,
+  title,
+}: {
+  emptyText: string;
+  rows: InterestRow[];
+  title: string;
+}) {
+  return (
+    <section className="admin-interest-card">
+      <h3>{title}</h3>
+      {rows.length > 0 ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Tên</th>
+              <th>Xem</th>
+              <th>Giỏ</th>
+              <th>Tổng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.name}</td>
+                <td>{row.views}</td>
+                <td>{row.adds}</td>
+                <td>{row.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p>{emptyText}</p>
+      )}
+    </section>
+  );
+}
+
 function AdminPage({
   catalogStatus,
   isCatalogLoading,
@@ -1800,7 +2233,10 @@ function AdminPage({
   const [expandedProductTypeId, setExpandedProductTypeId] = useState<string | null>(null);
   const [selectedAdminProductTypeId, setSelectedAdminProductTypeId] = useState<string | null>(null);
   const [adminProductTypeSlug, setAdminProductTypeSlug] = useState<string | null>(() => getAdminProductTypeSlugFromPath());
-  const [showStats, setShowStats] = useState(false);
+  const [adminScreen, setAdminScreen] = useState<AdminScreen>("catalog");
+  const [statsDays, setStatsDays] = useState<StatsWindowDays>(7);
+  const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -1814,11 +2250,6 @@ function AdminPage({
     setAdminMessage(catalogStatus);
   }, [catalogStatus]);
 
-  const patternCount = products.reduce((total, product) => total + product.patterns.length, 0);
-  const availablePatternCount = products.reduce(
-    (total, product) => total + product.patterns.filter((pattern) => pattern.availableSizes.length > 0).length,
-    0,
-  );
   const defaultProductType = productTypes[0] ?? null;
   const selectedAdminProductType =
     productTypes.find((productType) => productType.id === selectedAdminProductTypeId) ?? null;
@@ -1897,6 +2328,23 @@ function AdminPage({
 
     return () => data.subscription.unsubscribe();
   }, []);
+
+  const loadStorefrontStats = async (days = statsDays) => {
+    if (!isSignedIn) return;
+    setIsStatsLoading(true);
+    try {
+      setStorefrontEvents(await fetchStorefrontStats(days));
+    } catch (error) {
+      setAdminMessage(error instanceof Error ? error.message : "Không tải được thống kê.");
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isSignedIn || adminScreen !== "stats") return;
+    void loadStorefrontStats(statsDays);
+  }, [adminScreen, isSignedIn, statsDays]);
 
   const updateProduct = (productId: string, patch: Partial<Product>) => {
     onProductsChange((currentProducts) =>
@@ -2182,6 +2630,9 @@ function AdminPage({
     setAdminMessage("Đang tải lại dữ liệu...");
     try {
       await onRefresh();
+      if (adminScreen === "stats") {
+        await loadStorefrontStats(statsDays);
+      }
       setAdminMessage("Đã tải lại dữ liệu từ Supabase.");
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "Không tải lại được dữ liệu.");
@@ -2285,11 +2736,24 @@ function AdminPage({
           <h1>KNG.studio</h1>
         </div>
         <div className="admin-actions">
+          {adminScreen === "stats" ? (
+            <button className="admin-button ghost" type="button" onClick={() => setAdminScreen("catalog")}>
+              <ChevronLeft size={17} aria-hidden="true" />
+              Catalog
+            </button>
+          ) : null}
           <button
-            className={showStats ? "icon-button active" : "icon-button"}
+            className={adminScreen === "stats" ? "icon-button active" : "icon-button"}
             type="button"
-            onClick={() => setShowStats((s) => !s)}
-            aria-label="Tổng quan"
+            onClick={() => {
+              setAdminScreen("stats");
+              setSelectedAdminProductTypeId(null);
+              setAdminProductTypeSlug(null);
+              setExpandedProductId(null);
+              window.history.pushState(null, "", "/admin");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            aria-label="Thống kê hành vi khách"
           >
             <BarChart3 size={17} aria-hidden="true" />
           </button>
@@ -2297,44 +2761,33 @@ function AdminPage({
             <Eye size={17} aria-hidden="true" />
             Xem site
           </a>
-          <button className="admin-button ghost" type="button" disabled={isBusy} onClick={refreshFromSupabase}>
+          <button className="admin-button ghost" type="button" disabled={isBusy || isStatsLoading} onClick={refreshFromSupabase}>
             <RotateCcw size={17} aria-hidden="true" />
             Reload DB
           </button>
           <button className="admin-button ghost" type="button" disabled={isBusy} onClick={signOut}>
             Đăng xuất
           </button>
-          <button className="admin-button primary" type="button" disabled={isBusy} onClick={saveToSupabase}>
-            <Save size={17} aria-hidden="true" />
-            Lưu Supabase
-          </button>
+          {adminScreen === "catalog" ? (
+            <button className="admin-button primary" type="button" disabled={isBusy} onClick={saveToSupabase}>
+              <Save size={17} aria-hidden="true" />
+              Lưu Supabase
+            </button>
+          ) : null}
         </div>
       </header>
 
-      {showStats ? (
-        <section className="admin-stats" aria-label="Tổng quan catalog">
-          <div>
-            <PackageCheck size={20} aria-hidden="true" />
-            <span>Sản phẩm</span>
-            <strong>{products.length}</strong>
-          </div>
-          <div>
-            <BarChart3 size={20} aria-hidden="true" />
-            <span>Loại</span>
-            <strong>{productTypes.length}</strong>
-          </div>
-          <div>
-            <Image size={20} aria-hidden="true" />
-            <span>Họa tiết</span>
-            <strong>{patternCount}</strong>
-          </div>
-          <div>
-            <PackageCheck size={20} aria-hidden="true" />
-            <span>Đang còn</span>
-            <strong>{availablePatternCount}</strong>
-          </div>
-        </section>
-      ) : null}
+      {adminScreen === "stats" ? (
+        <AdminStatsDashboard
+          days={statsDays}
+          events={storefrontEvents}
+          isLoading={isStatsLoading}
+          onDaysChange={setStatsDays}
+          products={products}
+          productTypes={productTypes}
+        />
+      ) : (
+        <>
 
       <div className="admin-status-row">
         {adminProductTypeSlug ? (
@@ -2809,6 +3262,8 @@ function AdminPage({
           </button>
         ) : null}
       </div>
+        </>
+      )}
     </main>
   );
 }

@@ -92,11 +92,29 @@ create table if not exists public.shop_info (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.storefront_events (
+  id uuid primary key default gen_random_uuid(),
+  event_type text not null check (
+    event_type in (
+      'product_view',
+      'pattern_view',
+      'add_to_cart',
+      'order_image_created',
+      'message_click'
+    )
+  ),
+  product_id text,
+  pattern_id text,
+  size_id text check (size_id is null or size_id in ('1', '2')),
+  created_at timestamptz not null default now()
+);
+
 alter table public.product_types enable row level security;
 alter table public.products enable row level security;
 alter table public.product_patterns enable row level security;
 alter table public.product_images enable row level security;
 alter table public.shop_info enable row level security;
+alter table public.storefront_events enable row level security;
 
 drop policy if exists "Public can read product types" on public.product_types;
 create policy "Public can read product types"
@@ -122,6 +140,16 @@ drop policy if exists "Public can read shop info" on public.shop_info;
 create policy "Public can read shop info"
   on public.shop_info for select
   using (true);
+
+drop policy if exists "Public can insert storefront events" on public.storefront_events;
+create policy "Public can insert storefront events"
+  on public.storefront_events for insert
+  with check (true);
+
+drop policy if exists "Authenticated admin can read storefront events" on public.storefront_events;
+create policy "Authenticated admin can read storefront events"
+  on public.storefront_events for select
+  using (auth.role() = 'authenticated');
 
 drop policy if exists "Authenticated admin can manage product types" on public.product_types;
 create policy "Authenticated admin can manage product types"
