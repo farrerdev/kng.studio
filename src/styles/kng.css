@@ -3946,6 +3946,95 @@ button {
   grid-column: auto;
 }
 
+.admin-visit-chart-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.admin-visit-chart-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-visit-chart-heading strong {
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-align: right;
+}
+
+.admin-visit-chart {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+  touch-action: none;
+}
+
+.admin-visit-chart line {
+  stroke: var(--line);
+  stroke-dasharray: 7 10;
+  stroke-width: 1;
+}
+
+.admin-visit-chart .axis-line {
+  stroke-dasharray: none;
+}
+
+.admin-visit-chart polyline {
+  fill: none;
+  stroke: #e84b2a;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.admin-visit-chart circle {
+  fill: #e84b2a;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.admin-visit-chart .active-line {
+  stroke: rgba(232, 75, 42, 0.28);
+  stroke-dasharray: 4 5;
+}
+
+.admin-visit-chart text {
+  fill: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.admin-visit-chart .x-label {
+  fill: var(--ink);
+}
+
+.admin-visit-chart .chart-tooltip rect {
+  fill: #ffffff;
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.admin-visit-chart .chart-tooltip text {
+  fill: var(--ink);
+  font-size: 0.72rem;
+}
+
+.admin-visit-chart .chart-hit-area {
+  cursor: crosshair;
+  fill: transparent;
+  stroke: none;
+}
+
 .admin-insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
