@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
-const styles = readFileSync("src/styles.css", "utf8");
-const app = readFileSync("src/App.tsx", "utf8");
+const styles = [readFileSync("src/styles.css", "utf8"), readFileSync("src/styles/kng.css", "utf8")].join("\n");
+const app = [readFileSync("src/App.tsx", "utf8"), readFileSync("src/app/KngApp.tsx", "utf8")].join("\n");
 
 function selectorBlock(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
