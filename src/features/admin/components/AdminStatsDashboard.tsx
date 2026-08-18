@@ -193,13 +193,22 @@ function createDailyBuckets(filter: StorefrontStatsFilter): VisitChartBucket[] {
   });
 }
 
-function getVisitChartBuckets(events: StorefrontEventRow[], filter: StorefrontStatsFilter) {
+type ChartMetric = Extract<StorefrontEventType, "site_visit" | "product_view" | "add_to_cart" | "message_click">;
+
+const CHART_METRICS: Array<{ id: ChartMetric; label: string; unit: string }> = [
+  { id: "site_visit", label: "Truy cập", unit: "lượt truy cập" },
+  { id: "product_view", label: "Xem sản phẩm", unit: "lượt xem" },
+  { id: "add_to_cart", label: "Thêm giỏ", unit: "lượt thêm giỏ" },
+  { id: "message_click", label: "Mở tin nhắn", unit: "lượt mở tin nhắn" },
+];
+
+function getEventChartBuckets(events: StorefrontEventRow[], filter: StorefrontStatsFilter, metric: ChartMetric) {
   const isHourly = filter.mode === "today" || filter.mode === "yesterday" || filter.mode === "day";
   const buckets = isHourly ? createHourlyBuckets(filter) : createDailyBuckets(filter);
   const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
   events.forEach((event) => {
-    if (event.event_type !== "site_visit") return;
+    if (event.event_type !== metric) return;
     const date = new Date(event.created_at);
     const key = isHourly ? `${getDateKey(date)}-${date.getHours()}` : getDateKey(date);
     const bucket = bucketMap.get(key);
@@ -227,7 +236,12 @@ export function AdminStatsDashboard({
   const eventCounts = getEventCounts(events);
   const productRows = getProductInterestRows(events, products, productTypes);
   const patternRows = getPatternInterestRows(events, products, productTypes);
-  const visitChart = useMemo(() => getVisitChartBuckets(events, filter), [events, filter]);
+  const [chartMetric, setChartMetric] = useState<ChartMetric>("site_visit");
+  const activeMetric = CHART_METRICS.find((metric) => metric.id === chartMetric) ?? CHART_METRICS[0];
+  const eventChart = useMemo(
+    () => getEventChartBuckets(events, filter, chartMetric),
+    [events, filter, chartMetric],
+  );
   const addToCartRate = eventCounts.product_view > 0 ? Math.round((eventCounts.add_to_cart / eventCounts.product_view) * 100) : 0;
   const overviewItems = [
     { id: "site_visit", label: "Truy cập", value: eventCounts.site_visit },
@@ -291,14 +305,35 @@ export function AdminStatsDashboard({
         <h3>Tổng quan</h3>
         <div className="admin-overview-section">
           <div className="admin-stats event-stats" aria-label="Hành vi khách">
-            {overviewItems.map((item) => (
-              <div key={item.id}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </div>
-            ))}
+            {overviewItems.map((item) => {
+              const isChartable = CHART_METRICS.some((metric) => metric.id === item.id);
+              if (!isChartable) {
+                return (
+                  <div key={item.id}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                );
+              }
+              return (
+                <button
+                  className={chartMetric === item.id ? "active" : ""}
+                  key={item.id}
+                  onClick={() => setChartMetric(item.id as ChartMetric)}
+                  type="button"
+                >
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </button>
+              );
+            })}
           </div>
-          <VisitLineChart buckets={visitChart.buckets} isHourly={visitChart.isHourly} />
+          <VisitLineChart
+            buckets={eventChart.buckets}
+            isHourly={eventChart.isHourly}
+            label={activeMetric.label}
+            unit={activeMetric.unit}
+          />
         </div>
       </section>
 
@@ -325,7 +360,17 @@ export function AdminStatsDashboard({
   );
 }
 
-function VisitLineChart({ buckets, isHourly }: { buckets: VisitChartBucket[]; isHourly: boolean }) {
+function VisitLineChart({
+  buckets,
+  isHourly,
+  label,
+  unit,
+}: {
+  buckets: VisitChartBucket[];
+  isHourly: boolean;
+  label: string;
+  unit: string;
+}) {
   const lastValueIndex = buckets.reduce((lastIndex, bucket, index) => (bucket.count > 0 ? index : lastIndex), -1);
   const [activeIndex, setActiveIndex] = useState(lastValueIndex >= 0 ? lastValueIndex : 0);
   const width = 640;
@@ -363,7 +408,9 @@ function VisitLineChart({ buckets, isHourly }: { buckets: VisitChartBucket[]; is
   return (
     <div className="admin-visit-chart-card">
       <div className="admin-visit-chart-heading">
-        <span>Truy cập theo {isHourly ? "giờ" : "ngày"}</span>
+        <span>
+          {label} theo {isHourly ? "giờ" : "ngày"}
+        </span>
         <strong>{activeBucket ? `${activeBucket.label}: ${activeBucket.count}` : "0"}</strong>
       </div>
       <svg
@@ -391,7 +438,7 @@ function VisitLineChart({ buckets, isHourly }: { buckets: VisitChartBucket[]; is
           <g className="chart-tooltip" transform={`translate(${activeTooltipX}, 8)`}>
             <rect width="136" height="42" rx="4" />
             <text x="10" y="17">{activeBucket.label}</text>
-            <text x="10" y="33">{activeBucket.count} lượt truy cập</text>
+            <text x="10" y="33">{activeBucket.count} {unit}</text>
           </g>
         ) : null}
         <line className="axis-line" x1={padding.left} x2={width - padding.right} y1={padding.top + chartHeight} y2={padding.top + chartHeight} />

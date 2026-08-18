@@ -3027,7 +3027,8 @@ button {
   padding: 12px;
 }
 
-.admin-stats > div {
+.admin-stats > div,
+.admin-stats > button {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
@@ -3036,6 +3037,15 @@ button {
   padding: 12px;
   border-radius: 8px;
   background: #fff8ee;
+}
+
+.admin-stats > button {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .admin-stats span {
@@ -4228,7 +4238,8 @@ button {
   background: transparent;
 }
 
-.admin-stats > div {
+.admin-stats > div,
+.admin-stats > button {
   border: 1px solid var(--line);
   border-radius: 0;
   background: #ffffff;
@@ -4347,7 +4358,8 @@ button {
   margin-top: 0;
 }
 
-.admin-stats.event-stats > div {
+.admin-stats.event-stats > div,
+.admin-stats.event-stats > button {
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   min-height: 72px;
@@ -4358,6 +4370,27 @@ button {
 
 .admin-stats.event-stats strong {
   grid-column: auto;
+}
+
+.admin-stats.event-stats > button {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.admin-stats.event-stats > button:hover {
+  border-color: var(--ink);
+}
+
+.admin-stats.event-stats > button.active {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.admin-stats.event-stats > button.active span {
+  color: #f4f4f4;
+}
+
+.admin-stats.event-stats > button.active strong {
+  color: #ffffff;
 }
 
 .admin-visit-chart-card {
