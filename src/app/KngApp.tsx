@@ -1,26 +1,19 @@
 import {
-  ArrowDown,
-  ArrowUp,
   BarChart3,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Eye,
   LogOut,
   Menu,
-  Star,
-  Plus,
   RotateCcw,
   Save,
   ShoppingBag,
-  Trash2,
   X,
 } from "lucide-react";
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { getAdminProductTypeSlugFromPath, getStorefrontSlugFromPath } from "./routes";
 import { shopConfig } from "../config/shop";
-import { sizeOptions } from "../data/mockCatalog";
 import {
   fetchStorefrontStats,
   markAnalyticsOptOutDevice,
@@ -32,7 +25,7 @@ import {
   getStorefrontStatsRange,
   type StorefrontStatsFilter,
 } from "../features/analytics/statsFilters";
-import { AdminImageActionField } from "../features/admin/components/AdminImageActionField";
+import { AdminProductManager } from "../features/admin/components/AdminProductManager";
 import { AdminStatsDashboard } from "../features/admin/components/AdminStatsDashboard";
 import { CartCheckoutCta } from "../features/storefront/cart/CartCheckoutCta";
 import { CartOverlay, OrderImagePreview } from "../features/storefront/cart/CartOverlay";
@@ -70,6 +63,57 @@ import { getSupabaseImageSrc } from "../shared/utils/image";
 import { formatPrice } from "../shared/utils/money";
 import { moveItem } from "../shared/utils/reorder";
 import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "../types/catalog";
+
+const SITE_URL = "https://kngstudio.vercel.app";
+const DEFAULT_PAGE_TITLE = "KNG.studio | Muslin homewear";
+const DEFAULT_PAGE_DESCRIPTION = "Catalog đồ ngủ muslin homewear KNG.studio tại Đà Nẵng: xem mẫu còn hàng, size, giá và nhắn shop để chốt đơn.";
+const DEFAULT_PAGE_IMAGE = `${SITE_URL}/favicon-192.png`;
+
+function createProductPageMeta(product: Product, productTypes: ProductType[], products: Product[]) {
+  const productTitle = getProductTitle(product, productTypes);
+  const productPrice = formatPrice(getProductPrice(product, productTypes));
+  const productSlug = getProductSlug(product, productTypes);
+  const coverImage = getProductCoverImage(product, productTypes, products);
+
+  return {
+    title: `${productTitle} | KNG.studio`,
+    description: `${productTitle} - ${productPrice}. Xem mẫu còn hàng, size và nhắn KNG.studio để chốt đơn.`,
+    url: `${SITE_URL}/${productSlug}`,
+    image: getAbsolutePreviewImageSrc(coverImage.src),
+    imageAlt: coverImage.alt || productTitle,
+    type: "product",
+    twitterCard: "summary_large_image",
+  };
+}
+
+function getAbsolutePreviewImageSrc(src: string) {
+  try {
+    return new URL(getSupabaseImageSrc(src || DEFAULT_PAGE_IMAGE, 1200, 82, 630, "contain"), window.location.origin).toString();
+  } catch {
+    return DEFAULT_PAGE_IMAGE;
+  }
+}
+
+function updateMetaTag(attribute: "name" | "property", key: string, content: string) {
+  const selector = `meta[${attribute}="${key}"]`;
+  let metaTag = document.querySelector<HTMLMetaElement>(selector);
+  if (!metaTag) {
+    metaTag = document.createElement("meta");
+    metaTag.setAttribute(attribute, key);
+    document.head.appendChild(metaTag);
+  }
+  metaTag.content = content;
+}
+
+function updateCanonical(href: string) {
+  let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.rel = "canonical";
+    document.head.appendChild(canonical);
+  }
+  canonical.href = href;
+}
 
 function App() {
   const [catalogProductTypes, setCatalogProductTypes] = useState<ProductType[]>(
@@ -355,8 +399,38 @@ function App() {
   };
 
   useEffect(() => {
-    document.title = isAdminRoute ? "KNG.studio Admin" : "KNG.studio | Muslin homewear";
-  }, [isAdminRoute]);
+    if (isAdminRoute) {
+      document.title = "KNG.studio Admin";
+      return;
+    }
+
+    const pageMeta = selectedProduct
+      ? createProductPageMeta(selectedProduct, catalogProductTypes, catalogProducts)
+      : {
+          title: DEFAULT_PAGE_TITLE,
+          description: DEFAULT_PAGE_DESCRIPTION,
+          url: `${SITE_URL}/`,
+          image: DEFAULT_PAGE_IMAGE,
+          imageAlt: "KNG.studio",
+          type: "website",
+          twitterCard: "summary",
+        };
+
+    document.title = pageMeta.title;
+    updateMetaTag("name", "description", pageMeta.description);
+    updateMetaTag("property", "og:type", pageMeta.type);
+    updateMetaTag("property", "og:title", pageMeta.title);
+    updateMetaTag("property", "og:description", pageMeta.description);
+    updateMetaTag("property", "og:url", pageMeta.url);
+    updateMetaTag("property", "og:image", pageMeta.image);
+    updateMetaTag("property", "og:image:alt", pageMeta.imageAlt);
+    updateMetaTag("name", "twitter:card", pageMeta.twitterCard);
+    updateMetaTag("name", "twitter:title", pageMeta.title);
+    updateMetaTag("name", "twitter:description", pageMeta.description);
+    updateMetaTag("name", "twitter:image", pageMeta.image);
+    updateMetaTag("name", "twitter:image:alt", pageMeta.imageAlt);
+    updateCanonical(pageMeta.url);
+  }, [catalogProductTypes, catalogProducts, isAdminRoute, selectedProduct]);
 
   useEffect(() => {
     if (!("scrollRestoration" in window.history)) return;
@@ -509,9 +583,13 @@ function App() {
         onProductsChange={setCatalogProducts}
         onRefresh={async () => {
           const catalog = await fetchCatalog();
-          setCatalogProductTypes(isSupabaseConfigured ? catalog.productTypes : fallbackCatalog.productTypes);
-          setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
-          setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
+          const nextProductTypes = isSupabaseConfigured ? catalog.productTypes : fallbackCatalog.productTypes;
+          const nextProducts = isSupabaseConfigured ? catalog.products : fallbackCatalog.products;
+          setCatalogProductTypes(nextProductTypes);
+          setCatalogProducts(nextProducts);
+          const nextShopInfoImage = (isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage) ?? emptyShopInfoImage;
+          setCurrentShopInfoImage(nextShopInfoImage);
+          return { productTypes: nextProductTypes, products: nextProducts, shopInfoImage: nextShopInfoImage };
         }}
         onShopInfoImageChange={(updater) =>
           setCurrentShopInfoImage((currentImage) =>
@@ -693,7 +771,7 @@ function App() {
             )}
           </details>
           <button type="button" onClick={() => goHomeSection("gift")}>Quà tặng</button>
-          <button type="button" onClick={() => goHomeSection("shipping")}>Phí ship</button>
+          <button type="button" onClick={() => goHomeSection("shipping")}>Phí vận chuyển</button>
           <button type="button" onClick={() => goHomeSection("payment")}>Thanh toán</button>
           <button type="button" onClick={() => goHomeSection("returns")}>Đổi hàng</button>
           <button type="button" onClick={() => goHomeSection("care")}>Bảo quản</button>
@@ -710,7 +788,6 @@ function App() {
         onClose={closeCart}
         onCapture={captureOrderImage}
         onOpenMessage={openOrderMessage}
-        onOpenPolicy={() => setIsPolicyModalOpen(true)}
         onClear={clearCart}
         onQuantityChange={updateCartQuantity}
         onRemove={removeCartItem}
@@ -801,7 +878,7 @@ type AdminPageProps = {
   onProductTypesChange: Dispatch<SetStateAction<ProductType[]>>;
   onProductsChange: Dispatch<SetStateAction<Product[]>>;
   onShopInfoImageChange: Dispatch<SetStateAction<ProductImage>>;
-  onRefresh: () => Promise<void>;
+  onRefresh: () => Promise<{ productTypes: ProductType[]; products: Product[]; shopInfoImage: ProductImage }>;
 };
 
 const createId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -818,6 +895,22 @@ type AdminSaveState = {
 };
 
 type AdminScreen = "catalog" | "stats";
+type AdminEditSession = {
+  mode: "productType" | "product";
+  id: string;
+  isNew: boolean;
+  baselineProductTypes: ProductType[];
+  baselineProducts: Product[];
+};
+type AdminHomeSortSession = {
+  productTypes: ProductType[];
+  products: Product[];
+};
+type AdminProductDetailOrigin = "home" | "type";
+type AdminClosingDetail = "productType" | "product" | null;
+
+const getCatalogSnapshotKey = (productTypes: ProductType[], products: Product[]) =>
+  JSON.stringify({ productTypes, products });
 
 function AdminPage({
   catalogStatus,
@@ -830,7 +923,6 @@ function AdminPage({
   onRefresh,
 }: AdminPageProps) {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
-  const [expandedProductTypeId, setExpandedProductTypeId] = useState<string | null>(null);
   const [selectedAdminProductTypeId, setSelectedAdminProductTypeId] = useState<string | null>(null);
   const [adminProductTypeSlug, setAdminProductTypeSlug] = useState<string | null>(() => getAdminProductTypeSlugFromPath());
   const [adminScreen, setAdminScreen] = useState<AdminScreen>(() => (getAdminProductTypeSlugFromPath() ? "catalog" : "stats"));
@@ -844,7 +936,14 @@ function AdminPage({
   const [isBusy, setIsBusy] = useState(false);
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
   const [saveState, setSaveState] = useState<AdminSaveState>({ status: "idle", message: "" });
+  const [adminTypeEditSession, setAdminTypeEditSession] = useState<AdminEditSession | null>(null);
+  const [adminProductEditSession, setAdminProductEditSession] = useState<AdminEditSession | null>(null);
+  const [adminProductDetailOrigin, setAdminProductDetailOrigin] = useState<AdminProductDetailOrigin | null>(null);
+  const [closingAdminDetail, setClosingAdminDetail] = useState<AdminClosingDetail>(null);
   const [previewImage, setPreviewImage] = useState<GalleryImage | null>(null);
+  const [homeSortSession, setHomeSortSession] = useState<AdminHomeSortSession | null>(null);
+  const [hasHomeReorderChanges, setHasHomeReorderChanges] = useState(false);
+  const adminDetailScrollYRef = useRef<number | null>(null);
 
   useEffect(() => {
     setAdminMessage(catalogStatus);
@@ -856,34 +955,175 @@ function AdminPage({
   const selectedTypeProducts = selectedAdminProductType
     ? products.filter((product) => product.productTypeId === selectedAdminProductType.id)
     : [];
+  const selectedProduct = products.find((product) => product.id === expandedProductId) ?? null;
+  const isAdminTypeDetailOpen = adminScreen === "catalog" && Boolean(adminProductTypeSlug && selectedAdminProductType);
+  const isAdminProductDetailOpen = adminScreen === "catalog" && Boolean(expandedProductId && selectedProduct);
+  const isAdminTypeOverlayVisible =
+    isAdminTypeDetailOpen && (!isAdminProductDetailOpen || adminProductDetailOrigin === "type");
+  const isAdminProductOverlayVisible = isAdminProductDetailOpen;
+  const isAdminDetailOverlayActive =
+    isAdminTypeOverlayVisible || isAdminProductOverlayVisible || closingAdminDetail !== null;
+  const isHomeSorting = Boolean(homeSortSession);
+  const activeAdminTypeEditSession =
+    adminTypeEditSession &&
+    selectedAdminProductType &&
+    adminTypeEditSession.mode === "productType" &&
+    adminTypeEditSession.id === selectedAdminProductType.id
+      ? adminTypeEditSession
+      : null;
+  const activeAdminProductEditSession =
+    adminProductEditSession &&
+    selectedProduct &&
+    adminProductEditSession.mode === "product" &&
+    adminProductEditSession.id === selectedProduct.id
+      ? adminProductEditSession
+      : null;
+  const isPristineNewAdminType = Boolean(
+    activeAdminTypeEditSession?.isNew &&
+      selectedAdminProductType &&
+      selectedAdminProductType.name.trim() === "" &&
+      selectedAdminProductType.price.trim() === "" &&
+      selectedAdminProductType.coverImage.src.trim() === "" &&
+      selectedAdminProductType.sizeChartImage.src.trim() === "" &&
+      selectedTypeProducts.length === 0 &&
+      getCatalogSnapshotKey(
+        productTypes.filter((productType) => productType.id !== selectedAdminProductType.id),
+        products,
+      ) === getCatalogSnapshotKey(activeAdminTypeEditSession.baselineProductTypes, activeAdminTypeEditSession.baselineProducts),
+  );
+  const hasAdminTypeChanges = Boolean(
+    activeAdminTypeEditSession &&
+      !isPristineNewAdminType &&
+      getCatalogSnapshotKey(productTypes, products) !==
+        getCatalogSnapshotKey(activeAdminTypeEditSession.baselineProductTypes, activeAdminTypeEditSession.baselineProducts),
+  );
+  const isPristineNewAdminProduct = Boolean(
+    activeAdminProductEditSession?.isNew &&
+      selectedProduct &&
+      selectedProduct.name.trim() === "" &&
+      selectedProduct.fit.trim() === "" &&
+      selectedProduct.material === "Xô muslin 2 lớp" &&
+      selectedProduct.patterns.length === 0 &&
+      selectedProduct.modelImages.length === 0 &&
+      selectedProduct.sizeChartImage.src.trim() === "" &&
+      productTypes.some(
+        (productType) => productType.id === selectedProduct.productTypeId && selectedProduct.price === productType.price,
+      ) &&
+      getCatalogSnapshotKey(
+        productTypes,
+        products.filter((product) => product.id !== selectedProduct.id),
+      ) ===
+        getCatalogSnapshotKey(activeAdminProductEditSession.baselineProductTypes, activeAdminProductEditSession.baselineProducts),
+  );
+  const hasAdminProductChanges = Boolean(
+    activeAdminProductEditSession &&
+      !isPristineNewAdminProduct &&
+      getCatalogSnapshotKey(productTypes, products) !==
+        getCatalogSnapshotKey(activeAdminProductEditSession.baselineProductTypes, activeAdminProductEditSession.baselineProducts),
+  );
+  const hiddenDraftProductTypeId = activeAdminTypeEditSession?.isNew ? activeAdminTypeEditSession.id : null;
+  const hiddenDraftProductId = activeAdminProductEditSession?.isNew ? activeAdminProductEditSession.id : null;
+
+  const createAdminEditSession = (
+    mode: AdminEditSession["mode"],
+    id: string,
+    isNew = false,
+    baselineProductTypes = productTypes,
+    baselineProducts = products,
+  ): AdminEditSession => ({
+    mode,
+    id,
+    isNew,
+    baselineProductTypes,
+    baselineProducts,
+  });
+
+  const startAdminTypeEditSession = (
+    id: string,
+    isNew = false,
+    baselineProductTypes = productTypes,
+    baselineProducts = products,
+  ) => setAdminTypeEditSession(createAdminEditSession("productType", id, isNew, baselineProductTypes, baselineProducts));
+
+  const startAdminProductEditSession = (
+    id: string,
+    isNew = false,
+    baselineProductTypes = productTypes,
+    baselineProducts = products,
+  ) => setAdminProductEditSession(createAdminEditSession("product", id, isNew, baselineProductTypes, baselineProducts));
+
+  const rememberAdminDetailScroll = () => {
+    if (adminDetailScrollYRef.current === null) {
+      adminDetailScrollYRef.current = window.scrollY;
+    }
+  };
+
+  const restoreAdminDetailScroll = () => {
+    adminDetailScrollYRef.current = null;
+  };
 
   const toggleExpandProduct = (productId: string) => {
     setExpandedProductId((current) => (current === productId ? null : productId));
   };
 
-  const toggleExpandProductType = (productTypeId: string) => {
-    setExpandedProductTypeId((current) => (current === productTypeId ? null : productTypeId));
-  };
-
   const openAdminProductType = (productType: ProductType) => {
+    rememberAdminDetailScroll();
     const slug = getProductTypeSlug(productType);
+    setClosingAdminDetail(null);
+    setAdminProductDetailOrigin(null);
     setSelectedAdminProductTypeId(productType.id);
     setAdminProductTypeSlug(slug);
-    window.history.pushState(null, "", `/admin/${slug}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setExpandedProductId(null);
+    startAdminTypeEditSession(productType.id);
   };
 
-  const closeAdminProductType = () => {
+  const closeAdminProductType = (syncPath = true) => {
     setSelectedAdminProductTypeId(null);
     setAdminProductTypeSlug(null);
     setExpandedProductId(null);
-    window.history.pushState(null, "", "/admin");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setAdminProductDetailOrigin(null);
+    setAdminTypeEditSession(null);
+    setAdminProductEditSession(null);
+    if (syncPath && window.location.pathname !== "/admin") {
+      window.history.pushState(null, "", "/admin");
+    }
+  };
+
+  const selectAdminProduct = (productId: string | null, origin: AdminProductDetailOrigin = "home") => {
+    setClosingAdminDetail(null);
+    if (productId) {
+      rememberAdminDetailScroll();
+    }
+    setExpandedProductId(productId);
+    if (productId) {
+      const product = products.find((currentProduct) => currentProduct.id === productId);
+      const productType = productTypes.find((currentType) => currentType.id === product?.productTypeId);
+      if (productType) {
+        setSelectedAdminProductTypeId(productType.id);
+        setAdminProductTypeSlug(getProductTypeSlug(productType));
+        if (origin === "type" && !activeAdminTypeEditSession) {
+          startAdminTypeEditSession(productType.id);
+        }
+      }
+      setAdminProductDetailOrigin(origin);
+      startAdminProductEditSession(productId);
+      return;
+    }
+
+    if (selectedAdminProductType) {
+      startAdminTypeEditSession(selectedAdminProductType.id);
+    }
   };
 
   useEffect(() => {
     if (!adminProductTypeSlug) {
       setSelectedAdminProductTypeId(null);
+      return;
+    }
+    if (
+      selectedAdminProductTypeId &&
+      productTypes.some((currentProductType) => currentProductType.id === selectedAdminProductTypeId)
+    ) {
       return;
     }
     const productType = productTypes.find((currentProductType) => getProductTypeSlug(currentProductType) === adminProductTypeSlug);
@@ -892,13 +1132,38 @@ function AdminPage({
       return;
     }
     setSelectedAdminProductTypeId(null);
-  }, [adminProductTypeSlug, productTypes]);
+  }, [adminProductTypeSlug, productTypes, selectedAdminProductTypeId]);
+
+  useEffect(() => {
+    if (!isAdminDetailOverlayActive) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isAdminDetailOverlayActive]);
 
   useEffect(() => {
     if (!selectedAdminProductTypeId) return;
     if (productTypes.some((productType) => productType.id === selectedAdminProductTypeId)) return;
     setSelectedAdminProductTypeId(null);
   }, [productTypes, selectedAdminProductTypeId]);
+
+  useEffect(() => {
+    if (!isAdminTypeDetailOpen || !selectedAdminProductType) return;
+    setAdminTypeEditSession((currentSession) => {
+      if (currentSession?.mode === "productType" && currentSession.id === selectedAdminProductType.id) return currentSession;
+      return createAdminEditSession("productType", selectedAdminProductType.id, false, productTypes, products);
+    });
+  }, [isAdminTypeDetailOpen, selectedAdminProductType?.id, productTypes, products]);
+
+  useEffect(() => {
+    if (!isAdminProductDetailOpen || !selectedProduct) return;
+    setAdminProductEditSession((currentSession) => {
+      if (currentSession?.mode === "product" && currentSession.id === selectedProduct.id) return currentSession;
+      return createAdminEditSession("product", selectedProduct.id, false, productTypes, products);
+    });
+  }, [isAdminProductDetailOpen, selectedProduct?.id, productTypes, products]);
 
   useEffect(() => {
     const syncAdminRoute = () => {
@@ -957,6 +1222,7 @@ function AdminPage({
   };
 
   const addProductType = () => {
+    rememberAdminDetailScroll();
     const id = createId("type");
     const productType = {
       id,
@@ -965,11 +1231,18 @@ function AdminPage({
       coverImage: createImage(createId("type-cover"), "", "Ảnh bìa loại sản phẩm"),
       sizeChartImage: createImage(createId("type-size-chart"), "", "Bảng size loại sản phẩm"),
     };
+    const baselineProductTypes = productTypes;
+    const baselineProducts = products;
     onProductTypesChange((currentTypes) => [
       ...currentTypes,
       productType,
     ]);
-    setExpandedProductTypeId(id);
+    setSelectedAdminProductTypeId(id);
+    setAdminProductTypeSlug(getProductTypeSlug(productType));
+    setExpandedProductId(null);
+    setAdminProductDetailOrigin(null);
+    setClosingAdminDetail(null);
+    startAdminTypeEditSession(id, true, baselineProductTypes, baselineProducts);
   };
 
   const updateProductType = (productTypeId: string, patch: Partial<ProductType>) => {
@@ -986,7 +1259,6 @@ function AdminPage({
     if (!nextProductType) return;
 
     onProductTypesChange((currentTypes) => currentTypes.filter((productType) => productType.id !== productTypeId));
-    setExpandedProductTypeId((current) => (current === productTypeId ? null : current));
     setSelectedAdminProductTypeId((current) => (current === productTypeId ? null : current));
     onProductsChange((currentProducts) =>
       currentProducts.map((product) =>
@@ -1000,7 +1272,11 @@ function AdminPage({
   const reorderProductType = (productTypeId: string, direction: -1 | 1) => {
     onProductTypesChange((currentTypes) => {
       const index = currentTypes.findIndex((productType) => productType.id === productTypeId);
-      return index === -1 ? currentTypes : moveItem(currentTypes, index, direction);
+      const nextTypes = index === -1 ? currentTypes : moveItem(currentTypes, index, direction);
+      if (nextTypes !== currentTypes) {
+        setHasHomeReorderChanges(true);
+      }
+      return nextTypes;
     });
   };
 
@@ -1028,8 +1304,31 @@ function AdminPage({
       const nextProducts = [...currentProducts];
       const [movedProduct] = nextProducts.splice(index, 1);
       nextProducts.splice(targetIndex, 0, movedProduct);
+      setHasHomeReorderChanges(true);
       return nextProducts;
     });
+  };
+
+  const startHomeSorting = () => {
+    setHomeSortSession({ productTypes, products });
+    setHasHomeReorderChanges(false);
+  };
+
+  const cancelHomeSorting = () => {
+    if (homeSortSession) {
+      onProductTypesChange(homeSortSession.productTypes);
+      onProductsChange(homeSortSession.products);
+    }
+    setHomeSortSession(null);
+    setHasHomeReorderChanges(false);
+  };
+
+  const saveHomeSorting = async () => {
+    if (!homeSortSession || !hasHomeReorderChanges) return;
+    const saved = await saveToSupabase();
+    if (!saved) return;
+    setHomeSortSession(null);
+    setHasHomeReorderChanges(false);
   };
 
   const updatePattern = (productId: string, patternId: string, patch: Partial<ProductPattern>) => {
@@ -1084,7 +1383,10 @@ function AdminPage({
   };
 
   const addProduct = (productTypeId = selectedAdminProductType?.id ?? defaultProductType?.id) => {
+    rememberAdminDetailScroll();
     const id = createId("product");
+    const baselineProductTypes = productTypes;
+    const baselineProducts = products;
     const productType =
       productTypes.find((currentProductType) => currentProductType.id === productTypeId) ??
       defaultProductType ?? {
@@ -1113,6 +1415,10 @@ function AdminPage({
     onProductsChange((currentProducts) => [...currentProducts, newProduct]);
     setSelectedAdminProductTypeId(productType.id);
     setExpandedProductId(id);
+    setAdminProductTypeSlug(getProductTypeSlug(productType));
+    setAdminProductDetailOrigin(selectedAdminProductType ? "type" : "home");
+    setClosingAdminDetail(null);
+    startAdminProductEditSession(id, true, baselineProductTypes, baselineProducts);
   };
 
   const addPatterns = (productId: string, urls: string[]) => {
@@ -1217,23 +1523,170 @@ function AdminPage({
         products,
         shopInfoImage: adminShopInfoImage,
       });
+      setHasHomeReorderChanges(false);
       const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
       setAdminMessage(message);
       setSaveState({ status: "success", message });
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không lưu được catalog.";
       setAdminMessage(message);
       setSaveState({ status: "error", message });
+      return false;
     } finally {
       setIsBusy(false);
     }
+  };
+
+  const saveAdminTypeDetail = async () => {
+    if (!activeAdminTypeEditSession || !hasAdminTypeChanges) return;
+    const saved = await saveToSupabase();
+    if (!saved) return;
+    setAdminTypeEditSession({
+      ...activeAdminTypeEditSession,
+      isNew: false,
+      baselineProductTypes: productTypes,
+      baselineProducts: products,
+    });
+  };
+
+  const saveAdminProductDetail = async () => {
+    if (!activeAdminProductEditSession || !hasAdminProductChanges) return;
+    const saved = await saveToSupabase();
+    if (!saved) return;
+    setAdminProductEditSession({
+      ...activeAdminProductEditSession,
+      isNew: false,
+      baselineProductTypes: productTypes,
+      baselineProducts: products,
+    });
+  };
+
+  const closeAdminDetailWithAnimation = (detail: Exclude<AdminClosingDetail, null>, afterClose: () => void) => {
+    setClosingAdminDetail(detail);
+    window.setTimeout(() => {
+      afterClose();
+    }, 190);
+    window.setTimeout(() => {
+      setClosingAdminDetail(null);
+      restoreAdminDetailScroll();
+    }, 280);
+  };
+
+  const leaveAdminProductDetail = () => {
+    const isClosingHomeProduct = adminProductDetailOrigin === "home";
+    if (isClosingHomeProduct) {
+      setAdminProductDetailOrigin(null);
+      setSelectedAdminProductTypeId(null);
+      setAdminProductTypeSlug(null);
+    }
+
+    closeAdminDetailWithAnimation("product", () => {
+      setExpandedProductId(null);
+      setAdminProductEditSession(null);
+      if (!isClosingHomeProduct) {
+        setAdminProductDetailOrigin(null);
+        if (selectedAdminProductType && !activeAdminTypeEditSession) {
+          startAdminTypeEditSession(selectedAdminProductType.id);
+        }
+      }
+    });
+  };
+
+  const leaveAdminTypeDetail = () => {
+    closeAdminDetailWithAnimation("productType", () => closeAdminProductType());
+  };
+
+  const discardAdminProductDetailChanges = () => {
+    if (!activeAdminProductEditSession) {
+      leaveAdminProductDetail();
+      return;
+    }
+
+    const isClosingHomeProduct = adminProductDetailOrigin === "home";
+    closeAdminDetailWithAnimation("product", () => {
+      onProductTypesChange(activeAdminProductEditSession.baselineProductTypes);
+      onProductsChange(activeAdminProductEditSession.baselineProducts);
+      setExpandedProductId(null);
+      setAdminProductEditSession(null);
+      setAdminProductDetailOrigin(null);
+      if (isClosingHomeProduct) {
+        setSelectedAdminProductTypeId(null);
+        setAdminProductTypeSlug(null);
+      } else if (selectedAdminProductType) {
+        setAdminTypeEditSession((currentSession) =>
+          currentSession ??
+          createAdminEditSession(
+            "productType",
+            selectedAdminProductType.id,
+            false,
+            activeAdminProductEditSession.baselineProductTypes,
+            activeAdminProductEditSession.baselineProducts,
+          ),
+        );
+      }
+    });
+  };
+
+  const discardAdminTypeDetailChanges = () => {
+    if (!activeAdminTypeEditSession) {
+      leaveAdminTypeDetail();
+      return;
+    }
+
+    closeAdminDetailWithAnimation("productType", () => {
+      onProductTypesChange(activeAdminTypeEditSession.baselineProductTypes);
+      onProductsChange(activeAdminTypeEditSession.baselineProducts);
+      closeAdminProductType();
+    });
+  };
+
+  const backFromAdminProductDetail = () => {
+    if (isPristineNewAdminProduct) {
+      discardAdminProductDetailChanges();
+      return;
+    }
+
+    if (!hasAdminProductChanges) {
+      leaveAdminProductDetail();
+      return;
+    }
+
+    const confirmed = window.confirm(
+      activeAdminProductEditSession?.isNew
+        ? "Bỏ tạo mới? Dữ liệu vừa nhập sẽ không được lưu."
+        : "Bạn có thay đổi chưa lưu. Bấm OK để bỏ thay đổi và quay lại.",
+    );
+    if (!confirmed) return;
+    discardAdminProductDetailChanges();
+  };
+
+  const backFromAdminTypeDetail = () => {
+    if (isPristineNewAdminType) {
+      discardAdminTypeDetailChanges();
+      return;
+    }
+
+    if (!hasAdminTypeChanges) {
+      leaveAdminTypeDetail();
+      return;
+    }
+
+    const confirmed = window.confirm(
+      activeAdminTypeEditSession?.isNew
+        ? "Bỏ tạo mới? Dữ liệu vừa nhập sẽ không được lưu."
+        : "Bạn có thay đổi chưa lưu. Bấm OK để bỏ thay đổi và quay lại.",
+    );
+    if (!confirmed) return;
+    discardAdminTypeDetailChanges();
   };
 
   const refreshFromSupabase = async () => {
     setIsBusy(true);
     setAdminMessage("Đang tải lại dữ liệu...");
     try {
-      await onRefresh();
+      const refreshedCatalog = await onRefresh();
+      setHasHomeReorderChanges(false);
       if (adminScreen === "stats") {
         await loadStorefrontStats(statsFilter);
       }
@@ -1335,56 +1788,73 @@ function AdminPage({
   return (
     <main className="admin-shell">
       <header className="admin-topbar">
-        <div>
-          <span className="eyebrow">Supabase admin</span>
-          <h1>KNG.studio</h1>
-        </div>
+        <h1>KNG.studio admin</h1>
         <div className="admin-toolbar">
           <div className="admin-actions admin-actions-main">
-            <a className="admin-link" href="/">
+            <a className="icon-button" href="/" aria-label="Xem site" title="Xem site">
               <Eye size={17} aria-hidden="true" />
-              Xem site
             </a>
-            <button className="admin-button ghost" type="button" disabled={isBusy || isStatsLoading} onClick={refreshFromSupabase}>
+            <button
+              className="icon-button"
+              type="button"
+              disabled={isBusy || isStatsLoading}
+              onClick={refreshFromSupabase}
+              aria-label="Reload DB"
+              title="Reload DB"
+            >
               <RotateCcw size={17} aria-hidden="true" />
-              Reload DB
             </button>
-            <button className="icon-button" type="button" disabled={isBusy} onClick={signOut} aria-label="Đăng xuất">
+            <button className="icon-button" type="button" disabled={isBusy} onClick={signOut} aria-label="Đăng xuất" title="Đăng xuất">
               <LogOut size={17} aria-hidden="true" />
             </button>
           </div>
-          <div className="admin-actions admin-actions-secondary">
-            {adminScreen === "stats" ? (
-              <button className="admin-button primary full-width" type="button" onClick={() => setAdminScreen("catalog")}>
-                <ShoppingBag size={17} aria-hidden="true" />
-                Quản lý sản phẩm
-              </button>
-            ) : (
-              <>
-                <button
-                  className="admin-button ghost"
-                  type="button"
-                  onClick={() => {
-                    setAdminScreen("stats");
-                    setSelectedAdminProductTypeId(null);
-                    setAdminProductTypeSlug(null);
-                    setExpandedProductId(null);
-                    window.history.pushState(null, "", "/admin");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                >
-                  <BarChart3 size={17} aria-hidden="true" />
-                  Thống kê
-                </button>
-                <button className="admin-button primary" type="button" disabled={isBusy} onClick={saveToSupabase}>
-                  <Save size={17} aria-hidden="true" />
-                  Lưu Supabase
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </header>
+
+      <div className="admin-actions admin-actions-secondary">
+        {adminScreen === "stats" ? (
+          <button className="admin-button primary full-width" type="button" onClick={() => setAdminScreen("catalog")}>
+            <ShoppingBag size={17} aria-hidden="true" />
+            Quản lý sản phẩm
+          </button>
+        ) : (
+          <>
+            <button
+              className="admin-button ghost"
+              type="button"
+              disabled={isBusy || isHomeSorting}
+              onClick={() => {
+                setAdminScreen("stats");
+                setSelectedAdminProductTypeId(null);
+                setAdminProductTypeSlug(null);
+                setExpandedProductId(null);
+                setAdminProductDetailOrigin(null);
+                setAdminTypeEditSession(null);
+                setAdminProductEditSession(null);
+                window.history.pushState(null, "", "/admin");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              <BarChart3 size={17} aria-hidden="true" />
+              Thống kê
+            </button>
+            {isHomeSorting ? (
+              <div className="admin-sort-actions">
+                <button className="admin-button ghost" type="button" disabled={isBusy} onClick={cancelHomeSorting}>
+                  Huỷ
+                </button>
+                <button className="admin-button primary" type="button" disabled={isBusy || !hasHomeReorderChanges} onClick={saveHomeSorting}>
+                  Lưu
+                </button>
+              </div>
+            ) : (
+              <button className="admin-button primary" type="button" disabled={isBusy} onClick={startHomeSorting}>
+                Sắp xếp
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
       {adminScreen === "stats" ? (
         <AdminStatsDashboard
@@ -1397,414 +1867,53 @@ function AdminPage({
         />
       ) : (
         <>
-
-      <div className="admin-status-row">
-        {adminProductTypeSlug ? (
-          <button className="admin-button ghost" type="button" onClick={closeAdminProductType}>
-            <ChevronLeft size={17} aria-hidden="true" />
-            Danh sách loại
-          </button>
-        ) : null}
-        <p className="admin-status-text">{adminMessage}</p>
-      </div>
-
-      <div className="admin-product-list-full">
-        {!adminProductTypeSlug ? (
-          <>
-            <section className="admin-panel-heading flat">
-              <div>
-                <h2>Loại sản phẩm ({productTypes.length})</h2>
-                <p>Tap vào row để mở detail, tap mũi tên để sửa loại</p>
-              </div>
-            </section>
-
-            <div className="product-type-list standalone">
-              {productTypes.map((productType, index) => {
-                const isTypeExpanded = expandedProductTypeId === productType.id;
-                return (
-                  <article className="product-type-item" key={productType.id}>
-                    <div className="product-type-header">
-                      <button className="product-type-open-button" type="button" onClick={() => openAdminProductType(productType)}>
-                        <span>
-                          <strong>{productType.name || "Chưa đặt tên"}</strong>
-                          <em>{formatPrice(productType.price)}</em>
-                        </span>
-                        <small>{products.filter((product) => product.productTypeId === productType.id).length} sản phẩm</small>
-                      </button>
-                      <button
-                        className="admin-product-chevron small"
-                        type="button"
-                        onClick={() => toggleExpandProductType(productType.id)}
-                        aria-label={`Sửa ${productType.name || "loại sản phẩm"}`}
-                        aria-expanded={isTypeExpanded}
-                      >
-                        {isTypeExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </button>
-                    </div>
-
-                    {isTypeExpanded ? (
-                      <div className="product-type-row">
-                        <AdminImageActionField
-                          ariaLabel={`Mở tùy chọn bảng size ${productType.name || "loại sản phẩm"}`}
-                          caption={`Bảng size ${productType.name || "loại sản phẩm"}`}
-                          className="product-type-size-field"
-                          image={productType.sizeChartImage}
-                          onPreview={setPreviewImage}
-                          onFileSelected={(file) =>
-                            uploadImage(file, `product-types/${productType.id}/size-charts`, (url) =>
-                              updateProductType(productType.id, {
-                                sizeChartImage: {
-                                  ...productType.sizeChartImage,
-                                  src: url,
-                                  alt: productType.sizeChartImage.alt || `Bảng size ${productType.name}`,
-                                },
-                              }),
-                            )
-                          }
-                        />
-                        <label className="product-type-name-field">
-                          <span>Loại</span>
-                          <input value={productType.name} onChange={(event) => updateProductType(productType.id, { name: event.target.value })} />
-                        </label>
-                        <label className="product-type-price-field">
-                          <span>Giá</span>
-                          <input
-                            value={productType.price}
-                            placeholder="Ví dụ: 390.000đ"
-                            onChange={(event) => updateProductType(productType.id, { price: formatPrice(event.target.value) })}
-                          />
-                        </label>
-                        <div className="reorder-controls" aria-label="Sắp xếp loại sản phẩm">
-                          <button
-                            className="icon-button"
-                            type="button"
-                            disabled={index === 0}
-                            onClick={() => reorderProductType(productType.id, -1)}
-                            aria-label={`Đưa ${productType.name || "loại sản phẩm"} lên`}
-                          >
-                            <ArrowUp size={15} aria-hidden="true" />
-                          </button>
-                          <button
-                            className="icon-button"
-                            type="button"
-                            disabled={index === productTypes.length - 1}
-                            onClick={() => reorderProductType(productType.id, 1)}
-                            aria-label={`Đưa ${productType.name || "loại sản phẩm"} xuống`}
-                          >
-                            <ArrowDown size={15} aria-hidden="true" />
-                          </button>
-                        </div>
-                        <button
-                          className="icon-button danger"
-                          type="button"
-                          disabled={productTypes.length <= 1}
-                          onClick={() => removeProductType(productType.id)}
-                          aria-label={`Xóa loại ${productType.name}`}
-                        >
-                          <Trash2 size={16} aria-hidden="true" />
-                        </button>
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
-
-            <button className="admin-button primary full-width" type="button" onClick={addProductType}>
-              <Plus size={16} aria-hidden="true" />
-              Thêm loại
-            </button>
-          </>
-        ) : selectedAdminProductType ? (
-          <section className="product-type-detail-panel" aria-label={`Sản phẩm ${selectedAdminProductType.name}`}>
-            <div className="admin-panel-heading">
-              <div>
-                <h2>{selectedAdminProductType.name || "Chưa đặt tên"}</h2>
-                <p>
-                  {formatPrice(selectedAdminProductType.price)} · {selectedTypeProducts.length} sản phẩm
-                </p>
-              </div>
-            </div>
-
-            {selectedTypeProducts.map((product, productIndex) => {
-          const isExpanded = expandedProductId === product.id;
-          const productTitle = getProductTitle(product, productTypes);
-          return (
-            <article className="admin-product-item" key={product.id}>
-              <button
-                className={isExpanded ? "admin-product-header active" : "admin-product-header"}
-                type="button"
-                onClick={() => toggleExpandProduct(product.id)}
-              >
-                <div>
-                  <strong>{productTitle}</strong>
-                  <span>
-                    {formatPrice(getProductPrice(product, productTypes))} · {product.patterns.length} họa tiết
-                  </span>
-                </div>
-                <span className="admin-product-chevron">
-                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </span>
-              </button>
-
-              {isExpanded ? (
-                <div className="admin-product-body">
-                  <div className="admin-danger-row">
-                    <div className="reorder-controls" aria-label="Sắp xếp sản phẩm">
-	                      <button
-	                        className="admin-button small"
-	                        type="button"
-	                        disabled={productIndex === 0}
-	                        onClick={() => reorderProductWithinType(product.id, -1)}
-	                      >
-                        <ArrowUp size={15} aria-hidden="true" />
-                        Lên
-                      </button>
-	                      <button
-	                        className="admin-button small"
-	                        type="button"
-	                        disabled={productIndex === selectedTypeProducts.length - 1}
-	                        onClick={() => reorderProductWithinType(product.id, 1)}
-                      >
-                        <ArrowDown size={15} aria-hidden="true" />
-                        Xuống
-                      </button>
-                    </div>
-                    <button className="admin-button danger" type="button" onClick={() => removeProduct(product)}>
-                      <Trash2 size={16} aria-hidden="true" />
-                      Xóa sản phẩm
-                    </button>
-                  </div>
-
-                  <div className="admin-card">
-                    <h3>Thông tin sản phẩm</h3>
-                    <div className="admin-form-grid">
-                      <label>
-                        <span>Loại sản phẩm</span>
-                        <select
-                          value={product.productTypeId}
-                          onChange={(event) => {
-                            const productType = productTypes.find((type) => type.id === event.target.value);
-                            updateProduct(product.id, {
-                              productTypeId: event.target.value,
-                              price: productType?.price ?? product.price,
-                            });
-                          }}
-                        >
-                          {productTypes.map((productType) => (
-                            <option value={productType.id} key={productType.id}>
-                              {productType.name} - {formatPrice(productType.price)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <span>Tên sản phẩm</span>
-                        <input
-                          value={product.name}
-                          placeholder="Có thể để trống"
-                          onChange={(event) => updateProduct(product.id, { name: event.target.value })}
-                        />
-                      </label>
-                      <label>
-                        <span>Chất liệu</span>
-                        <input
-                          value={product.material}
-                          onChange={(event) => updateProduct(product.id, { material: event.target.value })}
-                        />
-                      </label>
-                      <label className="full-row">
-                        <span>Mô tả form dáng</span>
-                        <textarea
-                          value={product.fit}
-                          onChange={(event) => updateProduct(product.id, { fit: event.target.value })}
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="admin-card">
-                    <h3>Họa tiết &amp; tồn size</h3>
-                    <div className="pattern-row-list">
-                      {product.patterns.map((pattern, patternIndex) => (
-                        <article className="pattern-row" key={pattern.id}>
-                          <AdminImageActionField
-                            ariaLabel={`Mở tùy chọn ảnh ${pattern.name || "họa tiết"}`}
-                            caption={pattern.name || "Họa tiết"}
-                            image={pattern.image}
-                            onPreview={setPreviewImage}
-                            onFileSelected={(file) =>
-                              uploadImage(file, `patterns/${product.id}`, (url) =>
-                                updatePattern(product.id, pattern.id, {
-                                  image: { ...pattern.image, src: url },
-                                }),
-                              )
-                            }
-                          />
-
-                          <div className="pattern-row-main">
-                            <div className="pattern-name-field">
-                              <input
-                                aria-label="Tên phân loại"
-                                value={pattern.name}
-                                placeholder="Nhập tên phân loại"
-                                onChange={(event) =>
-                                  updatePattern(product.id, pattern.id, { name: event.target.value })
-                                }
-                              />
-                              <ChevronDown size={18} aria-hidden="true" />
-                            </div>
-
-                            <div className="pattern-size-switches" aria-label={`Tồn size ${pattern.name}`}>
-                              {sizeOptions.map((size) => (
-                                <button
-                                  className={pattern.availableSizes.includes(size.id) ? "size-switch active" : "size-switch"}
-                                  key={size.id}
-                                  type="button"
-                                  aria-pressed={pattern.availableSizes.includes(size.id)}
-                                  onClick={() => togglePatternSize(product.id, pattern, size.id)}
-                                >
-                                  {size.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="pattern-actions">
-                            <button
-                              className={patternIndex === 0 ? "icon-button active cover-pattern-button" : "icon-button cover-pattern-button"}
-                              type="button"
-                              aria-label={`${patternIndex === 0 ? "Đang là" : "Đặt làm"} ảnh bìa ${pattern.name || "họa tiết"}`}
-                              aria-pressed={patternIndex === 0}
-                              onClick={() => setPatternAsCover(product.id, pattern.id)}
-                              title={patternIndex === 0 ? "Ảnh bìa" : "Đặt làm ảnh bìa"}
-                            >
-                              <Star size={15} aria-hidden="true" fill={patternIndex === 0 ? "currentColor" : "none"} />
-                            </button>
-                            <button
-                              className="icon-button danger pattern-delete"
-                              type="button"
-                              aria-label={`Xóa ${pattern.name}`}
-                              onClick={() => removePattern(product.id, pattern.id)}
-                            >
-                              <Trash2 size={16} aria-hidden="true" />
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                    <label className="admin-button small full-width file-button">
-                      <Plus size={16} aria-hidden="true" />
-                      Thêm phân loại (chọn nhiều ảnh)
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(event) => {
-                          const files = Array.from(event.target.files ?? []);
-                          if (files.length === 0) return;
-                          uploadImages(files, `patterns/${product.id}`, (urls) => addPatterns(product.id, urls));
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="admin-card">
-                    <h3>Ảnh mẫu &amp; chi tiết sản phẩm</h3>
-                    <div className="admin-image-wrap">
-                      {product.modelImages.map((image, imageIndex) => (
-                        <div className="admin-image-wrap-item" key={image.id}>
-                          <AdminImageActionField
-                            ariaLabel="Mở tùy chọn ảnh mẫu & chi tiết sản phẩm"
-                            caption="Ảnh mẫu & chi tiết sản phẩm"
-                            image={image}
-                            onPreview={setPreviewImage}
-                            onFileSelected={(file) =>
-                              uploadImage(file, `models/${product.id}`, (url) =>
-                                updateModelImage(product.id, image.id, { src: url }),
-                              )
-                            }
-                          />
-                          <div className="model-image-actions" aria-label="Sắp xếp ảnh mẫu & chi tiết sản phẩm">
-                            <button
-                              className="icon-button"
-                              type="button"
-                              disabled={imageIndex === 0}
-                              onClick={() => reorderModelImage(product.id, image.id, -1)}
-                              aria-label="Đưa ảnh lên trước"
-                            >
-                              <ArrowUp size={13} aria-hidden="true" />
-                            </button>
-                            <button
-                              className="icon-button"
-                              type="button"
-                              disabled={imageIndex === product.modelImages.length - 1}
-                              onClick={() => reorderModelImage(product.id, image.id, 1)}
-                              aria-label="Đưa ảnh xuống sau"
-                            >
-                              <ArrowDown size={13} aria-hidden="true" />
-                            </button>
-                            <button
-                              className="icon-button danger model-delete"
-                              type="button"
-                              onClick={() => removeModelImage(product.id, image.id)}
-                              aria-label="Xóa ảnh mẫu & chi tiết sản phẩm"
-                            >
-                              <Trash2 size={13} aria-hidden="true" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <label className="admin-button small full-width file-button">
-                      <Plus size={16} aria-hidden="true" />
-                      Thêm ảnh mẫu & chi tiết sản phẩm
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(event) => {
-                          const files = Array.from(event.target.files ?? []);
-                          if (files.length === 0) return;
-                          uploadImages(files, `models/${product.id}`, (urls) => addModelImages(product.id, urls));
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
-              ) : null}
-            </article>
-          );
-        })}
-
-            {selectedTypeProducts.length === 0 ? (
-              <section className="admin-empty compact">
-                <h2>Chưa có sản phẩm trong loại này</h2>
-                <p>Thêm sản phẩm mới để bắt đầu nhập họa tiết và ảnh mẫu & chi tiết sản phẩm.</p>
-              </section>
-            ) : null}
-
-            <button
-              className="admin-button primary full-width"
-              type="button"
-              onClick={() => addProduct(selectedAdminProductType.id)}
-            >
-              <Plus size={17} aria-hidden="true" />
-              Thêm sản phẩm mới
-            </button>
-          </section>
-        ) : (
-          <section className="admin-empty compact">
-            <h2>Không tìm thấy loại sản phẩm</h2>
-            <p>Loại sản phẩm này có thể đã đổi tên hoặc đã bị xóa.</p>
-            <button className="admin-button ghost" type="button" onClick={closeAdminProductType}>
-              <ChevronLeft size={17} aria-hidden="true" />
-              Về danh sách loại
-            </button>
-          </section>
-        )}
+          <AdminProductManager
+            adminMessage={adminMessage}
+            adminProductTypeSlug={adminProductTypeSlug}
+            expandedProductId={expandedProductId}
+            hasProductDetailChanges={hasAdminProductChanges}
+            hasTypeDetailChanges={hasAdminTypeChanges}
+            isProductDetailClosing={closingAdminDetail === "product"}
+            isProductDetailVisible={isAdminProductOverlayVisible}
+            isTypeDetailClosing={closingAdminDetail === "productType"}
+            isTypeDetailVisible={isAdminTypeOverlayVisible}
+            isHomeSorting={isHomeSorting}
+            isSavingDetail={isBusy}
+            productTypeCount={productTypes.length}
+            productTypes={productTypes}
+            products={products}
+            hiddenDraftProductId={hiddenDraftProductId}
+            hiddenDraftProductTypeId={hiddenDraftProductTypeId}
+            selectedAdminProductType={selectedAdminProductType}
+            selectedTypeProducts={selectedTypeProducts}
+            onAddModelImages={addModelImages}
+            onAddPatterns={addPatterns}
+            onAddProduct={addProduct}
+            onAddProductType={addProductType}
+            onBackFromProductDetail={backFromAdminProductDetail}
+            onBackFromTypeDetail={backFromAdminTypeDetail}
+            onCloseProductType={closeAdminProductType}
+            onOpenProductType={openAdminProductType}
+            onPreviewImage={setPreviewImage}
+            onRemoveModelImage={removeModelImage}
+            onRemovePattern={removePattern}
+            onRemoveProduct={removeProduct}
+            onRemoveProductType={removeProductType}
+            onReorderModelImage={reorderModelImage}
+            onReorderProductType={reorderProductType}
+            onReorderProductWithinType={reorderProductWithinType}
+            onSelectProductFromHome={(productId) => selectAdminProduct(productId, "home")}
+            onSetPatternAsCover={setPatternAsCover}
+            onSaveProductDetail={saveAdminProductDetail}
+            onSaveTypeDetail={saveAdminTypeDetail}
+            onTogglePatternSize={togglePatternSize}
+            onUpdateModelImage={updateModelImage}
+            onUpdatePattern={updatePattern}
+            onUpdateProduct={updateProduct}
+            onUpdateProductType={updateProductType}
+            onUploadImage={uploadImage}
+            onUploadImages={uploadImages}
+          />
 
         {saveState.status !== "idle" ? (
           <div
@@ -1851,7 +1960,6 @@ function AdminPage({
             <span className="lightbox-caption">{previewImage.caption}</span>
           </button>
         ) : null}
-      </div>
         </>
       )}
     </main>

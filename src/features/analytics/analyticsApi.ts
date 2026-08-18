@@ -36,17 +36,38 @@ function isBrowserLocalhost() {
 
 function isAnalyticsOptedOutDevice() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "1";
+  try {
+    return window.localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function markAnalyticsOptOutDevice() {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "1");
+  try {
+    window.localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "1");
+  } catch {
+    // Storage can be unavailable in private modes; session checks still prevent admin tracking.
+  }
+}
+
+async function isActiveAdminSessionDevice() {
+  if (!supabase) return false;
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return false;
+    markAnalyticsOptOutDevice();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function trackStorefrontEvent(event: StorefrontEventInput): Promise<void> {
   if (!supabase) return;
   if (isBrowserLocalhost() || isAnalyticsOptedOutDevice()) return;
+  if (await isActiveAdminSessionDevice()) return;
 
   try {
     const result = await supabase.from("storefront_events").insert({

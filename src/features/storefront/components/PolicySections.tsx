@@ -22,8 +22,8 @@ const POLICY_SECTIONS: PolicySection[] = [
   },
   {
     id: "shipping",
-    title: "Phí ship",
-    body: "Phí ship đồng giá 20k. Shop miễn phí vận chuyển cho đơn từ 2 bộ.",
+    title: "Phí vận chuyển",
+    body: "Phí vận chuyển đồng giá 20k. Shop miễn phí vận chuyển cho đơn từ 2 bộ.",
   },
   {
     id: "payment",
@@ -37,7 +37,7 @@ const POLICY_SECTIONS: PolicySection[] = [
       "Khách hàng vui lòng quay video khi nhận hàng và mở gói sản phẩm.",
       "Với sản phẩm lỗi do nhà sản xuất hoặc shop giao sai mẫu, KNG hỗ trợ đổi 1-1 và chịu toàn bộ chi phí đổi hàng.",
       "Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác giá thấp hơn hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.",
-      "Khách hàng chịu 1 đầu phí ship đổi hàng, KNG hỗ trợ 1 đầu ship gửi lại.",
+      "Khách hàng chịu 1 đầu phí vận chuyển đổi hàng, KNG hỗ trợ 1 đầu vận chuyển gửi lại.",
       "Lưu ý: shop chỉ hỗ trợ đổi 1 lần duy nhất.",
     ],
   },

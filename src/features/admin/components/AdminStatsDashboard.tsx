@@ -85,6 +85,53 @@ function getProductInterestRows(events: StorefrontEventRow[], products: Product[
     .slice(0, 6);
 }
 
+function getPatternInterestRows(events: StorefrontEventRow[], products: Product[], productTypes: ProductType[]) {
+  const rows = new Map<string, InterestRow>();
+  const patternProductIds = new Map<string, string>();
+
+  products.forEach((product) => {
+    product.patterns.forEach((pattern) => {
+      patternProductIds.set(pattern.id, product.id);
+      rows.set(pattern.id, {
+        id: pattern.id,
+        name: `${getProductTitle(product, productTypes)} · ${pattern.name || "Họa tiết"}`,
+        views: 0,
+        adds: 0,
+        messages: 0,
+        total: 0,
+      });
+    });
+  });
+
+  events.forEach((event) => {
+    if (event.event_type === "product_view" && event.product_id) {
+      rows.forEach((row, patternId) => {
+        if (patternProductIds.get(patternId) !== event.product_id) return;
+        row.views += 1;
+        row.total = row.views + row.adds;
+      });
+      return;
+    }
+
+    if (event.event_type !== "add_to_cart" || !event.pattern_id) return;
+    const row = rows.get(event.pattern_id);
+    if (!row) return;
+    row.adds += 1;
+    row.total = row.views + row.adds;
+  });
+
+  return Array.from(rows.values())
+    .filter((row) => row.adds > 0)
+    .sort((a, b) => b.adds - a.adds || b.views - a.views)
+    .slice(0, 6);
+}
+
+function formatInterestRate(adds: number, views: number) {
+  if (views <= 0) return "0%";
+  const rate = (adds / views) * 100;
+  return `${Number.isInteger(rate) ? rate.toFixed(0) : rate.toFixed(1)}%`;
+}
+
 function padNumber(value: number) {
   return String(value).padStart(2, "0");
 }
@@ -179,6 +226,7 @@ export function AdminStatsDashboard({
 }) {
   const eventCounts = getEventCounts(events);
   const productRows = getProductInterestRows(events, products, productTypes);
+  const patternRows = getPatternInterestRows(events, products, productTypes);
   const visitChart = useMemo(() => getVisitChartBuckets(events, filter), [events, filter]);
   const addToCartRate = eventCounts.product_view > 0 ? Math.round((eventCounts.add_to_cart / eventCounts.product_view) * 100) : 0;
   const overviewItems = [
@@ -254,13 +302,23 @@ export function AdminStatsDashboard({
         </div>
       </section>
 
-      <section className="admin-dashboard-group" aria-label="Sản phẩm được quan tâm">
-        <h3>Sản phẩm được quan tâm</h3>
-        <div className="admin-insight-grid single">
-          <AdminInterestTable
-            emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
-            rows={productRows}
-          />
+      <section className="admin-dashboard-group" aria-label="Insight sản phẩm và họa tiết">
+        <div className="admin-insight-grid">
+          <div className="admin-dashboard-group compact" aria-label="Sản phẩm được quan tâm">
+            <h3>Sản phẩm được quan tâm</h3>
+            <AdminInterestTable
+              emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
+              rows={productRows}
+            />
+          </div>
+          <div className="admin-dashboard-group compact" aria-label="Họa tiết được quan tâm">
+            <h3>Họa tiết được quan tâm</h3>
+            <AdminInterestTable
+              emptyText="Chưa có họa tiết nào được ghi nhận trong khoảng thời gian này."
+              minAdds={1}
+              rows={patternRows}
+            />
+          </div>
         </div>
       </section>
     </section>
@@ -360,30 +418,34 @@ function VisitLineChart({ buckets, isHourly }: { buckets: VisitChartBucket[]; is
 
 function AdminInterestTable({
   emptyText,
+  minAdds = 0,
   rows,
 }: {
   emptyText: string;
+  minAdds?: number;
   rows: InterestRow[];
 }) {
+  const visibleRows = rows.filter((row) => row.adds >= minAdds);
+
   return (
     <section className="admin-interest-card">
-      {rows.length > 0 ? (
+      {visibleRows.length > 0 ? (
         <table>
           <thead>
             <tr>
               <th>Tên</th>
               <th>Xem</th>
               <th>Giỏ</th>
-              <th>Tổng</th>
+              <th>Tỉ lệ</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {visibleRows.map((row) => (
               <tr key={row.id}>
                 <td>{row.name}</td>
                 <td>{row.views}</td>
                 <td>{row.adds}</td>
-                <td>{row.total}</td>
+                <td>{formatInterestRate(row.adds, row.views)}</td>
               </tr>
             ))}
           </tbody>

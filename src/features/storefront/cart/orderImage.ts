@@ -2,7 +2,7 @@ import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import { formatMoney, getPriceValue } from "../../../shared/utils/money";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import type { CartItem } from "./cartTypes";
-import { formatSelectedSize, getCartTotal, getOrderTotal, getShippingFee } from "./cartUtils";
+import { formatSelectedSize, getCartQuantity, getCartTotal, getOrderTotal, getShippingFee } from "./cartUtils";
 
 export function createOrderFileName(date = new Date()) {
   const dateParts = [
@@ -67,7 +67,7 @@ function wrapCanvasText(context: CanvasRenderingContext2D, text: string, x: numb
 export async function createOrderImageBlob(cartItems: CartItem[], createdAt = new Date()) {
   const width = 1080;
   const rowHeight = 188;
-  const height = Math.max(900, 420 + cartItems.length * rowHeight);
+  const height = Math.max(900, 520 + cartItems.length * rowHeight);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -124,6 +124,24 @@ export async function createOrderImageBlob(cartItems: CartItem[], createdAt = ne
     y += rowHeight;
   }
 
+  const cartQuantity = getCartQuantity(cartItems);
+  const giftTop = y - 60;
+  context.fillStyle = "#fafafa";
+  context.fillRect(56, giftTop, width - 112, 70);
+  context.font = "italic 500 24px Helvetica Neue, Arial, sans-serif";
+  context.fillStyle = "#4d4d4d";
+  const giftPrefix = "[Quà tặng] Dây buộc tóc scrunchies cùng hoạ tiết ";
+  const giftPrefixWidth = context.measureText(giftPrefix).width;
+  context.fillText(giftPrefix, 78, giftTop + 43);
+  context.font = "italic 800 24px Helvetica Neue, Arial, sans-serif";
+  context.fillStyle = "#111111";
+  context.fillText(`x${cartQuantity}`, 78 + giftPrefixWidth, giftTop + 43);
+  context.strokeStyle = "#eeeeee";
+  context.beginPath();
+  context.moveTo(56, giftTop + 70);
+  context.lineTo(width - 56, giftTop + 70);
+  context.stroke();
+
   const subtotal = getCartTotal(cartItems);
   const shippingFee = getShippingFee(cartItems);
   const total = getOrderTotal(cartItems);
@@ -132,7 +150,7 @@ export async function createOrderImageBlob(cartItems: CartItem[], createdAt = ne
   context.fillStyle = "#4d4d4d";
   context.fillText("Tạm tính", 56, summaryTop);
   context.fillText(formatMoney(subtotal), width - 300, summaryTop);
-  context.fillText("Phí ship", 56, summaryTop + 48);
+  context.fillText("Phí vận chuyển", 56, summaryTop + 48);
   if (shippingFee === 0) {
     context.fillStyle = "#8a8a8a";
     context.fillText("20.000đ", width - 430, summaryTop + 48);

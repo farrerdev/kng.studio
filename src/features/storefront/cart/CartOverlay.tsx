@@ -1,4 +1,5 @@
-import { Instagram, Minus, Plus, Save, ShoppingBag, X } from "lucide-react";
+import { useState } from "react";
+import { Info, Instagram, Minus, Plus, Save, ShoppingBag, X } from "lucide-react";
 import { MessengerIcon } from "../../../shared/icons/SocialIcons";
 import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import { formatMoney } from "../../../shared/utils/money";
@@ -46,7 +47,6 @@ type CartOverlayProps = {
   onClose: () => void;
   onCapture: () => void;
   onOpenMessage: (channel: ShareChannel) => void;
-  onOpenPolicy: () => void;
   onClear: () => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
@@ -63,13 +63,19 @@ export function CartOverlay({
   onClose,
   onCapture,
   onOpenMessage,
-  onOpenPolicy,
   onClear,
   onQuantityChange,
   onRemove,
   shippingFee,
 }: CartOverlayProps) {
+  const [isShippingTipOpen, setIsShippingTipOpen] = useState(false);
   if (!isOpen) return null;
+  const cartQuantity = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const closeShippingTip = () => {
+    if (isShippingTipOpen) {
+      setIsShippingTipOpen(false);
+    }
+  };
 
   return (
     <div
@@ -77,9 +83,18 @@ export function CartOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Giỏ hàng"
-      onClick={onClose}
+      onClick={() => {
+        closeShippingTip();
+        onClose();
+      }}
     >
-      <aside className={isClosing ? "cart-panel closing" : "cart-panel"} onClick={(event) => event.stopPropagation()}>
+      <aside
+        className={isClosing ? "cart-panel closing" : "cart-panel"}
+        onClick={(event) => {
+          event.stopPropagation();
+          closeShippingTip();
+        }}
+      >
         <header className="cart-header">
           <div>
             <span>Giỏ hàng</span>
@@ -129,6 +144,15 @@ export function CartOverlay({
                   </div>
                 </article>
               ))}
+              <div className="cart-gift-row">
+                <p>
+                  <span>[Quà tặng]</span> Dây buộc tóc scrunchies cùng hoạ tiết{" "}
+                  <strong aria-label={`${cartQuantity} quà tặng`}>x{cartQuantity}</strong>
+                </p>
+              </div>
+              {cartQuantity === 1 ? (
+                <p className="cart-freeship-note">Thêm ít nhất 1 sản phẩm để được miễn phí vận chuyển</p>
+              ) : null}
             </div>
 
             <footer className="cart-footer">
@@ -137,7 +161,25 @@ export function CartOverlay({
                 <strong>{formatMoney(cartTotal)}</strong>
               </div>
               <div className="cart-summary-row">
-                <span>Phí ship</span>
+                <span className="cart-shipping-label">
+                  Phí vận chuyển
+                  <span className="cart-shipping-info">
+                    <button
+                      type="button"
+                      aria-label="Thông tin miễn phí vận chuyển"
+                      aria-expanded={isShippingTipOpen}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setIsShippingTipOpen((current) => !current);
+                      }}
+                    >
+                      <Info size={13} aria-hidden="true" />
+                    </button>
+                    {isShippingTipOpen ? (
+                      <small role="tooltip">Miễn phí vận chuyển từ 2 bộ</small>
+                    ) : null}
+                  </span>
+                </span>
                 <strong className="shipping-fee">
                   {shippingFee === 0 ? <del>20.000đ</del> : null}
                   {formatMoney(shippingFee)}
@@ -147,15 +189,6 @@ export function CartOverlay({
                 <span>Tổng thanh toán</span>
                 <strong>{formatMoney(orderTotal)}</strong>
               </div>
-              <section className="cart-policy-cta" aria-label="Quy định mua hàng">
-                <div>
-                  <span>Quy định mua hàng</span>
-                  <p>Xem quà tặng, phí ship, thanh toán, đổi hàng và bảo quản trước khi chốt đơn.</p>
-                </div>
-                <button type="button" onClick={onOpenPolicy}>
-                  Xem chi tiết
-                </button>
-              </section>
               <div className="checkout-flow">
                 <h3>Quy trình chốt đơn</h3>
                 <div className="checkout-step">
