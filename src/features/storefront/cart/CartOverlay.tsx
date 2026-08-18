@@ -150,9 +150,6 @@ export function CartOverlay({
                   <strong aria-label={`${cartQuantity} quà tặng`}>x{cartQuantity}</strong>
                 </p>
               </div>
-              {cartQuantity === 1 ? (
-                <p className="cart-freeship-note">Thêm ít nhất 1 sản phẩm để được miễn phí vận chuyển</p>
-              ) : null}
             </div>
 
             <footer className="cart-footer">
@@ -185,6 +182,9 @@ export function CartOverlay({
                   {formatMoney(shippingFee)}
                 </strong>
               </div>
+              {cartQuantity === 1 ? (
+                <p className="cart-freeship-note">Thêm ít nhất 1 sản phẩm để được miễn phí vận chuyển</p>
+              ) : null}
               <div className="cart-total">
                 <span>Tổng thanh toán</span>
                 <strong>{formatMoney(orderTotal)}</strong>

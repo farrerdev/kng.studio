@@ -1597,15 +1597,11 @@ button {
   background: #fafafa;
 }
 
-.cart-gift-row p,
-.cart-freeship-note {
+.cart-gift-row p {
   margin: 0;
   color: #686868;
   font-size: 0.8rem;
   line-height: 1.38;
-}
-
-.cart-gift-row p {
   font-style: italic;
 }
 
@@ -1620,8 +1616,15 @@ button {
 }
 
 .cart-freeship-note {
-  padding: 10px 16px 12px;
-  border-bottom: 1px solid #eeeeee;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.32;
+  text-align: center;
 }
 
 .cart-row img {
