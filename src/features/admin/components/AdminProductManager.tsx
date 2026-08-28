@@ -218,10 +218,9 @@ export function AdminProductManager({
 
 const COPIED_FEEDBACK_MS = 1600;
 
-function getStorefrontProductUrl(typeProducts: Product[], productTypes: ProductType[]) {
-  const storefrontProduct = typeProducts.find((product) => product.patterns.length > 0);
-  if (!storefrontProduct || typeof window === "undefined") return "";
-  return `${window.location.origin}/${getProductSlug(storefrontProduct, productTypes)}`;
+function getStorefrontProductUrl(product: Product, productTypes: ProductType[]) {
+  if (product.patterns.length === 0 || typeof window === "undefined") return "";
+  return `${window.location.origin}/${getProductSlug(product, productTypes)}`;
 }
 
 function CopyProductLinkButton({ label, url }: { label: string; url: string }) {
@@ -249,7 +248,7 @@ function CopyProductLinkButton({ label, url }: { label: string; url: string }) {
 
   return (
     <button
-      className={`icon-button product-type-copy-link${isCopied ? " copied" : ""}`}
+      className={`icon-button admin-product-copy-link${isCopied ? " copied" : ""}`}
       type="button"
       disabled={!url}
       title={url ? `Copy link: ${url}` : "Chưa có sản phẩm hiển thị để copy link"}
@@ -324,12 +323,6 @@ function AdminProductTypeList({
                     </span>
                   </span>
                 </button>
-                {!isHomeSorting ? (
-                  <CopyProductLinkButton
-                    label={productType.name || "loại sản phẩm"}
-                    url={getStorefrontProductUrl(typeProducts, productTypes)}
-                  />
-                ) : null}
                 {isHomeSorting ? (
                   <div className="reorder-controls" aria-label="Sắp xếp loại sản phẩm">
                     <button
@@ -379,6 +372,12 @@ function AdminProductTypeList({
                             </em>
                           </span>
                         </button>
+                        {!isHomeSorting ? (
+                          <CopyProductLinkButton
+                            label={getProductTitle(product, productTypes)}
+                            url={getStorefrontProductUrl(product, productTypes)}
+                          />
+                        ) : null}
                         {isHomeSorting ? (
                           <div className="reorder-controls" aria-label="Sắp xếp sản phẩm">
                             <button

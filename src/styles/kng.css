@@ -3285,7 +3285,7 @@ button {
   text-align: left;
 }
 
-.product-type-copy-link {
+.admin-product-copy-link {
   flex: 0 0 auto;
   width: 34px;
   min-height: 34px;
@@ -3293,7 +3293,7 @@ button {
   color: var(--muted);
 }
 
-.product-type-copy-link.copied {
+.admin-product-copy-link.copied {
   border-color: var(--accent);
   color: var(--accent-strong);
 }
