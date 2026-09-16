@@ -38,6 +38,7 @@ import {
   getProductType,
   getProductTypeSizeChartImage,
   getProductTypeSlug,
+  isProductInStock,
 } from "../features/catalog/catalogUtils";
 import { loadStoredCartItems } from "../features/storefront/cart/cartStorage";
 import type { CartDraft, CartItem } from "../features/storefront/cart/cartTypes";
@@ -153,7 +154,7 @@ function App() {
     const typeOrder = new Map(catalogProductTypes.map((productType, index) => [productType.id, index]));
     return catalogProducts
       .map((product, index) => ({ product, index }))
-      .filter(({ product }) => product.patterns.length > 0)
+      .filter(({ product }) => isProductInStock(product))
       .sort((left, right) => {
         const leftTypeOrder = typeOrder.get(left.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
         const rightTypeOrder = typeOrder.get(right.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;

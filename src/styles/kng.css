@@ -3955,6 +3955,15 @@ button {
   font-weight: 650;
 }
 
+.admin-product-master-card .admin-product-stock-summary {
+  white-space: normal;
+}
+
+.admin-product-master-card .admin-stock-status.out-of-stock {
+  color: #a84141;
+  font-weight: 800;
+}
+
 .product-type-row.detail {
   grid-template-columns: 64px minmax(0, 1fr) minmax(128px, 0.46fr);
   align-items: end;

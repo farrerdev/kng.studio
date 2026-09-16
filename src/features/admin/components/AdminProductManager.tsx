@@ -11,7 +11,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { sizeOptions } from "../../../data/mockCatalog";
-import { getProductCoverImage, getProductPrice, getProductSlug, getProductTitle } from "../../catalog/catalogUtils";
+import {
+  getAvailablePatternCount,
+  getProductCoverImage,
+  getProductPrice,
+  getProductSlug,
+  getProductTitle,
+  isProductInStock,
+} from "../../catalog/catalogUtils";
 import { IMAGE_WIDTHS } from "../../storefront/storefrontConstants";
 import { formatPrice } from "../../../shared/utils/money";
 import { copyTextToClipboard } from "../../../shared/utils/clipboard";
@@ -219,7 +226,7 @@ export function AdminProductManager({
 const COPIED_FEEDBACK_MS = 1600;
 
 function getStorefrontProductUrl(product: Product, productTypes: ProductType[]) {
-  if (product.patterns.length === 0 || typeof window === "undefined") return "";
+  if (!isProductInStock(product) || typeof window === "undefined") return "";
   return `${window.location.origin}/${getProductSlug(product, productTypes)}`;
 }
 
@@ -291,13 +298,17 @@ function AdminProductTypeList({
   onSelectProduct: (productId: string) => void;
 }) {
   const visibleProductTypes = productTypes.filter((productType) => productType.id !== hiddenDraftProductTypeId);
+  const visibleProducts = products.filter((product) => product.id !== hiddenDraftProductId);
+  const hiddenOutOfStockCount = visibleProducts.filter((product) => !isProductInStock(product)).length;
 
   return (
     <>
       <section className="admin-panel-heading flat">
         <div>
           <h2>Loại sản phẩm ({visibleProductTypes.length})</h2>
-          <p>Tap loại để sửa thông tin loại. Tap sản phẩm để sửa chi tiết.</p>
+          <p>
+            {visibleProducts.length} sản phẩm · {hiddenOutOfStockCount} đang bị ẩn do hết hàng. Tap loại hoặc sản phẩm để sửa.
+          </p>
         </div>
       </section>
 
@@ -352,6 +363,7 @@ function AdminProductTypeList({
                   {typeProducts.map((product, productIndex) => {
                     const coverImage = getProductCoverImage(product, productTypes, products);
                     const coverSrc = coverImage.src.trim();
+                    const availablePatternCount = getAvailablePatternCount(product);
                     return (
                       <div className="admin-product-master-card compact" key={product.id}>
                         <button type="button" disabled={isHomeSorting} onClick={() => onSelectProduct(product.id)}>
@@ -367,9 +379,12 @@ function AdminProductTypeList({
                           )}
                           <span>
                             <strong>{getProductTitle(product, productTypes)}</strong>
-                            <em>
-                              {formatPrice(getProductPrice(product, productTypes))} · {product.patterns.length} họa tiết
+                            <em className="admin-product-stock-summary">
+                              {formatPrice(getProductPrice(product, productTypes))} · {availablePatternCount}/{product.patterns.length} họa tiết còn hàng
                             </em>
+                            {availablePatternCount === 0 ? (
+                              <em className="admin-stock-status out-of-stock">Đang ẩn khỏi cửa hàng vì hết hàng</em>
+                            ) : null}
                           </span>
                         </button>
                         {!isHomeSorting ? (
@@ -548,13 +563,16 @@ function AdminProductDetail({
   onUploadImage: (file: File, folder: string, onUploaded: (url: string) => void) => void;
   onUploadImages: (files: File[], folder: string, onUploaded: (urls: string[]) => void) => void;
 }) {
+  const availablePatternCount = getAvailablePatternCount(product);
+
   return (
     <section className="admin-product-detail-screen" aria-label={`Sửa ${getProductTitle(product, productTypes)}`}>
       <div className="admin-panel-heading">
         <div>
           <h2>{getProductTitle(product, productTypes)}</h2>
           <p>
-            {formatPrice(getProductPrice(product, productTypes))} · {product.patterns.length} họa tiết · {product.modelImages.length} ảnh mẫu
+            {formatPrice(getProductPrice(product, productTypes))} · {availablePatternCount}/{product.patterns.length} họa tiết còn hàng · {product.modelImages.length} ảnh mẫu
+            {availablePatternCount === 0 ? " · Đang ẩn khỏi cửa hàng vì hết hàng" : ""}
           </p>
         </div>
       </div>

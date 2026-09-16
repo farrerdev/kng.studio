@@ -19,6 +19,14 @@ export function getProductPrice(product: Product, productTypes: ProductType[]) {
   return getProductType(product, productTypes)?.price ?? product.price;
 }
 
+export function getAvailablePatternCount(product: Product) {
+  return product.patterns.filter((pattern) => pattern.availableSizes.length > 0).length;
+}
+
+export function isProductInStock(product: Product) {
+  return getAvailablePatternCount(product) > 0;
+}
+
 export function getProductCoverImage(product: Product, productTypes: ProductType[], _products: Product[]): ProductImage {
   const firstPatternImage = product.patterns[0]?.image;
   if (firstPatternImage) return firstPatternImage;
