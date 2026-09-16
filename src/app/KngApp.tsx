@@ -43,6 +43,7 @@ import {
 import { loadStoredCartItems } from "../features/storefront/cart/cartStorage";
 import type { CartDraft, CartItem } from "../features/storefront/cart/cartTypes";
 import {
+  createCartItemId,
   getCartQuantity,
   getCartTotal,
   getOrderTotal,
@@ -341,6 +342,43 @@ function App() {
   };
   const removeCartItem = (itemId: string) => {
     setCartItems((currentItems) => currentItems.filter((item) => item.id !== itemId));
+  };
+  const updateCartItemSelection = (itemId: string, patternId: string, sizeId: SizeId) => {
+    setCartItems((currentItems) => {
+      const currentItem = currentItems.find((item) => item.id === itemId);
+      const product = currentItem
+        ? catalogProducts.find((candidate) => candidate.id === currentItem.productId)
+        : null;
+      const pattern = product?.patterns.find((candidate) => candidate.id === patternId);
+      if (!currentItem || !pattern?.availableSizes.includes(sizeId)) return currentItems;
+
+      const nextId = createCartItemId(currentItem.productId, pattern.id, sizeId);
+      if (nextId !== itemId) {
+        const matchingItem = currentItems.find((item) => item.id === nextId);
+        if (matchingItem) {
+          return currentItems
+            .filter((item) => item.id !== itemId)
+            .map((item) =>
+              item.id === nextId
+                ? { ...item, quantity: item.quantity + currentItem.quantity }
+                : item,
+            );
+        }
+      }
+
+      return currentItems.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              id: nextId,
+              image: pattern.image,
+              patternId: pattern.id,
+              patternName: pattern.name,
+              sizeId,
+            }
+          : item,
+      );
+    });
   };
   const clearCart = () => {
     if (!window.confirm("Xoá tất cả sản phẩm trong giỏ hàng?")) return;
@@ -820,8 +858,11 @@ function App() {
         onCapture={captureOrderImage}
         onOpenMessage={openOrderMessage}
         onClear={clearCart}
+        onImageOpen={setActiveImage}
         onQuantityChange={updateCartQuantity}
         onRemove={removeCartItem}
+        onSelectionChange={updateCartItemSelection}
+        products={catalogProducts}
         shippingFee={shippingFee}
         unavailableItemIds={unavailableCartItemIds}
       />

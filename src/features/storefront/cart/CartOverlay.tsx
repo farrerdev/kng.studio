@@ -1,12 +1,20 @@
 import { useState } from "react";
-import { Info, Instagram, Minus, Plus, Save, ShoppingBag, X } from "lucide-react";
+import { ChevronDown, Info, Instagram, Minus, Plus, Save, ShoppingBag, X } from "lucide-react";
+import { sizeOptions } from "../../../data/mockCatalog";
 import { MessengerIcon } from "../../../shared/icons/SocialIcons";
 import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import { formatMoney } from "../../../shared/utils/money";
-import type { ShareChannel } from "../storefrontTypes";
+import type { Product, SizeId } from "../../../types/catalog";
+import type { GalleryImage, ShareChannel } from "../storefrontTypes";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import { formatSelectedSize } from "./cartUtils";
 import type { CartItem } from "./cartTypes";
+
+function formatCartSize(sizeId: SizeId) {
+  const size = sizeOptions.find((option) => option.id === sizeId);
+  if (!size) return formatSelectedSize(sizeId);
+  return `${size.label} (${size.range.replace(/\s*-\s*/g, "-")})`;
+}
 
 export function OrderImagePreview({
   imageUrl,
@@ -48,10 +56,19 @@ type CartOverlayProps = {
   onCapture: () => void;
   onOpenMessage: (channel: ShareChannel) => void;
   onClear: () => void;
+  onImageOpen: (image: GalleryImage) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
+  onSelectionChange: (itemId: string, patternId: string, sizeId: SizeId) => void;
+  products: Product[];
   shippingFee: number;
   unavailableItemIds: ReadonlySet<string>;
+};
+
+type CartSelectionDraft = {
+  itemId: string;
+  patternId: string | null;
+  sizeId: SizeId;
 };
 
 export function CartOverlay({
@@ -65,22 +82,52 @@ export function CartOverlay({
   onCapture,
   onOpenMessage,
   onClear,
+  onImageOpen,
   onQuantityChange,
   onRemove,
+  onSelectionChange,
+  products,
   shippingFee,
   unavailableItemIds,
 }: CartOverlayProps) {
   const [isShippingTipOpen, setIsShippingTipOpen] = useState(false);
+  const [selectionDraft, setSelectionDraft] = useState<CartSelectionDraft | null>(null);
+  const [sizeLockMessage, setSizeLockMessage] = useState("");
   if (!isOpen) return null;
   const unavailableItemCount = cartItems.filter((item) => unavailableItemIds.has(item.id)).length;
   const cartQuantity = cartItems.reduce(
     (total, item) => total + (unavailableItemIds.has(item.id) ? 0 : item.quantity),
     0,
   );
+  const editingItem = selectionDraft
+    ? cartItems.find((item) => item.id === selectionDraft.itemId) ?? null
+    : null;
+  const editingProduct = editingItem
+    ? products.find((product) => product.id === editingItem.productId) ?? null
+    : null;
+  const editingPattern = selectionDraft
+    ? editingProduct?.patterns.find((pattern) => pattern.id === selectionDraft.patternId) ?? null
+    : null;
+  const canConfirmSelection = Boolean(
+    selectionDraft && editingPattern?.availableSizes.includes(selectionDraft.sizeId),
+  );
+  const availablePatternsForSize = selectionDraft
+    ? editingProduct?.patterns.filter((pattern) => pattern.availableSizes.includes(selectionDraft.sizeId)) ?? []
+    : [];
   const closeShippingTip = () => {
     if (isShippingTipOpen) {
       setIsShippingTipOpen(false);
     }
+  };
+  const openSelectionSheet = (item: CartItem) => {
+    const product = products.find((candidate) => candidate.id === item.productId);
+    const currentPattern = product?.patterns.find((pattern) => pattern.id === item.patternId);
+    setSizeLockMessage("");
+    setSelectionDraft({
+      itemId: item.id,
+      patternId: currentPattern?.availableSizes.includes(item.sizeId) ? currentPattern.id : null,
+      sizeId: item.sizeId,
+    });
   };
 
   return (
@@ -91,6 +138,7 @@ export function CartOverlay({
       aria-label="Giỏ hàng"
       onClick={() => {
         closeShippingTip();
+        setSelectionDraft(null);
         onClose();
       }}
     >
@@ -112,7 +160,15 @@ export function CartOverlay({
                 Xoá tất cả
               </button>
             ) : null}
-            <button className="cart-close-button" type="button" aria-label="Đóng giỏ hàng" onClick={onClose}>
+            <button
+              className="cart-close-button"
+              type="button"
+              aria-label="Đóng giỏ hàng"
+              onClick={() => {
+                setSelectionDraft(null);
+                onClose();
+              }}
+            >
               <X size={21} aria-hidden="true" />
             </button>
           </div>
@@ -125,15 +181,35 @@ export function CartOverlay({
                 const isUnavailable = unavailableItemIds.has(item.id);
                 return (
                   <article className={isUnavailable ? "cart-row unavailable" : "cart-row"} key={item.id}>
-                    <img
-                      src={getSupabaseImageSrc(item.image.src, IMAGE_WIDTHS.cartThumb, 74)}
-                      alt={item.image.alt}
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    <button
+                      className="cart-image-button"
+                      type="button"
+                      aria-label={`Xem ảnh lớn ${item.patternName}`}
+                      onClick={() =>
+                        onImageOpen({
+                          ...item.image,
+                          caption: `${item.productName} - ${item.patternName} · ${formatCartSize(item.sizeId)}`,
+                        })
+                      }
+                    >
+                      <img
+                        src={getSupabaseImageSrc(item.image.src, IMAGE_WIDTHS.cartThumb, 74)}
+                        alt={item.image.alt}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
                     <div className="cart-row-info">
                       <h3>{item.productName}</h3>
-                      <p>{item.patternName} · {formatSelectedSize(item.sizeId)}</p>
+                      <button
+                        className="cart-variant-trigger"
+                        type="button"
+                        aria-label={`Đổi họa tiết và size của ${item.productName}`}
+                        onClick={() => openSelectionSheet(item)}
+                      >
+                        <span>{item.patternName} · {formatCartSize(item.sizeId)}</span>
+                        <ChevronDown size={15} aria-hidden="true" />
+                      </button>
                       {isUnavailable ? <span className="cart-stock-status">Hết hàng · Không tính vào thanh toán</span> : null}
                       <strong className={isUnavailable ? "cart-item-price unavailable" : "cart-item-price"}>
                         {isUnavailable ? <del>{item.price}</del> : item.price}
@@ -256,6 +332,165 @@ export function CartOverlay({
           </section>
         )}
       </aside>
+
+      {selectionDraft && editingItem ? (
+        <div
+          className="cart-variant-backdrop"
+          onClick={(event) => {
+            event.stopPropagation();
+            setSelectionDraft(null);
+          }}
+        >
+          <section
+            className="cart-variant-sheet"
+            role="dialog"
+            aria-label={`Chọn họa tiết và size cho ${editingItem.productName}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="cart-variant-sheet-close"
+              type="button"
+              aria-label="Đóng chọn phân loại"
+              onClick={() => setSelectionDraft(null)}
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+
+            <div className="cart-variant-summary">
+              <button
+                className="cart-variant-preview"
+                type="button"
+                aria-label={`Xem ảnh lớn ${editingPattern?.name || editingItem.patternName}`}
+                onClick={() =>
+                  onImageOpen({
+                    ...(editingPattern?.image ?? editingItem.image),
+                    caption: `${editingItem.productName} - ${editingPattern?.name || editingItem.patternName} · ${formatCartSize(selectionDraft.sizeId)}`,
+                  })
+                }
+              >
+                <img
+                  src={getSupabaseImageSrc(
+                    (editingPattern?.image ?? editingItem.image).src,
+                    IMAGE_WIDTHS.catalog,
+                    80,
+                  )}
+                  alt={(editingPattern?.image ?? editingItem.image).alt}
+                />
+              </button>
+              <div>
+                <h3>{editingItem.productName}</h3>
+                <strong>{editingItem.price}</strong>
+                <p>{editingPattern?.name || "Chưa chọn họa tiết"} · {formatCartSize(selectionDraft.sizeId)}</p>
+              </div>
+            </div>
+
+            <div className="cart-variant-sheet-scroll">
+              <section className="cart-variant-section" aria-label="Chọn size">
+                <h4>Size</h4>
+                <div className="cart-size-options">
+                  {sizeOptions.map((size) => {
+                    const isSelected = size.id === selectionDraft.sizeId;
+                    const hasAvailablePattern = editingProduct?.patterns.some((pattern) =>
+                      pattern.availableSizes.includes(size.id),
+                    ) ?? false;
+                    const isLockedByPattern = Boolean(
+                      editingPattern
+                      && hasAvailablePattern
+                      && !editingPattern.availableSizes.includes(size.id),
+                    );
+                    return (
+                      <button
+                        className={isSelected
+                          ? "cart-size-option selected"
+                          : isLockedByPattern
+                            ? "cart-size-option locked"
+                            : "cart-size-option"}
+                        type="button"
+                        disabled={!hasAvailablePattern}
+                        aria-disabled={!hasAvailablePattern || isLockedByPattern}
+                        aria-pressed={isSelected}
+                        key={size.id}
+                        onClick={() => {
+                          if (isLockedByPattern) {
+                            setSizeLockMessage(
+                              `Bỏ chọn họa tiết “${editingPattern?.name || "đang chọn"}” trước để chọn ${size.label}.`,
+                            );
+                            return;
+                          }
+                          setSizeLockMessage("");
+                          setSelectionDraft({ ...selectionDraft, sizeId: size.id });
+                        }}
+                      >
+                        <span>{formatCartSize(size.id)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {sizeLockMessage ? (
+                  <p className="cart-size-lock-tip" role="status">
+                    <Info size={14} aria-hidden="true" />
+                    {sizeLockMessage}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="cart-variant-section" aria-label="Chọn họa tiết">
+                <h4>Họa tiết còn {formatSelectedSize(selectionDraft.sizeId)}</h4>
+                {availablePatternsForSize.length > 0 ? (
+                  <div className="cart-pattern-options">
+                    {availablePatternsForSize.map((pattern) => {
+                      const isSelected = pattern.id === selectionDraft.patternId;
+                      return (
+                        <button
+                          className={isSelected ? "cart-pattern-option selected" : "cart-pattern-option"}
+                          type="button"
+                          aria-pressed={isSelected}
+                          key={pattern.id}
+                          onClick={() => {
+                            setSizeLockMessage("");
+                            setSelectionDraft({
+                              ...selectionDraft,
+                              patternId: isSelected ? null : pattern.id,
+                            });
+                          }}
+                        >
+                          <img
+                            src={getSupabaseImageSrc(pattern.image.src, IMAGE_WIDTHS.cartThumb, 72)}
+                            alt={pattern.image.alt}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          <span>{pattern.name || "Họa tiết"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="cart-variant-empty">Size này hiện chưa có họa tiết còn hàng.</p>
+                )}
+              </section>
+            </div>
+
+            <div className="cart-variant-sheet-footer">
+              <button
+                type="button"
+                disabled={!canConfirmSelection}
+                onClick={() => {
+                  if (!selectionDraft.patternId) return;
+                  onSelectionChange(
+                    editingItem.id,
+                    selectionDraft.patternId,
+                    selectionDraft.sizeId,
+                  );
+                  setSelectionDraft(null);
+                }}
+              >
+                Xác nhận
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
