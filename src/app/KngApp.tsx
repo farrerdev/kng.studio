@@ -42,7 +42,13 @@ import {
 } from "../features/catalog/catalogUtils";
 import { loadStoredCartItems } from "../features/storefront/cart/cartStorage";
 import type { CartDraft, CartItem } from "../features/storefront/cart/cartTypes";
-import { getCartQuantity, getCartTotal, getOrderTotal, getShippingFee } from "../features/storefront/cart/cartUtils";
+import {
+  getCartQuantity,
+  getCartTotal,
+  getOrderTotal,
+  getShippingFee,
+  isCartItemAvailable,
+} from "../features/storefront/cart/cartUtils";
 import { createOrderFileName, createOrderImageBlob } from "../features/storefront/cart/orderImage";
 import { getProductGalleryImages, getVisibleProducts } from "../features/storefront/storefrontGallery";
 import { CART_STORAGE_KEY, IMAGE_WIDTHS } from "../features/storefront/storefrontConstants";
@@ -215,10 +221,21 @@ function App() {
     );
   }, [activeImage, galleryImages]);
   const canNavigateLightbox = galleryImages.length > 1 && activeImageIndex >= 0;
+  const unavailableCartItemIds = useMemo(() => {
+    if (catalogLoadState !== "ready") return new Set<string>();
+    return new Set(
+      cartItems.filter((item) => !isCartItemAvailable(item, catalogProducts)).map((item) => item.id),
+    );
+  }, [cartItems, catalogLoadState, catalogProducts]);
+  const checkoutCartItems = useMemo(
+    () => cartItems.filter((item) => !unavailableCartItemIds.has(item.id)),
+    [cartItems, unavailableCartItemIds],
+  );
   const cartQuantity = useMemo(() => getCartQuantity(cartItems), [cartItems]);
-  const cartTotal = useMemo(() => getCartTotal(cartItems), [cartItems]);
-  const shippingFee = useMemo(() => getShippingFee(cartItems), [cartItems]);
-  const orderTotal = useMemo(() => getOrderTotal(cartItems), [cartItems]);
+  const checkoutCartQuantity = useMemo(() => getCartQuantity(checkoutCartItems), [checkoutCartItems]);
+  const cartTotal = useMemo(() => getCartTotal(checkoutCartItems), [checkoutCartItems]);
+  const shippingFee = useMemo(() => getShippingFee(checkoutCartItems), [checkoutCartItems]);
+  const orderTotal = useMemo(() => getOrderTotal(checkoutCartItems), [checkoutCartItems]);
   const cartQuantityById = useMemo(
     () => new Map(cartItems.map((item) => [item.id, item.quantity])),
     [cartItems],
@@ -367,11 +384,11 @@ function App() {
     }
   };
   const captureOrderImage = async () => {
-    if (cartItems.length === 0) return;
+    if (checkoutCartItems.length === 0) return;
     setIsOrderImagePreparing(true);
     try {
       const createdAt = new Date();
-      const blob = await createOrderImageBlob(cartItems, createdAt);
+      const blob = await createOrderImageBlob(checkoutCartItems, createdAt);
       if (!blob) return;
       setOrderImageBlob(blob);
       setOrderImageFileName(createOrderFileName(createdAt));
@@ -482,10 +499,14 @@ function App() {
     const timeoutId = window.setTimeout(() => {
       if (hasShownStoredCartPrompt.current) return;
       hasShownStoredCartPrompt.current = true;
-      showCartTooltip(`${cartQuantity} sản phẩm trong giỏ hàng, chốt đơn ngay`);
+      showCartTooltip(
+        checkoutCartQuantity > 0
+          ? `${checkoutCartQuantity} sản phẩm còn hàng, chốt đơn ngay`
+          : `${cartQuantity} sản phẩm trong giỏ đã hết hàng`,
+      );
     }, 600);
     return () => window.clearTimeout(timeoutId);
-  }, [cartQuantity, isCartOpen]);
+  }, [cartQuantity, checkoutCartQuantity, isCartOpen]);
 
   useEffect(() => {
     const syncProductTypeFromRoute = () => {
@@ -679,7 +700,11 @@ function App() {
                   );
                 })}
               </div>
-              <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} />
+              <CartCheckoutCta
+                availableQuantity={checkoutCartQuantity}
+                cartQuantity={cartQuantity}
+                onClick={openCart}
+              />
             </section>
 
             <PolicySections className="storefront-policy" includeIds />
@@ -719,7 +744,12 @@ function App() {
                   <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
                 </section>
               )}
-              <CartCheckoutCta cartQuantity={cartQuantity} onClick={openCart} compact />
+              <CartCheckoutCta
+                availableQuantity={checkoutCartQuantity}
+                cartQuantity={cartQuantity}
+                onClick={openCart}
+                compact
+              />
               <OtherProductsCarousel
                 allProducts={catalogProducts}
                 currentProductId={selectedProduct.id}
@@ -793,6 +823,7 @@ function App() {
         onQuantityChange={updateCartQuantity}
         onRemove={removeCartItem}
         shippingFee={shippingFee}
+        unavailableItemIds={unavailableCartItemIds}
       />
 
       {isPolicyModalOpen ? <PolicyModal onClose={() => setIsPolicyModalOpen(false)} /> : null}

@@ -51,6 +51,7 @@ type CartOverlayProps = {
   onQuantityChange: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
   shippingFee: number;
+  unavailableItemIds: ReadonlySet<string>;
 };
 
 export function CartOverlay({
@@ -67,10 +68,15 @@ export function CartOverlay({
   onQuantityChange,
   onRemove,
   shippingFee,
+  unavailableItemIds,
 }: CartOverlayProps) {
   const [isShippingTipOpen, setIsShippingTipOpen] = useState(false);
   if (!isOpen) return null;
-  const cartQuantity = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const unavailableItemCount = cartItems.filter((item) => unavailableItemIds.has(item.id)).length;
+  const cartQuantity = cartItems.reduce(
+    (total, item) => total + (unavailableItemIds.has(item.id) ? 0 : item.quantity),
+    0,
+  );
   const closeShippingTip = () => {
     if (isShippingTipOpen) {
       setIsShippingTipOpen(false);
@@ -115,44 +121,62 @@ export function CartOverlay({
         {cartItems.length > 0 ? (
           <div className="cart-scroll">
             <div className="cart-list">
-              {cartItems.map((item) => (
-                <article className="cart-row" key={item.id}>
-                  <img
-                    src={getSupabaseImageSrc(item.image.src, IMAGE_WIDTHS.cartThumb, 74)}
-                    alt={item.image.alt}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <div className="cart-row-info">
-                    <h3>{item.productName}</h3>
-                    <p>{item.patternName} · {formatSelectedSize(item.sizeId)}</p>
-                    <strong>{item.price}</strong>
-                    <div className="cart-row-actions">
-                      <div className="cart-quantity" aria-label={`Số lượng ${item.patternName}`}>
-                        <button type="button" onClick={() => onQuantityChange(item.id, item.quantity - 1)} aria-label="Giảm số lượng">
-                          <Minus size={14} aria-hidden="true" />
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button type="button" onClick={() => onQuantityChange(item.id, item.quantity + 1)} aria-label="Tăng số lượng">
-                          <Plus size={14} aria-hidden="true" />
+              {cartItems.map((item) => {
+                const isUnavailable = unavailableItemIds.has(item.id);
+                return (
+                  <article className={isUnavailable ? "cart-row unavailable" : "cart-row"} key={item.id}>
+                    <img
+                      src={getSupabaseImageSrc(item.image.src, IMAGE_WIDTHS.cartThumb, 74)}
+                      alt={item.image.alt}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="cart-row-info">
+                      <h3>{item.productName}</h3>
+                      <p>{item.patternName} · {formatSelectedSize(item.sizeId)}</p>
+                      {isUnavailable ? <span className="cart-stock-status">Hết hàng · Không tính vào thanh toán</span> : null}
+                      <strong className={isUnavailable ? "cart-item-price unavailable" : "cart-item-price"}>
+                        {isUnavailable ? <del>{item.price}</del> : item.price}
+                      </strong>
+                      <div className="cart-row-actions">
+                        <div className="cart-quantity" aria-label={`Số lượng ${item.patternName}`}>
+                          <button type="button" onClick={() => onQuantityChange(item.id, item.quantity - 1)} aria-label="Giảm số lượng">
+                            <Minus size={14} aria-hidden="true" />
+                          </button>
+                          <span>{item.quantity}</span>
+                          <button
+                            type="button"
+                            disabled={isUnavailable}
+                            onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+                            aria-label={isUnavailable ? "Sản phẩm đã hết hàng" : "Tăng số lượng"}
+                          >
+                            <Plus size={14} aria-hidden="true" />
+                          </button>
+                        </div>
+                        <button className="cart-remove" type="button" onClick={() => onRemove(item.id)}>
+                          Xoá
                         </button>
                       </div>
-                      <button className="cart-remove" type="button" onClick={() => onRemove(item.id)}>
-                        Xoá
-                      </button>
                     </div>
-                  </div>
-                </article>
-              ))}
-              <div className="cart-gift-row">
-                <p>
-                  <span>[Quà tặng]</span> Dây buộc tóc scrunchies cùng hoạ tiết{" "}
-                  <strong aria-label={`${cartQuantity} quà tặng`}>x{cartQuantity}</strong>
-                </p>
-              </div>
+                  </article>
+                );
+              })}
+              {cartQuantity > 0 ? (
+                <div className="cart-gift-row">
+                  <p>
+                    <span>[Quà tặng]</span> Dây buộc tóc scrunchies cùng hoạ tiết{" "}
+                    <strong aria-label={`${cartQuantity} quà tặng`}>x{cartQuantity}</strong>
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <footer className="cart-footer">
+              {unavailableItemCount > 0 ? (
+                <p className="cart-unavailable-note">
+                  {unavailableItemCount} mẫu đã hết hàng và không được tính vào thanh toán.
+                </p>
+              ) : null}
               <div className="cart-summary-row">
                 <span>Tổng tạm tính</span>
                 <strong>{formatMoney(cartTotal)}</strong>
@@ -197,10 +221,14 @@ export function CartOverlay({
                   <button
                     className="cart-capture-button"
                     type="button"
-                    disabled={isOrderImagePreparing}
+                    disabled={isOrderImagePreparing || cartQuantity === 0}
                     onClick={onCapture}
                   >
-                    {isOrderImagePreparing ? "Đang chuẩn bị ảnh" : "Xem ảnh đơn hàng"}
+                    {isOrderImagePreparing
+                      ? "Đang chuẩn bị ảnh"
+                      : cartQuantity === 0
+                        ? "Không có sản phẩm còn hàng"
+                        : "Xem ảnh đơn hàng"}
                   </button>
                 </div>
                 <div className="checkout-step">

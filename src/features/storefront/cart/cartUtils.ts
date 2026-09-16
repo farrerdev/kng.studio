@@ -1,6 +1,6 @@
 import { sizeOptions } from "../../../data/mockCatalog";
 import { getPriceValue } from "../../../shared/utils/money";
-import type { SizeId } from "../../../types/catalog";
+import type { Product, SizeId } from "../../../types/catalog";
 import { SHIPPING_FEE } from "../storefrontConstants";
 import type { CartItem } from "./cartTypes";
 
@@ -10,6 +10,12 @@ export function createCartItemId(productId: string, patternId: string, sizeId: S
 
 export function formatSelectedSize(sizeId: SizeId) {
   return sizeOptions.find((size) => size.id === sizeId)?.label ?? `Size ${sizeId}`;
+}
+
+export function isCartItemAvailable(item: CartItem, products: Product[]) {
+  const product = products.find((candidate) => candidate.id === item.productId);
+  const pattern = product?.patterns.find((candidate) => candidate.id === item.patternId);
+  return pattern?.availableSizes.includes(item.sizeId) ?? false;
 }
 
 export function getCartTotal(cartItems: CartItem[]) {
