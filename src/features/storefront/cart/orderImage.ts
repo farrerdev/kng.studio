@@ -2,7 +2,14 @@ import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import { formatMoney, getPriceValue } from "../../../shared/utils/money";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import type { CartItem } from "./cartTypes";
-import { formatSelectedSize, getCartQuantity, getCartTotal, getOrderTotal, getShippingFee } from "./cartUtils";
+import {
+  formatSelectedSize,
+  getCartQuantity,
+  getCartTotal,
+  getMultiSetDiscount,
+  getOrderTotal,
+  getShippingFee,
+} from "./cartUtils";
 
 export function createOrderFileName(date = new Date()) {
   const dateParts = [
@@ -144,8 +151,9 @@ export async function createOrderImageBlob(cartItems: CartItem[], createdAt = ne
 
   const subtotal = getCartTotal(cartItems);
   const shippingFee = getShippingFee(cartItems);
+  const multiSetDiscount = getMultiSetDiscount(cartItems);
   const total = getOrderTotal(cartItems);
-  const summaryTop = height - 190;
+  const summaryTop = height - 238;
   context.font = "500 28px Helvetica Neue, Arial, sans-serif";
   context.fillStyle = "#4d4d4d";
   context.fillText("Tạm tính", 56, summaryTop);
@@ -164,10 +172,14 @@ export async function createOrderImageBlob(cartItems: CartItem[], createdAt = ne
   } else {
     context.fillText(formatMoney(shippingFee), width - 300, summaryTop + 48);
   }
+  context.fillStyle = "#4d4d4d";
+  context.fillText("Giảm giá", 56, summaryTop + 96);
+  context.fillStyle = multiSetDiscount > 0 ? "#29713c" : "#4d4d4d";
+  context.fillText(multiSetDiscount > 0 ? `-${formatMoney(multiSetDiscount)}` : formatMoney(0), width - 300, summaryTop + 96);
   context.strokeStyle = "#d9d9d9";
   context.beginPath();
-  context.moveTo(56, summaryTop + 82);
-  context.lineTo(width - 56, summaryTop + 82);
+  context.moveTo(56, summaryTop + 130);
+  context.lineTo(width - 56, summaryTop + 130);
   context.stroke();
   context.fillStyle = "#111111";
   context.font = "800 38px Helvetica Neue, Arial, sans-serif";

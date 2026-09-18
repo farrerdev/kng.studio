@@ -2091,13 +2091,13 @@ button {
   gap: 5px;
 }
 
-.cart-shipping-info {
+.cart-summary-info {
   position: relative;
   display: inline-grid;
   place-items: center;
 }
 
-.cart-shipping-info button {
+.cart-summary-info button {
   display: inline-grid;
   place-items: center;
   width: 18px;
@@ -2109,7 +2109,7 @@ button {
   cursor: pointer;
 }
 
-.cart-shipping-info small {
+.cart-summary-info small {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
@@ -2124,13 +2124,13 @@ button {
   line-height: 1.3;
   text-transform: none;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
-  transform: translateX(-50%);
+  transform: translateX(-9px);
 }
 
-.cart-shipping-info small::after {
+.cart-summary-info small::after {
   position: absolute;
   top: 100%;
-  left: 50%;
+  left: 9px;
   width: 8px;
   height: 8px;
   background: #111111;
@@ -2150,6 +2150,10 @@ button {
   color: #8a8a8a;
   font-size: 0.82rem;
   font-weight: 500;
+}
+
+.cart-discount.active {
+  color: #29713c;
 }
 
 .cart-total strong {
@@ -2607,6 +2611,7 @@ button {
 .storefront #products,
 .storefront #gift,
 .storefront #shipping,
+.storefront #discount,
 .storefront #payment,
 .storefront #returns {
   scroll-margin-top: 82px;

@@ -1,7 +1,7 @@
 import { sizeOptions } from "../../../data/mockCatalog";
 import { getPriceValue } from "../../../shared/utils/money";
 import type { Product, SizeId } from "../../../types/catalog";
-import { SHIPPING_FEE } from "../storefrontConstants";
+import { MULTI_SET_DISCOUNT, SHIPPING_FEE } from "../storefrontConstants";
 import type { CartItem } from "./cartTypes";
 
 export function createCartItemId(productId: string, patternId: string, sizeId: SizeId) {
@@ -31,6 +31,10 @@ export function getShippingFee(cartItems: CartItem[]) {
   return getCartQuantity(cartItems) >= 2 ? 0 : SHIPPING_FEE;
 }
 
+export function getMultiSetDiscount(cartItems: CartItem[]) {
+  return Math.max(0, getCartQuantity(cartItems) - 2) * MULTI_SET_DISCOUNT;
+}
+
 export function getOrderTotal(cartItems: CartItem[]) {
-  return getCartTotal(cartItems) + getShippingFee(cartItems);
+  return getCartTotal(cartItems) + getShippingFee(cartItems) - getMultiSetDiscount(cartItems);
 }

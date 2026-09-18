@@ -26,6 +26,11 @@ const POLICY_SECTIONS: PolicySection[] = [
     body: "Phí vận chuyển đồng giá 20k. Shop miễn phí vận chuyển cho đơn từ 2 bộ.",
   },
   {
+    id: "discount",
+    title: "Giảm giá",
+    body: "Giảm 10.000đ cho mỗi bộ từ bộ thứ 3.",
+  },
+  {
     id: "payment",
     title: "Thanh toán",
     body: "Khách hàng vui lòng thanh toán trước để shop xác nhận và chuẩn bị đơn.",

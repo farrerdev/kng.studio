@@ -1,4 +1,5 @@
 export const SHIPPING_FEE = 20000;
+export const MULTI_SET_DISCOUNT = 10000;
 export const CART_STORAGE_KEY = "kng.studio.cart";
 
 export const IMAGE_WIDTHS = {

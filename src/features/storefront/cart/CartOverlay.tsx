@@ -50,6 +50,7 @@ type CartOverlayProps = {
   cartTotal: number;
   isClosing: boolean;
   isOpen: boolean;
+  multiSetDiscount: number;
   orderTotal: number;
   isOrderImagePreparing: boolean;
   onClose: () => void;
@@ -76,6 +77,7 @@ export function CartOverlay({
   cartTotal,
   isClosing,
   isOpen,
+  multiSetDiscount,
   orderTotal,
   isOrderImagePreparing,
   onClose,
@@ -91,6 +93,7 @@ export function CartOverlay({
   unavailableItemIds,
 }: CartOverlayProps) {
   const [isShippingTipOpen, setIsShippingTipOpen] = useState(false);
+  const [isDiscountTipOpen, setIsDiscountTipOpen] = useState(false);
   const [selectionDraft, setSelectionDraft] = useState<CartSelectionDraft | null>(null);
   const [sizeLockMessage, setSizeLockMessage] = useState("");
   if (!isOpen) return null;
@@ -119,6 +122,15 @@ export function CartOverlay({
       setIsShippingTipOpen(false);
     }
   };
+  const closeDiscountTip = () => {
+    if (isDiscountTipOpen) {
+      setIsDiscountTipOpen(false);
+    }
+  };
+  const closeSummaryTips = () => {
+    closeShippingTip();
+    closeDiscountTip();
+  };
   const openSelectionSheet = (item: CartItem) => {
     const product = products.find((candidate) => candidate.id === item.productId);
     const currentPattern = product?.patterns.find((pattern) => pattern.id === item.patternId);
@@ -137,7 +149,7 @@ export function CartOverlay({
       aria-modal="true"
       aria-label="Giỏ hàng"
       onClick={() => {
-        closeShippingTip();
+        closeSummaryTips();
         setSelectionDraft(null);
         onClose();
       }}
@@ -146,7 +158,7 @@ export function CartOverlay({
         className={isClosing ? "cart-panel closing" : "cart-panel"}
         onClick={(event) => {
           event.stopPropagation();
-          closeShippingTip();
+          closeSummaryTips();
         }}
       >
         <header className="cart-header">
@@ -260,13 +272,14 @@ export function CartOverlay({
               <div className="cart-summary-row">
                 <span className="cart-shipping-label">
                   Phí vận chuyển
-                  <span className="cart-shipping-info">
+                  <span className="cart-summary-info">
                     <button
                       type="button"
                       aria-label="Thông tin miễn phí vận chuyển"
                       aria-expanded={isShippingTipOpen}
                       onClick={(event) => {
                         event.stopPropagation();
+                        closeDiscountTip();
                         setIsShippingTipOpen((current) => !current);
                       }}
                     >
@@ -285,6 +298,31 @@ export function CartOverlay({
               {cartQuantity === 1 ? (
                 <p className="cart-freeship-note">Thêm ít nhất 1 sản phẩm để được miễn phí vận chuyển</p>
               ) : null}
+              <div className="cart-summary-row">
+                <span className="cart-shipping-label">
+                  Giảm giá
+                  <span className="cart-summary-info">
+                    <button
+                      type="button"
+                      aria-label="Thông tin giảm giá khi mua nhiều bộ"
+                      aria-expanded={isDiscountTipOpen}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        closeShippingTip();
+                        setIsDiscountTipOpen((current) => !current);
+                      }}
+                    >
+                      <Info size={13} aria-hidden="true" />
+                    </button>
+                    {isDiscountTipOpen ? (
+                      <small role="tooltip">Giảm 10.000đ cho mỗi bộ từ bộ thứ 3</small>
+                    ) : null}
+                  </span>
+                </span>
+                <strong className={multiSetDiscount > 0 ? "cart-discount active" : "cart-discount"}>
+                  {multiSetDiscount > 0 ? `-${formatMoney(multiSetDiscount)}` : formatMoney(0)}
+                </strong>
+              </div>
               <div className="cart-total">
                 <span>Tổng thanh toán</span>
                 <strong>{formatMoney(orderTotal)}</strong>

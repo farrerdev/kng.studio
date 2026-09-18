@@ -46,6 +46,7 @@ import {
   createCartItemId,
   getCartQuantity,
   getCartTotal,
+  getMultiSetDiscount,
   getOrderTotal,
   getShippingFee,
   isCartItemAvailable,
@@ -236,6 +237,7 @@ function App() {
   const checkoutCartQuantity = useMemo(() => getCartQuantity(checkoutCartItems), [checkoutCartItems]);
   const cartTotal = useMemo(() => getCartTotal(checkoutCartItems), [checkoutCartItems]);
   const shippingFee = useMemo(() => getShippingFee(checkoutCartItems), [checkoutCartItems]);
+  const multiSetDiscount = useMemo(() => getMultiSetDiscount(checkoutCartItems), [checkoutCartItems]);
   const orderTotal = useMemo(() => getOrderTotal(checkoutCartItems), [checkoutCartItems]);
   const cartQuantityById = useMemo(
     () => new Map(cartItems.map((item) => [item.id, item.quantity])),
@@ -841,6 +843,7 @@ function App() {
           </details>
           <button type="button" onClick={() => goHomeSection("gift")}>Quà tặng</button>
           <button type="button" onClick={() => goHomeSection("shipping")}>Phí vận chuyển</button>
+          <button type="button" onClick={() => goHomeSection("discount")}>Giảm giá</button>
           <button type="button" onClick={() => goHomeSection("payment")}>Thanh toán</button>
           <button type="button" onClick={() => goHomeSection("returns")}>Đổi hàng</button>
           <button type="button" onClick={() => goHomeSection("care")}>Bảo quản</button>
@@ -852,6 +855,7 @@ function App() {
         cartTotal={cartTotal}
         isClosing={isCartClosing}
         isOpen={isCartOpen}
+        multiSetDiscount={multiSetDiscount}
         orderTotal={orderTotal}
         isOrderImagePreparing={isOrderImagePreparing}
         onClose={closeCart}
