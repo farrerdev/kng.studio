@@ -1,0 +1,39 @@
+.storefront .product-shopee-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  min-height: 44px;
+  max-width: 100%;
+  color: var(--store-ink);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.product-shopee-link svg {
+  flex-shrink: 0;
+}
+
+.product-shopee-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.admin-shopee-field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-shopee-field .admin-button {
+  justify-self: start;
+}
+
+.admin-shopee-field input[aria-invalid="true"] {
+  border-color: #b42318;
+}
+
+.admin-shopee-field [role="alert"] {
+  color: #b42318;
+}

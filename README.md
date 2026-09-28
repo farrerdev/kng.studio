@@ -29,6 +29,10 @@ Images are uploaded to the public `catalog-images` bucket. If Supabase env vars 
 
 ## Build
 
+For existing databases, run `supabase/migrations/202609280001_add_product_shopee_url.sql`
+in the Supabase SQL editor before deploying the Shopee link feature. Manage the optional
+link under each product's **Thông tin → Link sản phẩm Shopee** field in `/admin`.
+
 ```bash
 npm run build
 ```

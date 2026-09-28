@@ -2,6 +2,7 @@ import { products as mockProducts, productTypes as mockProductTypes } from "../.
 import { shopInfoImage } from "../../data/shopInfo";
 import { isSupabaseConfigured, supabase, supabaseConfig } from "../../lib/supabase";
 import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "../../types/catalog";
+import { getShopeeUrl } from "./shopeeUrl";
 
 export type CatalogData = {
   productTypes: ProductType[];
@@ -16,6 +17,7 @@ type ProductRow = {
   price: string;
   fit: string;
   material: string;
+  shopee_url?: string | null;
   size_chart_image_src: string;
   size_chart_image_alt: string;
   sort_order: number;
@@ -109,6 +111,7 @@ export async function fetchCatalog(): Promise<CatalogData> {
         price: productType?.price ?? product.price,
         fit: product.fit,
         material: product.material,
+        shopeeUrl: product.shopee_url ?? "",
         patterns: patternRows
           .filter((pattern) => pattern.product_id === product.id)
           .map(mapPatternRow),
@@ -274,6 +277,12 @@ export async function saveCatalog(catalog: {
     throw new Error("Supabase is not configured.");
   }
 
+  for (const product of catalog.products) {
+    if (product.shopeeUrl?.trim() && !getShopeeUrl(product.shopeeUrl)) {
+      throw new Error(`Link Shopee của sản phẩm ${product.name || product.id} không hợp lệ. Hãy nhập link HTTPS của sản phẩm trên Shopee.`);
+    }
+  }
+
   const productTypeRows = catalog.productTypes.map((productType, index) => ({
     id: productType.id,
     name: productType.name,
@@ -292,6 +301,7 @@ export async function saveCatalog(catalog: {
     price: catalog.productTypes.find((productType) => productType.id === product.productTypeId)?.price ?? product.price,
     fit: product.fit,
     material: product.material,
+    shopee_url: getShopeeUrl(product.shopeeUrl) ?? "",
     size_chart_image_src: product.sizeChartImage.src,
     size_chart_image_alt: product.sizeChartImage.alt,
     sort_order: index,

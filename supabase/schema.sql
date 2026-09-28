@@ -24,6 +24,9 @@ create table if not exists public.products (
 alter table public.products
   add column if not exists product_type_id text references public.product_types(id);
 
+alter table public.products
+  add column if not exists shopee_url text not null default '';
+
 alter table public.product_types
   add column if not exists cover_image_src text not null default '',
   add column if not exists cover_image_alt text not null default '',

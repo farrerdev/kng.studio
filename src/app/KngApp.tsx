@@ -57,6 +57,7 @@ import { CART_STORAGE_KEY, IMAGE_WIDTHS } from "../features/storefront/storefron
 import { OtherProductsCarousel } from "../features/storefront/components/OtherProductsCarousel";
 import { PolicyModal, PolicySections } from "../features/storefront/components/PolicySections";
 import { ProductCard } from "../features/storefront/components/ProductCard";
+import { ShopeeProductLink } from "../features/storefront/components/ShopeeProductLink";
 import { ContactButtons, StorefrontFooter } from "../features/storefront/components/StorefrontChrome";
 import type { GalleryImage, ShareChannel } from "../features/storefront/storefrontTypes";
 import { supabase } from "../lib/supabase";
@@ -760,6 +761,7 @@ function App() {
           <header className="product-type-screen-header">
             <h2>{getProductTitle(selectedProduct, catalogProductTypes)}</h2>
             <strong>{formatPrice(getProductPrice(selectedProduct, catalogProductTypes))}</strong>
+            <ShopeeProductLink url={selectedProduct.shopeeUrl} />
           </header>
           <div className="catalog-layout">
             <section className="catalog-list" aria-label="Danh sách sản phẩm">
@@ -1080,6 +1082,7 @@ function AdminPage({
       selectedProduct.name.trim() === "" &&
       selectedProduct.fit.trim() === "" &&
       selectedProduct.material === "Xô muslin 2 lớp" &&
+      !selectedProduct.shopeeUrl?.trim() &&
       selectedProduct.patterns.length === 0 &&
       selectedProduct.modelImages.length === 0 &&
       selectedProduct.sizeChartImage.src.trim() === "" &&

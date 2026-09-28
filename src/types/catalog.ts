@@ -35,6 +35,7 @@ export type Product = {
   price: string;
   fit: string;
   material: string;
+  shopeeUrl?: string;
   patterns: ProductPattern[];
   modelImages: ProductImage[];
   sizeChartImage: ProductImage;

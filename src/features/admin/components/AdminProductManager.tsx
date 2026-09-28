@@ -26,6 +26,7 @@ import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "../../../types/catalog";
 import type { GalleryImage } from "../../storefront/storefrontTypes";
 import { AdminImageActionField } from "./AdminImageActionField";
+import { getShopeeUrl } from "../../catalog/shopeeUrl";
 
 type AdminProductManagerProps = {
   adminMessage: string;
@@ -564,6 +565,8 @@ function AdminProductDetail({
   onUploadImages: (files: File[], folder: string, onUploaded: (urls: string[]) => void) => void;
 }) {
   const availablePatternCount = getAvailablePatternCount(product);
+  const shopeeUrl = getShopeeUrl(product.shopeeUrl);
+  const hasInvalidShopeeUrl = Boolean(product.shopeeUrl?.trim() && !shopeeUrl);
 
   return (
     <section className="admin-product-detail-screen" aria-label={`Sửa ${getProductTitle(product, productTypes)}`}>
@@ -615,6 +618,31 @@ function AdminProductDetail({
             <span>Mô tả form dáng</span>
             <textarea value={product.fit} onChange={(event) => onUpdateProduct(product.id, { fit: event.target.value })} />
           </label>
+          <div className="full-row admin-shopee-field">
+            <label htmlFor="product-shopee-url">
+              <span>Link sản phẩm Shopee</span>
+              <input
+                id="product-shopee-url"
+                type="url"
+                value={product.shopeeUrl ?? ""}
+                placeholder="https://shopee.vn/..."
+                aria-invalid={hasInvalidShopeeUrl}
+                aria-describedby="product-shopee-help"
+                onChange={(event) => onUpdateProduct(product.id, { shopeeUrl: event.target.value })}
+              />
+            </label>
+            <small id="product-shopee-help" role={hasInvalidShopeeUrl ? "alert" : undefined}>
+              {hasInvalidShopeeUrl
+                ? "Nhập link HTTPS của sản phẩm trên shopee.vn, s.shopee.vn hoặc shp.ee."
+                : "Để trống để ẩn link. Kiểm tra link dẫn đúng sản phẩm trước khi lưu."}
+            </small>
+            {shopeeUrl ? (
+              <a className="admin-button ghost" href={shopeeUrl} target="_blank" rel="noopener noreferrer">
+                <Link2 size={16} aria-hidden="true" />
+                Mở thử ↗
+              </a>
+            ) : null}
+          </div>
         </div>
         <div className="admin-detail-delete-row">
           <button className="admin-button danger" type="button" onClick={() => onRemoveProduct(product)}>
