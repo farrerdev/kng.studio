@@ -16,4 +16,4 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://kngstudio.vercel.app/sitemap.xml
+Sitemap: https://www.kngstudio.shop/sitemap.xml

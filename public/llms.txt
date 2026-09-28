@@ -2,7 +2,7 @@
 
 KNG.studio is a muslin homewear shop in Da Nang, Vietnam. The website is a lightweight catalog for customers to view product categories, available patterns, sizes, price information, shipping notes, gifts, and ordering rules.
 
-Canonical site: https://kngstudio.vercel.app/
+Canonical site: https://www.kngstudio.shop/
 
 ## What customers can do
 
@@ -21,7 +21,7 @@ Canonical site: https://kngstudio.vercel.app/
 
 ## Agent-readable resources
 
-- Sitemap: https://kngstudio.vercel.app/sitemap.xml
-- Public catalog summary: https://kngstudio.vercel.app/catalog.json
+- Sitemap: https://www.kngstudio.shop/sitemap.xml
+- Public catalog summary: https://www.kngstudio.shop/catalog.json
 
 For the freshest stock state, use the rendered catalog page because the shop updates product availability through the admin site.

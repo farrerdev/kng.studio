@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const SITE_URL = "https://kngstudio.vercel.app";
+const SITE_URL = "https://www.kngstudio.shop";
 const DIST_DIR = "dist";
 const INDEX_PATH = path.join(DIST_DIR, "index.html");
 const STORAGE_BUCKET = "catalog-images";
