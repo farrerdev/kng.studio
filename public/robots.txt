@@ -16,4 +16,4 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://www.kngstudio.shop/sitemap.xml
+Sitemap: https://kngstudio.shop/sitemap.xml

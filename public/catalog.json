@@ -2,7 +2,7 @@
   "name": "KNG.studio",
   "alternateName": "KNG studio",
   "description": "Catalog đồ ngủ muslin homewear KNG.studio tại Đà Nẵng.",
-  "url": "https://www.kngstudio.shop/",
+  "url": "https://kngstudio.shop/",
   "language": "vi",
   "location": "Đà Nẵng, Việt Nam",
   "contacts": {
@@ -31,23 +31,23 @@
   "knownRoutes": [
     {
       "name": "Trang chủ",
-      "url": "https://www.kngstudio.shop/"
+      "url": "https://kngstudio.shop/"
     },
     {
       "name": "Tay ngắn quần đùi",
-      "url": "https://www.kngstudio.shop/tay-ngan-quan-dui"
+      "url": "https://kngstudio.shop/tay-ngan-quan-dui"
     },
     {
       "name": "Set bộ",
-      "url": "https://www.kngstudio.shop/set-bo"
+      "url": "https://kngstudio.shop/set-bo"
     },
     {
       "name": "Đầm ngủ",
-      "url": "https://www.kngstudio.shop/dam-ngu"
+      "url": "https://kngstudio.shop/dam-ngu"
     },
     {
       "name": "Pajama dài",
-      "url": "https://www.kngstudio.shop/pajama-dai"
+      "url": "https://kngstudio.shop/pajama-dai"
     }
   ]
 }
