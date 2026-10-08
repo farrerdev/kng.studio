@@ -2932,6 +2932,23 @@ button {
   font-weight: 650;
 }
 
+.storefront .size-selector-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.storefront .size-selection-status {
+  margin: 0;
+  color: var(--store-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.storefront .size-selection-status strong {
+  color: var(--store-ink);
+  font-weight: 750;
+}
+
 .storefront .size-panel {
   padding: 0;
 }
@@ -2949,6 +2966,8 @@ button {
 }
 
 .storefront .size-option {
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
   min-height: 44px;
   padding: 9px 12px;
   border: 0;
@@ -2961,17 +2980,40 @@ button {
   border-left: 1px solid var(--store-ink);
 }
 
-.storefront .size-option span,
+.storefront .size-option-label,
 .storefront .size-option strong {
   color: inherit;
   font-size: 0.76rem;
   font-weight: 650;
 }
 
+.storefront .size-option-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  color: inherit;
+}
+
+.storefront .size-option-radio {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #737373;
+  border-radius: 50%;
+  color: var(--store-ink);
+  place-items: center;
+}
+
 .storefront .size-option.active {
   background: var(--store-ink);
   color: #ffffff;
   box-shadow: none;
+}
+
+.storefront .size-option.active .size-option-radio {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: var(--store-ink);
 }
 
 .storefront .catalog-list {
@@ -3026,6 +3068,10 @@ button {
 .storefront .product-detail {
   gap: 18px;
   padding: 18px 0;
+}
+
+.storefront .product-type-screen .product-detail {
+  padding-top: 12px;
 }
 
 .storefront .product-overview {
@@ -3642,6 +3688,16 @@ button {
   min-height: 34px;
   border-radius: 8px;
   color: var(--muted);
+}
+
+.admin-product-link-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-product-copy-link.shopee:not(:disabled) {
+  color: #ee4d2d;
 }
 
 .admin-product-copy-link.copied {

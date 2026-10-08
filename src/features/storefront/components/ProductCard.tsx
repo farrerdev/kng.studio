@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { trackStorefrontEvent } from "../../analytics/analyticsApi";
 import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
@@ -39,6 +39,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const productTitle = getProductTitle(product, productTypes);
   const productPrice = formatPrice(getProductPrice(product, productTypes));
+  const selectedSizeOption = sizeOptions.find((size) => size.id === selectedSize) ?? sizeOptions[0];
 
   return (
     <article className="product-card">
@@ -72,21 +73,35 @@ export function ProductCard({
                   alt={sizeChartImage.alt}
                 />
               </button>
-              <h3 className="size-selector-title">Chọn size để xem mẫu</h3>
+              <div className="size-selector-heading">
+                <h3 className="size-selector-title">Chọn size để xem mẫu</h3>
+                <p className="size-selection-status" aria-live="polite">
+                  Bạn đang chọn <strong>{selectedSizeOption.label}</strong>
+                  <span> · {selectedSizeOption.range}</span>
+                </p>
+              </div>
               <div className="size-options" role="radiogroup" aria-label="Chọn size">
-                {sizeOptions.map((size) => (
-                  <button
-                    className={selectedSize === size.id ? "size-option active" : "size-option"}
-                    key={size.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedSize === size.id}
-                    onClick={() => onSizeChange?.(size.id)}
-                  >
-                    <span>{size.label}</span>
-                    <strong>{size.range}</strong>
-                  </button>
-                ))}
+                {sizeOptions.map((size) => {
+                  const isSelected = selectedSize === size.id;
+                  return (
+                    <button
+                      className={isSelected ? "size-option active" : "size-option"}
+                      key={size.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => onSizeChange?.(size.id)}
+                    >
+                      <span className="size-option-radio" aria-hidden="true">
+                        {isSelected ? <Check size={12} strokeWidth={3} /> : null}
+                      </span>
+                      <span className="size-option-copy">
+                        <span className="size-option-label">{size.label}</span>
+                        <strong>{size.range}</strong>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
           ) : null}

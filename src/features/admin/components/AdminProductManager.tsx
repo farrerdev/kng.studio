@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   Link2,
   Plus,
+  ShoppingBag,
   Star,
   Trash2,
 } from "lucide-react";
@@ -231,9 +232,18 @@ function getStorefrontProductUrl(product: Product, productTypes: ProductType[]) 
   return `${window.location.origin}/${getProductSlug(product, productTypes)}`;
 }
 
-function CopyProductLinkButton({ label, url }: { label: string; url: string }) {
+function CopyProductLinkButton({
+  label,
+  source = "website",
+  url,
+}: {
+  label: string;
+  source?: "website" | "Shopee";
+  url: string;
+}) {
   const [isCopied, setIsCopied] = useState(false);
   const resetTimeoutRef = useRef<number | null>(null);
+  const isShopee = source === "Shopee";
 
   useEffect(
     () => () => {
@@ -256,17 +266,23 @@ function CopyProductLinkButton({ label, url }: { label: string; url: string }) {
 
   return (
     <button
-      className={`icon-button admin-product-copy-link${isCopied ? " copied" : ""}`}
+      className={`icon-button admin-product-copy-link${isShopee ? " shopee" : ""}${isCopied ? " copied" : ""}`}
       type="button"
       disabled={!url}
-      title={url ? `Copy link: ${url}` : "Chưa có sản phẩm hiển thị để copy link"}
-      aria-label={isCopied ? `Đã copy link ${label}` : `Copy link ${label}`}
+      title={url ? `Copy link ${source}: ${url}` : `Chưa có link ${source}`}
+      aria-label={isCopied ? `Đã copy link ${source} của ${label}` : `Copy link ${source} của ${label}`}
       onClick={(event) => {
         event.stopPropagation();
         void handleCopy();
       }}
     >
-      {isCopied ? <Check size={15} aria-hidden="true" /> : <Link2 size={15} aria-hidden="true" />}
+      {isCopied ? (
+        <Check size={15} aria-hidden="true" />
+      ) : isShopee ? (
+        <ShoppingBag size={15} aria-hidden="true" />
+      ) : (
+        <Link2 size={15} aria-hidden="true" />
+      )}
     </button>
   );
 }
@@ -389,10 +405,17 @@ function AdminProductTypeList({
                           </span>
                         </button>
                         {!isHomeSorting ? (
-                          <CopyProductLinkButton
-                            label={getProductTitle(product, productTypes)}
-                            url={getStorefrontProductUrl(product, productTypes)}
-                          />
+                          <div className="admin-product-link-actions" aria-label={`Link ${getProductTitle(product, productTypes)}`}>
+                            <CopyProductLinkButton
+                              label={getProductTitle(product, productTypes)}
+                              url={getStorefrontProductUrl(product, productTypes)}
+                            />
+                            <CopyProductLinkButton
+                              label={getProductTitle(product, productTypes)}
+                              source="Shopee"
+                              url={getShopeeUrl(product.shopeeUrl) ?? ""}
+                            />
+                          </div>
                         ) : null}
                         {isHomeSorting ? (
                           <div className="reorder-controls" aria-label="Sắp xếp sản phẩm">

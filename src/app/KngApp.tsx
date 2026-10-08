@@ -1015,6 +1015,7 @@ function AdminPage({
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isBusy, setIsBusy] = useState(false);
+  const [loginMessage, setLoginMessage] = useState("");
   const [adminMessage, setAdminMessage] = useState(catalogStatus);
   const [saveState, setSaveState] = useState<AdminSaveState>({ status: "idle", message: "" });
   const [adminTypeEditSession, setAdminTypeEditSession] = useState<AdminEditSession | null>(null);
@@ -1580,13 +1581,13 @@ function AdminPage({
   const signIn = async () => {
     if (!supabase) return;
     setIsBusy(true);
-    setAdminMessage("Đang đăng nhập...");
+    setLoginMessage("Đang đăng nhập...");
     const { error } = await supabase.auth.signInWithPassword({
       email: adminEmail,
       password: adminPassword,
     });
     setIsBusy(false);
-    setAdminMessage(error ? error.message : "Đã đăng nhập.");
+    setLoginMessage(error ? "Email hoặc mật khẩu không đúng." : "");
   };
 
   const signOut = async () => {
@@ -1841,16 +1842,16 @@ function AdminPage({
       <main className="admin-shell">
         <section className="admin-login">
           <div>
-            <span className="eyebrow">Supabase admin</span>
-            <h1>Đăng nhập KNG.studio</h1>
-            <p>Dùng email/password đã tạo trong Supabase Auth.</p>
+            <span className="eyebrow">KNG.studio</span>
+            <h1>Đăng nhập quản trị</h1>
+            <p>Nhập thông tin đăng nhập để tiếp tục.</p>
           </div>
           <label>
             <span>Email</span>
             <input value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} type="email" />
           </label>
           <label>
-            <span>Password</span>
+            <span>Mật khẩu</span>
             <input
               value={adminPassword}
               onChange={(event) => setAdminPassword(event.target.value)}
@@ -1861,7 +1862,7 @@ function AdminPage({
             <Save size={17} aria-hidden="true" />
             Đăng nhập
           </button>
-          <p>{adminMessage}</p>
+          {loginMessage ? <p role="status">{loginMessage}</p> : null}
         </section>
       </main>
     );
