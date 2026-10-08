@@ -1,23 +1,49 @@
+.storefront .product-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .storefront .product-shopee-link {
   display: inline-flex;
   align-items: center;
-  justify-self: start;
-  gap: 6px;
-  min-height: 44px;
+  gap: 7px;
+  min-height: 36px;
   max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--store-ink);
+  background: #fff;
   color: var(--store-ink);
-  font-size: 0.875rem;
+  font-size: 0.82rem;
+  font-weight: 700;
   line-height: 1.4;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 160ms ease;
 }
 
 .product-shopee-link svg {
   flex-shrink: 0;
 }
 
+.product-shopee-logo {
+  width: 18px;
+  height: 18px;
+  color: #ee4d2d;
+}
+
+.product-shopee-external {
+  color: #737373;
+}
+
+.product-shopee-link:hover {
+  background: var(--store-soft);
+  color: var(--store-ink);
+}
+
 .product-shopee-link:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid #ee4d2d;
   outline-offset: 3px;
 }
 

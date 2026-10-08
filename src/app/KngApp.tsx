@@ -754,14 +754,16 @@ function App() {
 
         {catalogLoadState !== "loading" && selectedProduct && selectedProductType ? (
         <section className="product-type-screen" aria-label={`Sản phẩm ${getProductTitle(selectedProduct, catalogProductTypes)}`}>
-          <button className="back-button" type="button" onClick={closeProduct}>
-            <ChevronLeft size={18} aria-hidden="true" />
-            Sản phẩm
-          </button>
+          <div className="product-detail-actions">
+            <button className="back-button" type="button" onClick={closeProduct}>
+              <ChevronLeft size={18} aria-hidden="true" />
+              Sản phẩm
+            </button>
+            <ShopeeProductLink url={selectedProduct.shopeeUrl} />
+          </div>
           <header className="product-type-screen-header">
             <h2>{getProductTitle(selectedProduct, catalogProductTypes)}</h2>
             <strong>{formatPrice(getProductPrice(selectedProduct, catalogProductTypes))}</strong>
-            <ShopeeProductLink url={selectedProduct.shopeeUrl} />
           </header>
           <div className="catalog-layout">
             <section className="catalog-list" aria-label="Danh sách sản phẩm">
