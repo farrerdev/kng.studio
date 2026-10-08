@@ -1,73 +1,25 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const SITE_URL = "https://kngstudio.shop";
 const DIST_DIR = "dist";
-const INDEX_PATH = path.join(DIST_DIR, "index.html");
-const STORAGE_BUCKET = "catalog-images";
 
 loadLocalEnv();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";
 
-if (!existsSync(INDEX_PATH)) {
-  throw new Error("Missing dist/index.html. Run this script after vite build.");
-}
-
-const indexHtml = readFileSync(INDEX_PATH, "utf8");
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.log("Product preview pages skipped: Supabase env is not configured.");
+  console.log("Dynamic product preview sitemap skipped: Supabase env is not configured.");
   process.exit(0);
 }
 
 const catalog = await fetchCatalog();
 const productsWithPreview = catalog.products.filter((product) => product.patterns.length > 0);
 
-productsWithPreview.forEach((product) => {
-  const title = getProductTitle(product, catalog.productTypes);
-  const price = getProductPrice(product, catalog.productTypes);
-  const coverImage = getProductCoverImage(product, catalog.productTypes);
-  const slug = getProductSlug(product, catalog.productTypes);
-  const productUrl = `${SITE_URL}/${slug}`;
-  const imageUrl = getPreviewImageUrl(coverImage.src);
-  const description = `${title} - ${price}. Xem mẫu còn hàng, size và nhắn KNG.studio để chốt đơn.`;
-  const productSchema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: title,
-    image: imageUrl,
-    description,
-    brand: {
-      "@type": "Brand",
-      name: "KNG.studio",
-    },
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "VND",
-      price: getNumericPrice(price),
-      availability: "https://schema.org/InStock",
-      url: productUrl,
-    },
-  };
-
-  const previewHtml = updateHtmlMeta(indexHtml, {
-    title: `${title} | KNG.studio`,
-    description,
-    url: productUrl,
-    image: imageUrl,
-    imageAlt: coverImage.alt || title,
-    schema: productSchema,
-  });
-  const outputDir = path.join(DIST_DIR, slug);
-  mkdirSync(outputDir, { recursive: true });
-  writeFileSync(path.join(outputDir, "index.html"), previewHtml);
-});
-
 writeFileSync(path.join(DIST_DIR, "sitemap.xml"), createSitemap(productsWithPreview, catalog.productTypes));
 
-console.log(`Generated ${productsWithPreview.length} product preview page(s).`);
+console.log(`Generated sitemap for ${productsWithPreview.length} dynamic product preview route(s).`);
 
 async function fetchCatalog() {
   const [productTypeRows, productRows, patternRows] = await Promise.all([
@@ -145,100 +97,11 @@ function loadLocalEnv() {
   });
 }
 
-function updateHtmlMeta(html, meta) {
-  let nextHtml = html;
-  nextHtml = replaceTag(nextHtml, /<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(meta.title)}</title>`);
-  nextHtml = replaceMeta(nextHtml, "name", "description", meta.description);
-  nextHtml = replaceLink(nextHtml, "canonical", meta.url);
-  nextHtml = replaceMeta(nextHtml, "property", "og:type", "product");
-  nextHtml = replaceMeta(nextHtml, "property", "og:title", meta.title);
-  nextHtml = replaceMeta(nextHtml, "property", "og:description", meta.description);
-  nextHtml = replaceMeta(nextHtml, "property", "og:url", meta.url);
-  nextHtml = replaceMeta(nextHtml, "property", "og:image", meta.image);
-  nextHtml = ensureMeta(nextHtml, "property", "og:image:alt", meta.imageAlt);
-  nextHtml = ensureMeta(nextHtml, "property", "og:image:width", "1200");
-  nextHtml = ensureMeta(nextHtml, "property", "og:image:height", "630");
-  nextHtml = replaceMeta(nextHtml, "name", "twitter:card", "summary_large_image");
-  nextHtml = replaceMeta(nextHtml, "name", "twitter:title", meta.title);
-  nextHtml = replaceMeta(nextHtml, "name", "twitter:description", meta.description);
-  nextHtml = replaceMeta(nextHtml, "name", "twitter:image", meta.image);
-  nextHtml = ensureMeta(nextHtml, "name", "twitter:image:alt", meta.imageAlt);
-  return nextHtml.replace(
-    /<script type="application\/ld\+json">[\s\S]*?<\/script>/,
-    `<script type="application/ld+json">\n      ${escapeScriptJson(meta.schema)}\n    </script>`,
-  );
-}
-
-function replaceMeta(html, attribute, key, content) {
-  return replaceTag(
-    html,
-    new RegExp(`<meta\\s+[^>]*${attribute}="${escapeRegExp(key)}"[^>]*>`, "m"),
-    `<meta ${attribute}="${key}" content="${escapeHtml(content)}" />`,
-  );
-}
-
-function ensureMeta(html, attribute, key, content) {
-  const tagPattern = new RegExp(`<meta\\s+[^>]*${attribute}="${escapeRegExp(key)}"[^>]*>`, "m");
-  if (tagPattern.test(html)) return replaceMeta(html, attribute, key, content);
-  const localePattern = /(<meta\s+[^>]*property="og:locale"[^>]*>)/m;
-  if (localePattern.test(html)) {
-    return html.replace(
-      localePattern,
-      `<meta ${attribute}="${key}" content="${escapeHtml(content)}" />\n    $1`,
-    );
-  }
-  return html.replace(
-    /(<meta\s+[^>]*property="og:image"[^>]*>)/m,
-    `<meta ${attribute}="${key}" content="${escapeHtml(content)}" />\n    $1`,
-  );
-}
-
-function replaceLink(html, rel, href) {
-  return replaceTag(
-    html,
-    new RegExp(`<link\\s+[^>]*rel="${escapeRegExp(rel)}"[^>]*>`, "m"),
-    `<link rel="${rel}" href="${escapeHtml(href)}" />`,
-  );
-}
-
-function replaceTag(html, pattern, replacement) {
-  if (!pattern.test(html)) {
-    throw new Error(`Missing expected HTML tag while generating product previews: ${pattern}`);
-  }
-  return html.replace(pattern, replacement);
-}
-
 function getProductTitle(product, productTypes) {
   const productType = productTypes.find((type) => type.id === product.productTypeId);
   const typeName = productType?.name.trim() || "Loại sản phẩm";
   const productName = product.name.trim();
   return productName ? `${typeName} - ${productName}` : typeName;
-}
-
-function getProductPrice(product, productTypes) {
-  return productTypes.find((type) => type.id === product.productTypeId)?.price ?? product.price;
-}
-
-function getProductCoverImage(product, productTypes) {
-  return (
-    product.patterns[0]?.image ?? {
-      id: `${product.id}-cover-fallback`,
-      src: `${SITE_URL}/images/shop-info.webp`,
-      alt: `Ảnh bìa ${getProductTitle(product, productTypes)}`,
-    }
-  );
-}
-
-function getPreviewImageUrl(src) {
-  const imageUrl = new URL(src || "/favicon-192.png", SITE_URL);
-  if (imageUrl.pathname.includes("/storage/v1/object/public/")) {
-    imageUrl.pathname = imageUrl.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-    imageUrl.searchParams.set("width", "1200");
-    imageUrl.searchParams.set("height", "630");
-    imageUrl.searchParams.set("resize", "contain");
-    imageUrl.searchParams.set("quality", "82");
-  }
-  return imageUrl.toString();
 }
 
 function slugify(value) {
@@ -305,11 +168,6 @@ function deriveProductTypes(products) {
   return Array.from(productTypes.values());
 }
 
-function getNumericPrice(price) {
-  const numericPrice = Number(String(price).replace(/[^\d]/g, ""));
-  return Number.isFinite(numericPrice) ? numericPrice : undefined;
-}
-
 function createSitemap(products, productTypes) {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
@@ -351,12 +209,4 @@ function escapeHtml(value) {
 
 function escapeXml(value) {
   return escapeHtml(value).replace(/'/g, "&apos;");
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function escapeScriptJson(value) {
-  return JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
 }
