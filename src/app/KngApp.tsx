@@ -76,7 +76,7 @@ import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from 
 
 const SITE_URL = "https://kngstudio.shop";
 const DEFAULT_PAGE_TITLE = "KNG.studio | Muslin homewear";
-const DEFAULT_PAGE_DESCRIPTION = "Catalog đồ ngủ muslin homewear KNG.studio tại Đà Nẵng: xem mẫu còn hàng, size, giá và nhắn shop để chốt đơn.";
+const DEFAULT_PAGE_DESCRIPTION = "Đồ ngủ muslin - ở nhà cũng xinh ✨. Xem mẫu còn hàng, bảng size, giá và đặt hàng ngay. KNG.studio - Đà Nẵng";
 const DEFAULT_PAGE_IMAGE = `${SITE_URL}/favicon-192.png`;
 
 function createProductPageMeta(product: Product, productTypes: ProductType[], products: Product[]) {
