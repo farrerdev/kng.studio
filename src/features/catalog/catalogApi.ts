@@ -343,14 +343,18 @@ export async function saveCatalog(catalog: {
   if (upsertShopInfo.error) throw upsertShopInfo.error;
 }
 
-export async function saveCatalogProduct({
+export async function patchCatalogProduct({
   product,
+  baselineProduct,
   productType,
   sortOrder,
+  baselineSortOrder,
 }: {
   product: Product;
+  baselineProduct?: Product;
   productType: ProductType;
   sortOrder: number;
+  baselineSortOrder?: number;
 }) {
   if (!supabase) {
     throw new Error("Supabase is not configured.");
@@ -360,35 +364,62 @@ export async function saveCatalogProduct({
     throw new Error(`Link Shopee của sản phẩm ${product.name || product.id} không hợp lệ. Hãy nhập link HTTPS của sản phẩm trên Shopee.`);
   }
 
-  const result = await supabase.rpc("save_catalog_product", {
-    p_product: {
-      id: product.id,
-      product_type_id: product.productTypeId,
-      name: product.name,
-      price: productType.price || product.price,
-      fit: product.fit,
-      material: product.material,
-      shopee_url: getShopeeUrl(product.shopeeUrl) ?? "",
-      size_chart_image_src: product.sizeChartImage.src,
-      size_chart_image_alt: product.sizeChartImage.alt,
-      sort_order: sortOrder,
-      active: true,
-    },
-    p_patterns: product.patterns.map((pattern, index) => ({
-      id: pattern.id,
-      name: pattern.name,
-      accent: pattern.accent,
-      image_src: pattern.image.src,
-      image_alt: pattern.image.alt,
-      available_sizes: pattern.availableSizes,
-      sort_order: index,
-    })),
-    p_images: product.modelImages.map((image, index) => ({
-      id: image.id,
-      src: image.src,
-      alt: image.alt,
-      sort_order: index,
-    })),
+  const currentShopeeUrl = getShopeeUrl(product.shopeeUrl) ?? "";
+  const baselineShopeeUrl = getShopeeUrl(baselineProduct?.shopeeUrl) ?? "";
+  const currentPrice = productType.price || product.price;
+  const productPatch: Record<string, unknown> = {};
+  const setProductField = (key: string, current: unknown, baseline: unknown) => {
+    if (!baselineProduct || current !== baseline) productPatch[key] = current;
+  };
+
+  setProductField("product_type_id", product.productTypeId, baselineProduct?.productTypeId);
+  setProductField("name", product.name, baselineProduct?.name);
+  setProductField("price", currentPrice, baselineProduct?.price);
+  setProductField("fit", product.fit, baselineProduct?.fit);
+  setProductField("material", product.material, baselineProduct?.material);
+  setProductField("shopee_url", currentShopeeUrl, baselineShopeeUrl);
+  setProductField("size_chart_image_src", product.sizeChartImage.src, baselineProduct?.sizeChartImage.src);
+  setProductField("size_chart_image_alt", product.sizeChartImage.alt, baselineProduct?.sizeChartImage.alt);
+  setProductField("sort_order", sortOrder, baselineSortOrder);
+  if (!baselineProduct) productPatch.active = true;
+
+  const baselinePatterns = new Map(baselineProduct?.patterns.map((pattern, index) => [pattern.id, { pattern, index }]) ?? []);
+  const patternChanges = product.patterns.flatMap((pattern, index) => {
+    const baseline = baselinePatterns.get(pattern.id);
+    const changes: Record<string, unknown> = {};
+    const setField = (key: string, current: unknown, previous: unknown) => {
+      if (!baseline || JSON.stringify(current) !== JSON.stringify(previous)) changes[key] = current;
+    };
+    setField("name", pattern.name, baseline?.pattern.name);
+    setField("accent", pattern.accent, baseline?.pattern.accent);
+    setField("image_src", pattern.image.src, baseline?.pattern.image.src);
+    setField("image_alt", pattern.image.alt, baseline?.pattern.image.alt);
+    setField("available_sizes", pattern.availableSizes, baseline?.pattern.availableSizes);
+    setField("sort_order", index, baseline?.index);
+    return Object.keys(changes).length > 0 ? [{ id: pattern.id, changes }] : [];
+  });
+  const patternIds = new Set(product.patterns.map((pattern) => pattern.id));
+  const deletedPatternIds = baselineProduct?.patterns.filter((pattern) => !patternIds.has(pattern.id)).map((pattern) => pattern.id) ?? [];
+
+  const baselineImages = new Map(baselineProduct?.modelImages.map((image, index) => [image.id, { image, index }]) ?? []);
+  const imageChanges = product.modelImages.flatMap((image, index) => {
+    const baseline = baselineImages.get(image.id);
+    const changes: Record<string, unknown> = {};
+    if (!baseline || image.src !== baseline.image.src) changes.src = image.src;
+    if (!baseline || image.alt !== baseline.image.alt) changes.alt = image.alt;
+    if (!baseline || index !== baseline.index) changes.sort_order = index;
+    return Object.keys(changes).length > 0 ? [{ id: image.id, changes }] : [];
+  });
+  const imageIds = new Set(product.modelImages.map((image) => image.id));
+  const deletedImageIds = baselineProduct?.modelImages.filter((image) => !imageIds.has(image.id)).map((image) => image.id) ?? [];
+
+  const result = await supabase.rpc("patch_catalog_product", {
+    p_product_id: product.id,
+    p_product_patch: productPatch,
+    p_pattern_changes: patternChanges,
+    p_pattern_ids_to_delete: deletedPatternIds,
+    p_image_changes: imageChanges,
+    p_image_ids_to_delete: deletedImageIds,
   });
 
   if (result.error) throw result.error;

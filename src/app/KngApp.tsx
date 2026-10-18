@@ -66,7 +66,7 @@ import {
   fetchCatalog,
   isSupabaseConfigured,
   saveCatalog,
-  saveCatalogProduct,
+  patchCatalogProduct,
   uploadCatalogImage,
 } from "../features/catalog/catalogApi";
 import { LoadingPanel } from "../shared/components/LoadingPanel";
@@ -1647,7 +1647,18 @@ function AdminPage({
     setAdminMessage("Đang lưu sản phẩm lên Supabase...");
     setSaveState({ status: "saving", message: "Đang lưu sản phẩm lên Supabase..." });
     try {
-      await saveCatalogProduct({ product, productType, sortOrder: products.indexOf(product) });
+      const baselineProduct = activeAdminProductEditSession.baselineProducts.find(
+        (currentProduct) => currentProduct.id === product.id,
+      );
+      await patchCatalogProduct({
+        product,
+        baselineProduct,
+        productType,
+        sortOrder: products.indexOf(product),
+        baselineSortOrder: baselineProduct
+          ? activeAdminProductEditSession.baselineProducts.indexOf(baselineProduct)
+          : undefined,
+      });
       const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
       setAdminMessage(message);
       setSaveState({ status: "success", message });
