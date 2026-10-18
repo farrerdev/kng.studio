@@ -66,6 +66,7 @@ import {
   fetchCatalog,
   isSupabaseConfigured,
   saveCatalog,
+  saveCatalogProduct,
   uploadCatalogImage,
 } from "../features/catalog/catalogApi";
 import { LoadingPanel } from "../shared/components/LoadingPanel";
@@ -1635,14 +1636,34 @@ function AdminPage({
 
   const saveAdminProductDetail = async () => {
     if (!activeAdminProductEditSession || !hasAdminProductChanges) return;
-    const saved = await saveToSupabase();
-    if (!saved) return;
-    setAdminProductEditSession({
-      ...activeAdminProductEditSession,
-      isNew: false,
-      baselineProductTypes: productTypes,
-      baselineProducts: products,
-    });
+    const product = products.find((currentProduct) => currentProduct.id === activeAdminProductEditSession.id);
+    const productType = productTypes.find((currentProductType) => currentProductType.id === product?.productTypeId);
+    if (!product || !productType) {
+      setSaveState({ status: "error", message: "Không tìm thấy sản phẩm hoặc loại sản phẩm để lưu." });
+      return;
+    }
+
+    setIsBusy(true);
+    setAdminMessage("Đang lưu sản phẩm lên Supabase...");
+    setSaveState({ status: "saving", message: "Đang lưu sản phẩm lên Supabase..." });
+    try {
+      await saveCatalogProduct({ product, productType, sortOrder: products.indexOf(product) });
+      const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
+      setAdminMessage(message);
+      setSaveState({ status: "success", message });
+      setAdminProductEditSession({
+        ...activeAdminProductEditSession,
+        isNew: false,
+        baselineProductTypes: productTypes,
+        baselineProducts: products,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không lưu được sản phẩm.";
+      setAdminMessage(message);
+      setSaveState({ status: "error", message });
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const closeAdminDetailWithAnimation = (detail: Exclude<AdminClosingDetail, null>, afterClose: () => void) => {

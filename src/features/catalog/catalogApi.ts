@@ -308,29 +308,6 @@ export async function saveCatalog(catalog: {
     active: true,
   }));
 
-  const patternRows = catalog.products.flatMap((product) =>
-    product.patterns.map((pattern, index) => ({
-      id: pattern.id,
-      product_id: product.id,
-      name: pattern.name,
-      accent: pattern.accent,
-      image_src: pattern.image.src,
-      image_alt: pattern.image.alt,
-      available_sizes: pattern.availableSizes,
-      sort_order: index,
-    })),
-  );
-
-  const imageRows = catalog.products.flatMap((product) =>
-    product.modelImages.map((image, index) => ({
-      id: image.id,
-      product_id: product.id,
-      src: image.src,
-      alt: image.alt,
-      sort_order: index,
-    })),
-  );
-
   const productIds = catalog.products.map((product) => product.id);
   const productTypeIds = catalog.productTypes.map((productType) => productType.id);
 
@@ -350,24 +327,6 @@ export async function saveCatalog(catalog: {
     if (deleteAllProducts.error) throw deleteAllProducts.error;
   }
 
-  if (productIds.length > 0) {
-    const deletePatterns = await supabase.from("product_patterns").delete().in("product_id", productIds);
-    if (deletePatterns.error) throw deletePatterns.error;
-
-    const deleteImages = await supabase.from("product_images").delete().in("product_id", productIds);
-    if (deleteImages.error) throw deleteImages.error;
-  }
-
-  if (patternRows.length > 0) {
-    const upsertPatterns = await supabase.from("product_patterns").upsert(patternRows);
-    if (upsertPatterns.error) throw upsertPatterns.error;
-  }
-
-  if (imageRows.length > 0) {
-    const upsertImages = await supabase.from("product_images").upsert(imageRows);
-    if (upsertImages.error) throw upsertImages.error;
-  }
-
   if (productTypeIds.length > 0) {
     const deleteProductTypes = await supabase
       .from("product_types")
@@ -382,6 +341,57 @@ export async function saveCatalog(catalog: {
     image_alt: catalog.shopInfoImage.alt,
   });
   if (upsertShopInfo.error) throw upsertShopInfo.error;
+}
+
+export async function saveCatalogProduct({
+  product,
+  productType,
+  sortOrder,
+}: {
+  product: Product;
+  productType: ProductType;
+  sortOrder: number;
+}) {
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  if (product.shopeeUrl?.trim() && !getShopeeUrl(product.shopeeUrl)) {
+    throw new Error(`Link Shopee của sản phẩm ${product.name || product.id} không hợp lệ. Hãy nhập link HTTPS của sản phẩm trên Shopee.`);
+  }
+
+  const result = await supabase.rpc("save_catalog_product", {
+    p_product: {
+      id: product.id,
+      product_type_id: product.productTypeId,
+      name: product.name,
+      price: productType.price || product.price,
+      fit: product.fit,
+      material: product.material,
+      shopee_url: getShopeeUrl(product.shopeeUrl) ?? "",
+      size_chart_image_src: product.sizeChartImage.src,
+      size_chart_image_alt: product.sizeChartImage.alt,
+      sort_order: sortOrder,
+      active: true,
+    },
+    p_patterns: product.patterns.map((pattern, index) => ({
+      id: pattern.id,
+      name: pattern.name,
+      accent: pattern.accent,
+      image_src: pattern.image.src,
+      image_alt: pattern.image.alt,
+      available_sizes: pattern.availableSizes,
+      sort_order: index,
+    })),
+    p_images: product.modelImages.map((image, index) => ({
+      id: image.id,
+      src: image.src,
+      alt: image.alt,
+      sort_order: index,
+    })),
+  });
+
+  if (result.error) throw result.error;
 }
 
 export async function uploadCatalogImage(file: File, folder: string): Promise<string> {
