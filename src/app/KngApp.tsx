@@ -62,10 +62,13 @@ import { ContactButtons, StorefrontFooter } from "../features/storefront/compone
 import type { GalleryImage, ShareChannel } from "../features/storefront/storefrontTypes";
 import { supabase } from "../lib/supabase";
 import {
+  deleteCatalogProduct,
+  deleteCatalogProductType,
   fallbackCatalog,
   fetchCatalog,
   isSupabaseConfigured,
-  saveCatalog,
+  patchCatalogProductType,
+  patchCatalogSortOrder,
   patchCatalogProduct,
   uploadCatalogImage,
 } from "../features/catalog/catalogApi";
@@ -999,7 +1002,6 @@ function AdminPage({
   isCatalogLoading,
   productTypes,
   products,
-  shopInfoImage: adminShopInfoImage,
   onProductTypesChange,
   onProductsChange,
   onRefresh,
@@ -1337,20 +1339,40 @@ function AdminPage({
     );
   };
 
-  const removeProductType = (productTypeId: string) => {
+  const removeProductType = async (productTypeId: string) => {
     if (productTypes.length <= 1) return;
     const nextProductType = productTypes.find((productType) => productType.id !== productTypeId);
     if (!nextProductType) return;
 
-    onProductTypesChange((currentTypes) => currentTypes.filter((productType) => productType.id !== productTypeId));
-    setSelectedAdminProductTypeId((current) => (current === productTypeId ? null : current));
-    onProductsChange((currentProducts) =>
-      currentProducts.map((product) =>
-        product.productTypeId === productTypeId
-          ? { ...product, productTypeId: nextProductType.id, price: nextProductType.price }
-          : product,
-      ),
-    );
+    const productType = productTypes.find((currentProductType) => currentProductType.id === productTypeId);
+    if (!window.confirm(`Xóa loại "${productType?.name || "Chưa đặt tên"}"? Các sản phẩm sẽ được chuyển sang loại kế tiếp.`)) return;
+
+    setIsBusy(true);
+    setSaveState({ status: "saving", message: "Đang xóa loại sản phẩm..." });
+    try {
+      if (!(activeAdminTypeEditSession?.isNew && activeAdminTypeEditSession.id === productTypeId)) {
+        await deleteCatalogProductType(productTypeId, nextProductType.id);
+      }
+      onProductTypesChange((currentTypes) => currentTypes.filter((currentProductType) => currentProductType.id !== productTypeId));
+      setSelectedAdminProductTypeId((current) => (current === productTypeId ? null : current));
+      onProductsChange((currentProducts) =>
+        currentProducts.map((product) =>
+          product.productTypeId === productTypeId
+            ? { ...product, productTypeId: nextProductType.id, price: nextProductType.price }
+            : product,
+        ),
+      );
+      setAdminTypeEditSession(null);
+      const message = "Đã xóa đúng loại sản phẩm đã chọn.";
+      setAdminMessage(message);
+      setSaveState({ status: "success", message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không xóa được loại sản phẩm.";
+      setAdminMessage(message);
+      setSaveState({ status: "error", message });
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const reorderProductType = (productTypeId: string, direction: -1 | 1) => {
@@ -1409,10 +1431,27 @@ function AdminPage({
 
   const saveHomeSorting = async () => {
     if (!homeSortSession || !hasHomeReorderChanges) return;
-    const saved = await saveToSupabase();
-    if (!saved) return;
-    setHomeSortSession(null);
-    setHasHomeReorderChanges(false);
+    setIsBusy(true);
+    setSaveState({ status: "saving", message: "Đang lưu thứ tự..." });
+    try {
+      await patchCatalogSortOrder({
+        productTypes,
+        products,
+        baselineProductTypes: homeSortSession.productTypes,
+        baselineProducts: homeSortSession.products,
+      });
+      setHomeSortSession(null);
+      setHasHomeReorderChanges(false);
+      const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
+      setAdminMessage(message);
+      setSaveState({ status: "success", message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không lưu được thứ tự.";
+      setAdminMessage(message);
+      setSaveState({ status: "error", message });
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const updatePattern = (productId: string, patternId: string, patch: Partial<ProductPattern>) => {
@@ -1549,13 +1588,30 @@ function AdminPage({
     );
   };
 
-  const removeProduct = (product: Product) => {
+  const removeProduct = async (product: Product) => {
     const productTitle = getProductTitle(product, productTypes);
-    const confirmed = window.confirm(`Xóa sản phẩm "${productTitle}"? Sau khi bấm Lưu Supabase, sản phẩm này sẽ bị xóa khỏi database.`);
+    const confirmed = window.confirm(`Xóa sản phẩm "${productTitle}"? Chỉ sản phẩm này và dữ liệu con của nó sẽ bị xóa.`);
     if (!confirmed) return;
 
-    onProductsChange((currentProducts) => currentProducts.filter((currentProduct) => currentProduct.id !== product.id));
-    setExpandedProductId((current) => (current === product.id ? null : current));
+    setIsBusy(true);
+    setSaveState({ status: "saving", message: "Đang xóa sản phẩm..." });
+    try {
+      if (!(activeAdminProductEditSession?.isNew && activeAdminProductEditSession.id === product.id)) {
+        await deleteCatalogProduct(product.id);
+      }
+      onProductsChange((currentProducts) => currentProducts.filter((currentProduct) => currentProduct.id !== product.id));
+      setExpandedProductId((current) => (current === product.id ? null : current));
+      setAdminProductEditSession(null);
+      const message = "Đã xóa đúng sản phẩm đã chọn.";
+      setAdminMessage(message);
+      setSaveState({ status: "success", message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không xóa được sản phẩm.";
+      setAdminMessage(message);
+      setSaveState({ status: "error", message });
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const removeModelImage = (productId: string, imageId: string) => {
@@ -1597,41 +1653,41 @@ function AdminPage({
     setAdminMessage("Đã đăng xuất.");
   };
 
-  const saveToSupabase = async () => {
+  const saveAdminTypeDetail = async () => {
+    if (!activeAdminTypeEditSession || !hasAdminTypeChanges) return;
+    const productType = productTypes.find((currentProductType) => currentProductType.id === activeAdminTypeEditSession.id);
+    if (!productType) return;
+
     setIsBusy(true);
-    setAdminMessage("Đang lưu lên Supabase...");
-    setSaveState({ status: "saving", message: "Đang lưu lên Supabase..." });
+    setSaveState({ status: "saving", message: "Đang lưu loại sản phẩm..." });
     try {
-      await saveCatalog({
-        productTypes,
-        products,
-        shopInfoImage: adminShopInfoImage,
+      const baselineProductType = activeAdminTypeEditSession.baselineProductTypes.find(
+        (currentProductType) => currentProductType.id === productType.id,
+      );
+      await patchCatalogProductType({
+        productType,
+        baselineProductType,
+        sortOrder: productTypes.indexOf(productType),
+        baselineSortOrder: baselineProductType
+          ? activeAdminTypeEditSession.baselineProductTypes.indexOf(baselineProductType)
+          : undefined,
       });
-      setHasHomeReorderChanges(false);
       const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
       setAdminMessage(message);
       setSaveState({ status: "success", message });
-      return true;
+      setAdminTypeEditSession({
+        ...activeAdminTypeEditSession,
+        isNew: false,
+        baselineProductTypes: productTypes,
+        baselineProducts: products,
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không lưu được catalog.";
+      const message = error instanceof Error ? error.message : "Không lưu được loại sản phẩm.";
       setAdminMessage(message);
       setSaveState({ status: "error", message });
-      return false;
     } finally {
       setIsBusy(false);
     }
-  };
-
-  const saveAdminTypeDetail = async () => {
-    if (!activeAdminTypeEditSession || !hasAdminTypeChanges) return;
-    const saved = await saveToSupabase();
-    if (!saved) return;
-    setAdminTypeEditSession({
-      ...activeAdminTypeEditSession,
-      isNew: false,
-      baselineProductTypes: productTypes,
-      baselineProducts: products,
-    });
   };
 
   const saveAdminProductDetail = async () => {

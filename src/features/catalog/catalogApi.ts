@@ -78,12 +78,13 @@ export async function fetchCatalog(): Promise<CatalogData> {
     supabase.from("shop_info").select("*").eq("id", "main").maybeSingle(),
   ]);
 
+  if (productTypesResult.error) throw productTypesResult.error;
   if (productsResult.error) throw productsResult.error;
   if (patternsResult.error) throw patternsResult.error;
   if (imagesResult.error) throw imagesResult.error;
   if (shopInfoResult.error) throw shopInfoResult.error;
 
-  const productTypeRows = productTypesResult.error ? [] : ((productTypesResult.data ?? []) as ProductTypeRow[]);
+  const productTypeRows = (productTypesResult.data ?? []) as ProductTypeRow[];
   const productRows = (productsResult.data ?? []) as ProductRow[];
   const patternRows = (patternsResult.data ?? []) as PatternRow[];
   const imageRows = (imagesResult.data ?? []) as ProductImageRow[];
@@ -264,83 +265,82 @@ function deriveProductTypes(products: ProductRow[]): ProductType[] {
   return Array.from(productTypes.values());
 }
 
-function formatPostgrestInList(values: string[]) {
-  return `(${values.map((value) => `"${value.replace(/"/g, '\\"')}"`).join(",")})`;
-}
-
-export async function saveCatalog(catalog: {
-  productTypes: ProductType[];
-  products: Product[];
-  shopInfoImage: ProductImage;
+export async function patchCatalogProductType({
+  productType,
+  baselineProductType,
+  sortOrder,
+  baselineSortOrder,
+}: {
+  productType: ProductType;
+  baselineProductType?: ProductType;
+  sortOrder: number;
+  baselineSortOrder?: number;
 }) {
   if (!supabase) {
     throw new Error("Supabase is not configured.");
   }
 
-  for (const product of catalog.products) {
-    if (product.shopeeUrl?.trim() && !getShopeeUrl(product.shopeeUrl)) {
-      throw new Error(`Link Shopee của sản phẩm ${product.name || product.id} không hợp lệ. Hãy nhập link HTTPS của sản phẩm trên Shopee.`);
-    }
-  }
+  const patch: Record<string, unknown> = {};
+  const setField = (key: string, current: unknown, baseline: unknown) => {
+    if (!baselineProductType || current !== baseline) patch[key] = current;
+  };
+  setField("name", productType.name, baselineProductType?.name);
+  setField("price", productType.price, baselineProductType?.price);
+  setField("cover_image_src", productType.coverImage.src, baselineProductType?.coverImage.src);
+  setField("cover_image_alt", productType.coverImage.alt, baselineProductType?.coverImage.alt);
+  setField("size_chart_image_src", productType.sizeChartImage.src, baselineProductType?.sizeChartImage.src);
+  setField("size_chart_image_alt", productType.sizeChartImage.alt, baselineProductType?.sizeChartImage.alt);
+  setField("sort_order", sortOrder, baselineSortOrder);
 
-  const productTypeRows = catalog.productTypes.map((productType, index) => ({
-    id: productType.id,
-    name: productType.name,
-    price: productType.price,
-    cover_image_src: "",
-    cover_image_alt: "",
-    size_chart_image_src: productType.sizeChartImage.src,
-    size_chart_image_alt: productType.sizeChartImage.alt,
-    sort_order: index,
-  }));
-
-  const productRows = catalog.products.map((product, index) => ({
-    id: product.id,
-    product_type_id: product.productTypeId,
-    name: product.name,
-    price: catalog.productTypes.find((productType) => productType.id === product.productTypeId)?.price ?? product.price,
-    fit: product.fit,
-    material: product.material,
-    shopee_url: getShopeeUrl(product.shopeeUrl) ?? "",
-    size_chart_image_src: product.sizeChartImage.src,
-    size_chart_image_alt: product.sizeChartImage.alt,
-    sort_order: index,
-    active: true,
-  }));
-
-  const productIds = catalog.products.map((product) => product.id);
-  const productTypeIds = catalog.productTypes.map((productType) => productType.id);
-
-  if (productTypeRows.length > 0) {
-    const upsertProductTypes = await supabase.from("product_types").upsert(productTypeRows);
-    if (upsertProductTypes.error) throw upsertProductTypes.error;
-  }
-
-  const upsertProducts = await supabase.from("products").upsert(productRows);
-  if (upsertProducts.error) throw upsertProducts.error;
-
-  if (productIds.length > 0) {
-    const deleteRemovedProducts = await supabase.from("products").delete().not("id", "in", formatPostgrestInList(productIds));
-    if (deleteRemovedProducts.error) throw deleteRemovedProducts.error;
-  } else {
-    const deleteAllProducts = await supabase.from("products").delete().neq("id", "");
-    if (deleteAllProducts.error) throw deleteAllProducts.error;
-  }
-
-  if (productTypeIds.length > 0) {
-    const deleteProductTypes = await supabase
-      .from("product_types")
-      .delete()
-      .not("id", "in", formatPostgrestInList(productTypeIds));
-    if (deleteProductTypes.error) throw deleteProductTypes.error;
-  }
-
-  const upsertShopInfo = await supabase.from("shop_info").upsert({
-    id: "main",
-    image_src: catalog.shopInfoImage.src,
-    image_alt: catalog.shopInfoImage.alt,
+  const result = await supabase.rpc("patch_catalog_product_type", {
+    p_product_type_id: productType.id,
+    p_patch: patch,
   });
-  if (upsertShopInfo.error) throw upsertShopInfo.error;
+  if (result.error) throw result.error;
+}
+
+export async function patchCatalogSortOrder({
+  productTypes,
+  products,
+  baselineProductTypes,
+  baselineProducts,
+}: {
+  productTypes: ProductType[];
+  products: Product[];
+  baselineProductTypes: ProductType[];
+  baselineProducts: Product[];
+}) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const baselineTypeOrder = new Map(baselineProductTypes.map((item, index) => [item.id, index]));
+  const baselineProductOrder = new Map(baselineProducts.map((item, index) => [item.id, index]));
+  const typeOrders = productTypes.flatMap((item, index) =>
+    baselineTypeOrder.get(item.id) !== index ? [{ id: item.id, sort_order: index }] : [],
+  );
+  const productOrders = products.flatMap((item, index) =>
+    baselineProductOrder.get(item.id) !== index ? [{ id: item.id, sort_order: index }] : [],
+  );
+
+  const result = await supabase.rpc("patch_catalog_sort_order", {
+    p_product_type_orders: typeOrders,
+    p_product_orders: productOrders,
+  });
+  if (result.error) throw result.error;
+}
+
+export async function deleteCatalogProduct(productId: string) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const result = await supabase.rpc("delete_catalog_product", { p_product_id: productId });
+  if (result.error) throw result.error;
+}
+
+export async function deleteCatalogProductType(productTypeId: string, replacementProductTypeId: string) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const result = await supabase.rpc("delete_catalog_product_type", {
+    p_product_type_id: productTypeId,
+    p_replacement_product_type_id: replacementProductTypeId,
+  });
+  if (result.error) throw result.error;
 }
 
 export async function patchCatalogProduct({
