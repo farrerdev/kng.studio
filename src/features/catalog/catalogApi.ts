@@ -10,6 +10,11 @@ export type CatalogData = {
   shopInfoImage: ProductImage | null;
 };
 
+export type CatalogImageCleanupResult = {
+  deletedCount: number;
+  warning?: string;
+};
+
 type ProductRow = {
   id: string;
   product_type_id?: string | null;
@@ -265,6 +270,66 @@ function deriveProductTypes(products: ProductRow[]): ProductType[] {
   return Array.from(productTypes.values());
 }
 
+function getCatalogStoragePath(src: string | null | undefined) {
+  if (!src?.trim()) return null;
+  try {
+    const url = new URL(src);
+    if (url.origin !== new URL(supabaseConfig.url).origin) return null;
+    const markers = [
+      `/storage/v1/object/public/${supabaseConfig.storageBucket}/`,
+      `/storage/v1/render/image/public/${supabaseConfig.storageBucket}/`,
+    ];
+    const marker = markers.find((currentMarker) => url.pathname.includes(currentMarker));
+    if (!marker) return null;
+    return decodeURIComponent(url.pathname.slice(url.pathname.indexOf(marker) + marker.length));
+  } catch {
+    return null;
+  }
+}
+
+export async function cleanupUnreferencedCatalogImages(
+  imageSources: Array<string | null | undefined>,
+): Promise<CatalogImageCleanupResult> {
+  if (!supabase) return { deletedCount: 0, warning: "Chưa cấu hình Supabase nên chưa dọn được ảnh cũ." };
+
+  const candidatePaths = Array.from(
+    new Set(imageSources.map(getCatalogStoragePath).filter((path): path is string => Boolean(path))),
+  );
+  if (candidatePaths.length === 0) return { deletedCount: 0 };
+
+  const [patterns, images, products, productTypes, shopInfo] = await Promise.all([
+    supabase.from("product_patterns").select("image_src"),
+    supabase.from("product_images").select("src"),
+    supabase.from("products").select("size_chart_image_src"),
+    supabase.from("product_types").select("cover_image_src,size_chart_image_src"),
+    supabase.from("shop_info").select("image_src"),
+  ]);
+  const readError = [patterns, images, products, productTypes, shopInfo].find((result) => result.error)?.error;
+  if (readError) {
+    return { deletedCount: 0, warning: "Đã lưu dữ liệu nhưng chưa kiểm tra được ảnh cũ để dọn." };
+  }
+
+  const referencedPaths = new Set(
+    [
+      ...(patterns.data ?? []).map((row) => row.image_src),
+      ...(images.data ?? []).map((row) => row.src),
+      ...(products.data ?? []).map((row) => row.size_chart_image_src),
+      ...(productTypes.data ?? []).flatMap((row) => [row.cover_image_src, row.size_chart_image_src]),
+      ...(shopInfo.data ?? []).map((row) => row.image_src),
+    ]
+      .map(getCatalogStoragePath)
+      .filter((path): path is string => Boolean(path)),
+  );
+  const pathsToDelete = candidatePaths.filter((path) => !referencedPaths.has(path));
+  if (pathsToDelete.length === 0) return { deletedCount: 0 };
+
+  const removeResult = await supabase.storage.from(supabaseConfig.storageBucket).remove(pathsToDelete);
+  if (removeResult.error) {
+    return { deletedCount: 0, warning: "Đã lưu dữ liệu nhưng chưa xóa được ảnh cũ khỏi Storage." };
+  }
+  return { deletedCount: removeResult.data?.length ?? pathsToDelete.length };
+}
+
 export async function patchCatalogProductType({
   productType,
   baselineProductType,
@@ -297,6 +362,12 @@ export async function patchCatalogProductType({
     p_patch: patch,
   });
   if (result.error) throw result.error;
+  return cleanupUnreferencedCatalogImages([
+    baselineProductType?.coverImage.src !== productType.coverImage.src ? baselineProductType?.coverImage.src : null,
+    baselineProductType?.sizeChartImage.src !== productType.sizeChartImage.src
+      ? baselineProductType?.sizeChartImage.src
+      : null,
+  ]);
 }
 
 export async function patchCatalogSortOrder({
@@ -328,19 +399,25 @@ export async function patchCatalogSortOrder({
   if (result.error) throw result.error;
 }
 
-export async function deleteCatalogProduct(productId: string) {
+export async function deleteCatalogProduct(product: Product) {
   if (!supabase) throw new Error("Supabase is not configured.");
-  const result = await supabase.rpc("delete_catalog_product", { p_product_id: productId });
+  const result = await supabase.rpc("delete_catalog_product", { p_product_id: product.id });
   if (result.error) throw result.error;
+  return cleanupUnreferencedCatalogImages([
+    product.sizeChartImage.src,
+    ...product.patterns.map((pattern) => pattern.image.src),
+    ...product.modelImages.map((image) => image.src),
+  ]);
 }
 
-export async function deleteCatalogProductType(productTypeId: string, replacementProductTypeId: string) {
+export async function deleteCatalogProductType(productType: ProductType, replacementProductTypeId: string) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const result = await supabase.rpc("delete_catalog_product_type", {
-    p_product_type_id: productTypeId,
+    p_product_type_id: productType.id,
     p_replacement_product_type_id: replacementProductTypeId,
   });
   if (result.error) throw result.error;
+  return cleanupUnreferencedCatalogImages([productType.coverImage.src, productType.sizeChartImage.src]);
 }
 
 export async function patchCatalogProduct({
@@ -423,6 +500,19 @@ export async function patchCatalogProduct({
   });
 
   if (result.error) throw result.error;
+  if (!baselineProduct) return { deletedCount: 0 } satisfies CatalogImageCleanupResult;
+
+  const currentPatterns = new Map(product.patterns.map((pattern) => [pattern.id, pattern]));
+  const currentImages = new Map(product.modelImages.map((image) => [image.id, image]));
+  return cleanupUnreferencedCatalogImages([
+    baselineProduct.sizeChartImage.src !== product.sizeChartImage.src ? baselineProduct.sizeChartImage.src : null,
+    ...baselineProduct.patterns.map((pattern) =>
+      currentPatterns.get(pattern.id)?.image.src !== pattern.image.src ? pattern.image.src : null,
+    ),
+    ...baselineProduct.modelImages.map((image) =>
+      currentImages.get(image.id)?.src !== image.src ? image.src : null,
+    ),
+  ]);
 }
 
 export async function uploadCatalogImage(file: File, folder: string): Promise<string> {

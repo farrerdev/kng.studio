@@ -62,6 +62,7 @@ import { ContactButtons, StorefrontFooter } from "../features/storefront/compone
 import type { GalleryImage, ShareChannel } from "../features/storefront/storefrontTypes";
 import { supabase } from "../lib/supabase";
 import {
+  cleanupUnreferencedCatalogImages,
   deleteCatalogProduct,
   deleteCatalogProductType,
   fallbackCatalog,
@@ -72,6 +73,7 @@ import {
   patchCatalogProduct,
   uploadCatalogImage,
 } from "../features/catalog/catalogApi";
+import type { CatalogImageCleanupResult } from "../features/catalog/catalogApi";
 import { LoadingPanel } from "../shared/components/LoadingPanel";
 import { getSupabaseImageSrc } from "../shared/utils/image";
 import { formatPrice } from "../shared/utils/money";
@@ -997,6 +999,12 @@ type AdminClosingDetail = "productType" | "product" | null;
 const getCatalogSnapshotKey = (productTypes: ProductType[], products: Product[]) =>
   JSON.stringify({ productTypes, products });
 
+const withCatalogImageCleanupMessage = (message: string, cleanup: CatalogImageCleanupResult) => {
+  if (cleanup.warning) return `${message} ${cleanup.warning}`;
+  if (cleanup.deletedCount > 0) return `${message} Đã dọn ${cleanup.deletedCount} ảnh cũ.`;
+  return message;
+};
+
 function AdminPage({
   catalogStatus,
   isCatalogLoading,
@@ -1345,14 +1353,15 @@ function AdminPage({
     if (!nextProductType) return;
 
     const productType = productTypes.find((currentProductType) => currentProductType.id === productTypeId);
-    if (!window.confirm(`Xóa loại "${productType?.name || "Chưa đặt tên"}"? Các sản phẩm sẽ được chuyển sang loại kế tiếp.`)) return;
+    if (!productType) return;
+    if (!window.confirm(`Xóa loại "${productType.name || "Chưa đặt tên"}"? Các sản phẩm sẽ được chuyển sang loại kế tiếp.`)) return;
 
     setIsBusy(true);
     setSaveState({ status: "saving", message: "Đang xóa loại sản phẩm..." });
     try {
-      if (!(activeAdminTypeEditSession?.isNew && activeAdminTypeEditSession.id === productTypeId)) {
-        await deleteCatalogProductType(productTypeId, nextProductType.id);
-      }
+      const cleanup = activeAdminTypeEditSession?.isNew && activeAdminTypeEditSession.id === productTypeId
+        ? await cleanupUnreferencedCatalogImages([productType.coverImage.src, productType.sizeChartImage.src])
+        : await deleteCatalogProductType(productType, nextProductType.id);
       onProductTypesChange((currentTypes) => currentTypes.filter((currentProductType) => currentProductType.id !== productTypeId));
       setSelectedAdminProductTypeId((current) => (current === productTypeId ? null : current));
       onProductsChange((currentProducts) =>
@@ -1363,7 +1372,7 @@ function AdminPage({
         ),
       );
       setAdminTypeEditSession(null);
-      const message = "Đã xóa đúng loại sản phẩm đã chọn.";
+      const message = withCatalogImageCleanupMessage("Đã xóa đúng loại sản phẩm đã chọn.", cleanup);
       setAdminMessage(message);
       setSaveState({ status: "success", message });
     } catch (error) {
@@ -1596,13 +1605,17 @@ function AdminPage({
     setIsBusy(true);
     setSaveState({ status: "saving", message: "Đang xóa sản phẩm..." });
     try {
-      if (!(activeAdminProductEditSession?.isNew && activeAdminProductEditSession.id === product.id)) {
-        await deleteCatalogProduct(product.id);
-      }
+      const cleanup = activeAdminProductEditSession?.isNew && activeAdminProductEditSession.id === product.id
+        ? await cleanupUnreferencedCatalogImages([
+            product.sizeChartImage.src,
+            ...product.patterns.map((pattern) => pattern.image.src),
+            ...product.modelImages.map((image) => image.src),
+          ])
+        : await deleteCatalogProduct(product);
       onProductsChange((currentProducts) => currentProducts.filter((currentProduct) => currentProduct.id !== product.id));
       setExpandedProductId((current) => (current === product.id ? null : current));
       setAdminProductEditSession(null);
-      const message = "Đã xóa đúng sản phẩm đã chọn.";
+      const message = withCatalogImageCleanupMessage("Đã xóa đúng sản phẩm đã chọn.", cleanup);
       setAdminMessage(message);
       setSaveState({ status: "success", message });
     } catch (error) {
@@ -1664,7 +1677,7 @@ function AdminPage({
       const baselineProductType = activeAdminTypeEditSession.baselineProductTypes.find(
         (currentProductType) => currentProductType.id === productType.id,
       );
-      await patchCatalogProductType({
+      const cleanup = await patchCatalogProductType({
         productType,
         baselineProductType,
         sortOrder: productTypes.indexOf(productType),
@@ -1672,7 +1685,10 @@ function AdminPage({
           ? activeAdminTypeEditSession.baselineProductTypes.indexOf(baselineProductType)
           : undefined,
       });
-      const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
+      const message = withCatalogImageCleanupMessage(
+        `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`,
+        cleanup,
+      );
       setAdminMessage(message);
       setSaveState({ status: "success", message });
       setAdminTypeEditSession({
@@ -1706,7 +1722,7 @@ function AdminPage({
       const baselineProduct = activeAdminProductEditSession.baselineProducts.find(
         (currentProduct) => currentProduct.id === product.id,
       );
-      await patchCatalogProduct({
+      const cleanup = await patchCatalogProduct({
         product,
         baselineProduct,
         productType,
@@ -1715,7 +1731,10 @@ function AdminPage({
           ? activeAdminProductEditSession.baselineProducts.indexOf(baselineProduct)
           : undefined,
       });
-      const message = `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`;
+      const message = withCatalogImageCleanupMessage(
+        `Đã lưu lúc ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}.`,
+        cleanup,
+      );
       setAdminMessage(message);
       setSaveState({ status: "success", message });
       setAdminProductEditSession({
