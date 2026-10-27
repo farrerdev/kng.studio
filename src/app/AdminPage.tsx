@@ -8,6 +8,7 @@ import {
 } from "../features/analytics/analyticsApi";
 import {
   DEFAULT_STOREFRONT_STATS_FILTER,
+  getPreviousStorefrontStatsRange,
   getStorefrontStatsRange,
   type StorefrontStatsFilter,
 } from "../features/analytics/statsFilters";
@@ -121,6 +122,7 @@ export default function AdminPage({
   const [statsFilter, setStatsFilter] = useState<StorefrontStatsFilter>(DEFAULT_STOREFRONT_STATS_FILTER);
   const [adminOrderItems, setAdminOrderItems] = useState<CartItem[]>([]);
   const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
+  const [previousStorefrontEvents, setPreviousStorefrontEvents] = useState<StorefrontEventRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -397,7 +399,13 @@ export default function AdminPage({
     if (!isSignedIn) return;
     setIsStatsLoading(true);
     try {
-      setStorefrontEvents(await fetchStorefrontStats(getStorefrontStatsRange(filter)));
+      // The previous period only feeds the ▲/▼ comparison, so its failure must not hide current stats.
+      const [events, previousEvents] = await Promise.all([
+        fetchStorefrontStats(getStorefrontStatsRange(filter)),
+        fetchStorefrontStats(getPreviousStorefrontStatsRange(filter)).catch(() => null),
+      ]);
+      setStorefrontEvents(events);
+      setPreviousStorefrontEvents(previousEvents);
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "Không tải được thống kê.");
     } finally {
@@ -1190,6 +1198,7 @@ export default function AdminPage({
       ) : adminScreen === "stats" ? (
         <AdminStatsDashboard
           events={storefrontEvents}
+          previousEvents={previousStorefrontEvents}
           filter={statsFilter}
           isLoading={isStatsLoading}
           onFilterChange={setStatsFilter}

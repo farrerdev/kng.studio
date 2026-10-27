@@ -73,6 +73,18 @@ export function getStorefrontStatsRange(filter: StorefrontStatsFilter, now = new
   };
 }
 
+/** The equally long period right before `filter`'s range (the previous calendar month for month mode). */
+export function getPreviousStorefrontStatsRange(filter: StorefrontStatsFilter, now = new Date()): StorefrontStatsRange {
+  if (filter.mode === "month") {
+    const [year, month] = filter.month.split("-").map(Number);
+    return getLocalMonthRange(getLocalMonthInputValue(new Date(year, month - 2, 1)));
+  }
+  const range = getStorefrontStatsRange(filter, now);
+  const from = new Date(range.from).getTime();
+  const duration = new Date(range.to).getTime() - from;
+  return { from: new Date(from - duration).toISOString(), to: range.from };
+}
+
 export function getStorefrontStatsFilterLabel(filter: StorefrontStatsFilter) {
   if (filter.mode === "today") return "hôm nay";
   if (filter.mode === "yesterday") return "hôm qua";

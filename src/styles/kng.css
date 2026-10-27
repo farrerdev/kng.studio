@@ -5829,3 +5829,248 @@ button {
   border-color: var(--line);
   background: var(--soft);
 }
+
+/* Admin stats: period comparison, funnel, sortable tables, size split and hour heatmap. */
+.admin-stats.event-stats .admin-change {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-stats.event-stats .admin-change.up {
+  color: #29713c;
+}
+
+.admin-stats.event-stats .admin-change.down {
+  color: #b00020;
+}
+
+.admin-stats.event-stats > button.active .admin-change {
+  color: #f4f4f4;
+}
+
+.admin-stats-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.admin-funnel {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  list-style: none;
+}
+
+.admin-funnel li {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-funnel-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.86rem;
+}
+
+.admin-funnel-label strong {
+  font-weight: 750;
+}
+
+.admin-funnel-bar {
+  height: 10px;
+  background: var(--soft);
+}
+
+.admin-funnel-bar span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: var(--ink);
+}
+
+.admin-funnel small {
+  min-height: 1em;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.admin-interest-card th button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-transform: inherit;
+}
+
+.admin-interest-card th button.active {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.admin-interest-card td:first-child {
+  font-weight: 600;
+}
+
+.admin-stats-flag {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: #fbe9ec;
+  color: #b00020;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.admin-stats-more {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-size-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-size-legend {
+  display: flex;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.admin-size-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-size-legend i {
+  width: 10px;
+  height: 10px;
+}
+
+.admin-size-legend .size-one,
+.admin-size-split-bar span:first-child {
+  background: var(--ink);
+}
+
+.admin-size-legend .size-two,
+.admin-size-split-bar span:last-child {
+  background: #c9c9c9;
+}
+
+.admin-size-split {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-size-split-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.admin-size-split-label small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.admin-size-split-bar {
+  display: flex;
+  height: 18px;
+}
+
+.admin-size-split-bar span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.admin-size-split-bar span:last-child {
+  flex: 1;
+  color: var(--ink);
+}
+
+.admin-heatmap-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-heatmap {
+  display: grid;
+  grid-template-columns: 24px repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  max-width: 640px;
+}
+
+.admin-heatmap > span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.admin-heatmap-hour {
+  text-align: left;
+}
+
+.admin-heatmap-day {
+  align-self: center;
+}
+
+.admin-heatmap button {
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: var(--soft);
+  cursor: pointer;
+}
+
+.admin-heatmap button.active {
+  outline: 2px solid #b00020;
+  outline-offset: 1px;
+}
+
+.admin-heatmap-card p strong {
+  color: var(--ink);
+}
+
+.admin-interest-card th:not(:first-child),
+.admin-interest-card td:not(:first-child) {
+  padding-left: 10px;
+  white-space: nowrap;
+}
+
+.admin-interest-card th:first-child,
+.admin-interest-card td:first-child {
+  width: auto;
+}
