@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Eye,
   LogOut,
   Menu,
@@ -25,6 +26,7 @@ import {
   getStorefrontStatsRange,
   type StorefrontStatsFilter,
 } from "../features/analytics/statsFilters";
+import { AdminOrderCreator } from "../features/admin/components/AdminOrderCreator";
 import { AdminProductManager } from "../features/admin/components/AdminProductManager";
 import { AdminStatsDashboard } from "../features/admin/components/AdminStatsDashboard";
 import { CartCheckoutCta } from "../features/storefront/cart/CartCheckoutCta";
@@ -981,7 +983,7 @@ type AdminSaveState = {
   message: string;
 };
 
-type AdminScreen = "catalog" | "stats";
+type AdminScreen = "catalog" | "stats" | "order";
 type AdminEditSession = {
   mode: "productType" | "product";
   id: string;
@@ -1019,6 +1021,7 @@ function AdminPage({
   const [adminProductTypeSlug, setAdminProductTypeSlug] = useState<string | null>(() => getAdminProductTypeSlugFromPath());
   const [adminScreen, setAdminScreen] = useState<AdminScreen>(() => (getAdminProductTypeSlugFromPath() ? "catalog" : "stats"));
   const [statsFilter, setStatsFilter] = useState<StorefrontStatsFilter>(DEFAULT_STOREFRONT_STATS_FILTER);
+  const [adminOrderItems, setAdminOrderItems] = useState<CartItem[]>([]);
   const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
@@ -2002,11 +2005,25 @@ function AdminPage({
       </header>
 
       <div className="admin-actions admin-actions-secondary">
-        {adminScreen === "stats" ? (
-          <button className="admin-button primary full-width" type="button" onClick={() => setAdminScreen("catalog")}>
-            <ShoppingBag size={17} aria-hidden="true" />
-            Quản lý sản phẩm
-          </button>
+        {adminScreen !== "catalog" ? (
+          <>
+            {adminScreen === "order" ? (
+              <button className="admin-button ghost" type="button" onClick={() => setAdminScreen("stats")}>
+                <BarChart3 size={17} aria-hidden="true" />
+                Thống kê
+              </button>
+            ) : null}
+            <button className="admin-button primary" type="button" onClick={() => setAdminScreen("catalog")}>
+              <ShoppingBag size={17} aria-hidden="true" />
+              Quản lý sản phẩm
+            </button>
+            {adminScreen === "stats" ? (
+              <button className="admin-button primary" type="button" onClick={() => setAdminScreen("order")}>
+                <ClipboardList size={17} aria-hidden="true" />
+                Tạo đơn
+              </button>
+            ) : null}
+          </>
         ) : (
           <>
             <button
@@ -2046,7 +2063,14 @@ function AdminPage({
         )}
       </div>
 
-      {adminScreen === "stats" ? (
+      {adminScreen === "order" ? (
+        <AdminOrderCreator
+          orderItems={adminOrderItems}
+          onOrderItemsChange={setAdminOrderItems}
+          products={products}
+          productTypes={productTypes}
+        />
+      ) : adminScreen === "stats" ? (
         <AdminStatsDashboard
           events={storefrontEvents}
           filter={statsFilter}
