@@ -5,7 +5,7 @@ import {
   getProductPrice,
   getProductTitle,
 } from "../../catalog/catalogUtils";
-import { getSupabaseImageSrc } from "../../../shared/utils/image";
+import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../../../shared/utils/image";
 import { formatPrice } from "../../../shared/utils/money";
 import type { Product, ProductType } from "../../../types/catalog";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
@@ -65,6 +65,7 @@ export function OtherProductsCarousel({
             >
               <img
                 src={getSupabaseImageSrc(coverImage.src, IMAGE_WIDTHS.catalog, 80)}
+                srcSet={getSupabaseImageSrcSet(coverImage.src, 80)}
                 sizes="(max-width: 760px) 42vw, 180px"
                 alt={coverImage.alt}
                 loading="lazy"

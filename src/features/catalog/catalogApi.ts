@@ -1,73 +1,23 @@
-import { products as mockProducts, productTypes as mockProductTypes } from "../../data/mockCatalog";
-import { shopInfoImage } from "../../data/shopInfo";
 import { isSupabaseConfigured, supabase, supabaseConfig } from "../../lib/supabase";
-import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "../../types/catalog";
+import type { Product, ProductImage, ProductType } from "../../types/catalog";
+import {
+  fallbackCatalog,
+  mapCatalogRows,
+  type CatalogData,
+  type PatternRow,
+  type ProductImageRow,
+  type ProductRow,
+  type ProductTypeRow,
+  type ShopInfoRow,
+} from "./catalogRows";
+import { removeProductPreviewImages } from "./productPreviewImage";
 import { getShopeeUrl } from "./shopeeUrl";
 
-export type CatalogData = {
-  productTypes: ProductType[];
-  products: Product[];
-  shopInfoImage: ProductImage | null;
-};
+export { fallbackCatalog, type CatalogData };
 
 export type CatalogImageCleanupResult = {
   deletedCount: number;
   warning?: string;
-};
-
-type ProductRow = {
-  id: string;
-  product_type_id?: string | null;
-  name: string;
-  price: string;
-  fit: string;
-  material: string;
-  shopee_url?: string | null;
-  size_chart_image_src: string;
-  size_chart_image_alt: string;
-  sort_order: number;
-};
-
-type ProductTypeRow = {
-  id: string;
-  name: string;
-  price: string;
-  cover_image_src?: string | null;
-  cover_image_alt?: string | null;
-  size_chart_image_src?: string | null;
-  size_chart_image_alt?: string | null;
-  sort_order: number;
-};
-
-type PatternRow = {
-  id: string;
-  product_id: string;
-  name: string;
-  accent: string;
-  image_src: string;
-  image_alt: string;
-  available_sizes: SizeId[];
-  sort_order: number;
-};
-
-type ProductImageRow = {
-  id: string;
-  product_id: string;
-  src: string;
-  alt: string;
-  sort_order: number;
-};
-
-type ShopInfoRow = {
-  id: string;
-  image_src: string;
-  image_alt: string;
-};
-
-export const fallbackCatalog = {
-  productTypes: mockProductTypes,
-  products: mockProducts,
-  shopInfoImage,
 };
 
 export async function fetchCatalog(): Promise<CatalogData> {
@@ -89,61 +39,19 @@ export async function fetchCatalog(): Promise<CatalogData> {
   if (imagesResult.error) throw imagesResult.error;
   if (shopInfoResult.error) throw shopInfoResult.error;
 
-  const productTypeRows = (productTypesResult.data ?? []) as ProductTypeRow[];
   const productRows = (productsResult.data ?? []) as ProductRow[];
-  const patternRows = (patternsResult.data ?? []) as PatternRow[];
   const imageRows = (imagesResult.data ?? []) as ProductImageRow[];
-  const shopInfoRow = shopInfoResult.data as ShopInfoRow | null;
-  const productTypes =
-    productTypeRows.length > 0
-      ? productTypeRows.map((productType) => fillProductTypeFallbacks(mapProductTypeRow(productType), productRows))
-      : deriveProductTypes(productRows);
   const storageModelImages =
-    imageRows.length === 0
-      ? await fetchStorageModelImages(productRows.map((product) => product.id))
-      : new Map<string, ProductImage[]>();
+    imageRows.length === 0 ? await fetchStorageModelImages(productRows.map((product) => product.id)) : new Map();
 
-  return {
-    productTypes,
-    products: productRows.map((product) => {
-      const legacyTitle = splitLegacyTitle(product.name);
-      const productTypeId = product.product_type_id ?? createProductTypeId(legacyTitle.typeName, product.price);
-      const productType = productTypes.find((type) => type.id === productTypeId);
-
-      return {
-        id: product.id,
-        productTypeId,
-        name: product.product_type_id ? product.name : legacyTitle.productName,
-        price: productType?.price ?? product.price,
-        fit: product.fit,
-        material: product.material,
-        shopeeUrl: product.shopee_url ?? "",
-        patterns: patternRows
-          .filter((pattern) => pattern.product_id === product.id)
-          .map(mapPatternRow),
-        modelImages: imageRows
-          .filter((image) => image.product_id === product.id)
-          .map((image) => ({
-            id: image.id,
-            src: image.src,
-            alt: image.alt,
-          }))
-          .concat(storageModelImages.get(product.id) ?? []),
-        sizeChartImage: {
-          id: `${product.id}-size-chart`,
-          src: product.size_chart_image_src,
-          alt: product.size_chart_image_alt,
-        },
-      };
-    }),
-    shopInfoImage: shopInfoRow?.image_src
-      ? {
-          id: shopInfoRow.id,
-          src: shopInfoRow.image_src,
-          alt: shopInfoRow.image_alt,
-        }
-      : null,
-  };
+  return mapCatalogRows({
+    productTypes: (productTypesResult.data ?? []) as ProductTypeRow[],
+    products: productRows,
+    patterns: (patternsResult.data ?? []) as PatternRow[],
+    images: imageRows,
+    shopInfo: shopInfoResult.data as ShopInfoRow | null,
+    storageModelImages: Object.fromEntries(storageModelImages),
+  });
 }
 
 async function fetchStorageModelImages(productIds: string[]) {
@@ -178,96 +86,6 @@ async function fetchStorageModelImages(productIds: string[]) {
   );
 
   return storageModelImages;
-}
-
-function mapProductTypeRow(productType: ProductTypeRow): ProductType {
-  return {
-    id: productType.id,
-    name: productType.name,
-    price: productType.price,
-    coverImage: {
-      id: `${productType.id}-cover`,
-      src: productType.cover_image_src ?? "",
-      alt: productType.cover_image_alt ?? `Ảnh bìa ${productType.name}`,
-    },
-    sizeChartImage: {
-      id: `${productType.id}-size-chart`,
-      src: productType.size_chart_image_src ?? "",
-      alt: productType.size_chart_image_alt ?? `Bảng size ${productType.name}`,
-    },
-  };
-}
-
-function fillProductTypeFallbacks(productType: ProductType, products: ProductRow[]): ProductType {
-  if (productType.sizeChartImage.src.trim()) return productType;
-
-  const firstProduct = products.find((product) => product.product_type_id === productType.id);
-  return {
-    ...productType,
-    sizeChartImage: {
-      ...productType.sizeChartImage,
-      src: firstProduct?.size_chart_image_src ?? "",
-      alt: firstProduct?.size_chart_image_alt || productType.sizeChartImage.alt,
-    },
-  };
-}
-
-function mapPatternRow(pattern: PatternRow): ProductPattern {
-  return {
-    id: pattern.id,
-    name: pattern.name,
-    accent: pattern.accent,
-    image: {
-      id: `${pattern.id}-image`,
-      src: pattern.image_src,
-      alt: pattern.image_alt,
-    },
-    availableSizes: pattern.available_sizes ?? [],
-  };
-}
-
-function createProductTypeId(name: string, price: string) {
-  const normalized = `${name}-${price}`
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return `type-${normalized || "default"}`.slice(0, 64);
-}
-
-function splitLegacyTitle(name: string) {
-  const [typeName, ...nameParts] = name.split(" - ");
-  return {
-    typeName: nameParts.length > 0 ? typeName.trim() || "Loại sản phẩm" : name.trim() || "Loại sản phẩm",
-    productName: nameParts.length > 0 ? nameParts.join(" - ").trim() : name,
-  };
-}
-
-function deriveProductTypes(products: ProductRow[]): ProductType[] {
-  const productTypes = new Map<string, ProductType>();
-  products.forEach((product) => {
-    const legacyTitle = splitLegacyTitle(product.name);
-    const id = createProductTypeId(legacyTitle.typeName, product.price);
-    if (!productTypes.has(id)) {
-      productTypes.set(id, {
-        id,
-        name: legacyTitle.typeName,
-        price: product.price,
-        coverImage: {
-          id: `${id}-cover`,
-          src: "",
-          alt: `Ảnh bìa ${legacyTitle.typeName}`,
-        },
-        sizeChartImage: {
-          id: `${id}-size-chart`,
-          src: product.size_chart_image_src,
-          alt: product.size_chart_image_alt || `Bảng size ${legacyTitle.typeName}`,
-        },
-      });
-    }
-  });
-  return Array.from(productTypes.values());
 }
 
 function getCatalogStoragePath(src: string | null | undefined) {
@@ -403,6 +221,7 @@ export async function deleteCatalogProduct(product: Product) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const result = await supabase.rpc("delete_catalog_product", { p_product_id: product.id });
   if (result.error) throw result.error;
+  await removeProductPreviewImages(product.id).catch((error) => console.warn("Product preview cleanup failed", error));
   return cleanupUnreferencedCatalogImages([
     product.sizeChartImage.src,
     ...product.patterns.map((pattern) => pattern.image.src),

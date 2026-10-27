@@ -1,12 +1,12 @@
 import { Check, Plus } from "lucide-react";
 import { sizeOptions } from "../../../data/mockCatalog";
-import { trackStorefrontEvent } from "../../analytics/analyticsApi";
+import { trackStorefrontEvent } from "../../analytics/storefrontAnalytics";
 import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
 import { createCartItemId, formatSelectedSize } from "../cart/cartUtils";
 import type { CartDraft } from "../cart/cartTypes";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import type { GalleryImage } from "../storefrontTypes";
-import { getSupabaseImageSrc } from "../../../shared/utils/image";
+import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../../../shared/utils/image";
 import { formatPrice } from "../../../shared/utils/money";
 import type { Product, ProductImage, ProductType, SizeId } from "../../../types/catalog";
 
@@ -148,6 +148,7 @@ export function ProductCard({
                           loading="lazy"
                           decoding="async"
                           src={getSupabaseImageSrc(pattern.image.src, IMAGE_WIDTHS.catalog, 80)}
+                          srcSet={getSupabaseImageSrcSet(pattern.image.src, 80)}
                           sizes="(max-width: 760px) 50vw, 50vw"
                           alt={pattern.image.alt}
                         />
@@ -198,6 +199,7 @@ export function ProductCard({
                     loading="lazy"
                     decoding="async"
                     src={getSupabaseImageSrc(image.src, IMAGE_WIDTHS.catalog, 80)}
+                    srcSet={getSupabaseImageSrcSet(image.src, 80)}
                     sizes="(max-width: 760px) 33vw, 33vw"
                     alt={image.alt}
                   />

@@ -1,95 +1,13 @@
 import { supabase } from "../../lib/supabase";
-import type { SizeId } from "../../types/catalog";
+import { LEGACY_SITE_VISIT_PRODUCT_ID, type StorefrontEventRow } from "./storefrontAnalytics";
 import type { StorefrontStatsRange } from "./statsFilters";
 
-export type StorefrontEventType =
-  | "site_visit"
-  | "product_view"
-  | "pattern_view"
-  | "add_to_cart"
-  | "order_image_created"
-  | "message_click";
-
-export type StorefrontEventInput = {
-  eventType: StorefrontEventType;
-  productId?: string | null;
-  patternId?: string | null;
-  sizeId?: SizeId | null;
-};
-
-export type StorefrontEventRow = {
-  event_type: StorefrontEventType;
-  product_id: string | null;
-  pattern_id: string | null;
-  size_id: SizeId | null;
-  created_at: string;
-};
-
-const ANALYTICS_OPT_OUT_STORAGE_KEY = "kng_analytics_opt_out";
-export const LEGACY_SITE_VISIT_PRODUCT_ID = "__site_visit";
-const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1", "::1"]);
-
-function isBrowserLocalhost() {
-  if (typeof window === "undefined") return false;
-  return LOCALHOST_NAMES.has(window.location.hostname);
-}
-
-function isAnalyticsOptedOutDevice() {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function markAnalyticsOptOutDevice() {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "1");
-  } catch {
-    // Storage can be unavailable in private modes; session checks still prevent admin tracking.
-  }
-}
-
-async function isActiveAdminSessionDevice() {
-  if (!supabase) return false;
-  try {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) return false;
-    markAnalyticsOptOutDevice();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function trackStorefrontEvent(event: StorefrontEventInput): Promise<void> {
-  if (!supabase) return;
-  if (isBrowserLocalhost() || isAnalyticsOptedOutDevice()) return;
-  if (await isActiveAdminSessionDevice()) return;
-
-  try {
-    const result = await supabase.from("storefront_events").insert({
-      event_type: event.eventType,
-      product_id: event.productId ?? null,
-      pattern_id: event.patternId ?? null,
-      size_id: event.sizeId ?? null,
-    });
-    if (!result.error) return;
-
-    if (event.eventType === "site_visit") {
-      await supabase.from("storefront_events").insert({
-        event_type: "product_view",
-        product_id: LEGACY_SITE_VISIT_PRODUCT_ID,
-        pattern_id: null,
-        size_id: null,
-      });
-    }
-  } catch {
-    // Analytics should never block storefront actions.
-  }
-}
+export {
+  LEGACY_SITE_VISIT_PRODUCT_ID,
+  markAnalyticsOptOutDevice,
+  type StorefrontEventRow,
+  type StorefrontEventType,
+} from "./storefrontAnalytics";
 
 export async function fetchStorefrontStats(range: StorefrontStatsRange): Promise<StorefrontEventRow[]> {
   if (!supabase) return [];
