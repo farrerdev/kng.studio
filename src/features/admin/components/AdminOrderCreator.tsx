@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ImageDown, Minus, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, ImageDown, Minus, Plus, Trash2 } from "lucide-react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { copyTextToClipboard } from "../../../shared/utils/clipboard";
 import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import { formatMoney, formatPrice } from "../../../shared/utils/money";
 import type { Product, ProductPattern, ProductType, SizeId } from "../../../types/catalog";
-import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
+import { getProductCoverImage, getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
 import { OrderImagePreview } from "../../storefront/cart/CartOverlay";
 import type { CartItem } from "../../storefront/cart/cartTypes";
 import {
@@ -27,6 +27,120 @@ type AdminOrderCreatorProps = {
   products: Product[];
   productTypes: ProductType[];
 };
+
+type ProductGroup = {
+  productType: ProductType;
+  products: Product[];
+};
+
+function ProductPicker({
+  productGroups,
+  products,
+  productTypes,
+  selectedProduct,
+  selectedSizeId,
+  onSelect,
+}: {
+  productGroups: ProductGroup[];
+  products: Product[];
+  productTypes: ProductType[];
+  selectedProduct: Product | null;
+  selectedSizeId: SizeId;
+  onSelect: (productId: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen]);
+
+  const renderThumb = (product: Product) => {
+    const coverImage = getProductCoverImage(product, productTypes, products);
+    return (
+      <img
+        src={getSupabaseImageSrc(coverImage.src, IMAGE_WIDTHS.adminThumb, 72, IMAGE_WIDTHS.adminThumb, "cover")}
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  };
+
+  return (
+    <div className="admin-order-product-picker" ref={pickerRef}>
+      <span>Sản phẩm</span>
+      <button
+        className="admin-order-product-trigger"
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        {selectedProduct ? (
+          <>
+            {renderThumb(selectedProduct)}
+            <span>
+              <strong>{getProductTitle(selectedProduct, productTypes)}</strong>
+              <small>{formatPrice(getProductPrice(selectedProduct, productTypes))}</small>
+            </span>
+          </>
+        ) : (
+          <span>Chọn sản phẩm</span>
+        )}
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+      {isOpen ? (
+        <div className="admin-order-product-menu" role="listbox" aria-label="Chọn sản phẩm">
+          {productGroups
+            .flatMap((group) => group.products)
+            .map((product) => {
+              const availableCount = product.patterns.filter((pattern) =>
+                pattern.availableSizes.includes(selectedSizeId),
+              ).length;
+              const isSelected = product.id === selectedProduct?.id;
+              return (
+                <button
+                  key={product.id}
+                  className={isSelected ? "selected" : undefined}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onSelect(product.id);
+                    setIsOpen(false);
+                  }}
+                >
+                  {renderThumb(product)}
+                  <span>
+                    <strong>{getProductTitle(product, productTypes)}</strong>
+                    <small>
+                      {availableCount > 0
+                        ? `${availableCount} hoạ tiết còn ${formatSelectedSize(selectedSizeId)}`
+                        : `Hết ${formatSelectedSize(selectedSizeId)}`}
+                    </small>
+                  </span>
+                  {isSelected ? <Check size={16} aria-hidden="true" /> : null}
+                </button>
+              );
+            })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 type OrderImageState = {
   blob: Blob;
@@ -60,7 +174,7 @@ export function AdminOrderCreator({ orderItems, onOrderItemsChange, products, pr
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
-  const productGroups = useMemo(
+  const productGroups = useMemo<ProductGroup[]>(
     () =>
       productTypes
         .map((productType) => ({
@@ -162,20 +276,14 @@ export function AdminOrderCreator({ orderItems, onOrderItemsChange, products, pr
             </button>
           ))}
         </div>
-        <label className="admin-order-product-select">
-          <span>Sản phẩm</span>
-          <select value={selectedProduct?.id ?? ""} onChange={(event) => setSelectedProductId(event.target.value)}>
-            {productGroups.map(({ productType, products: groupProducts }) => (
-              <optgroup key={productType.id} label={productType.name || "Loại sản phẩm"}>
-                {groupProducts.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {getProductTitle(product, productTypes)}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        <ProductPicker
+          productGroups={productGroups}
+          products={products}
+          productTypes={productTypes}
+          selectedProduct={selectedProduct}
+          selectedSizeId={selectedSizeId}
+          onSelect={setSelectedProductId}
+        />
         {selectedProduct && selectedPatterns.length > 0 ? (
           <div className="admin-order-patterns">
             {selectedPatterns.map((pattern) => {

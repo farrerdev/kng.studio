@@ -5570,12 +5570,13 @@ button {
   opacity: 0.75;
 }
 
-.admin-order-product-select {
+.admin-order-product-picker {
+  position: relative;
   display: grid;
   gap: 6px;
 }
 
-.admin-order-product-select span,
+.admin-order-product-picker > span,
 .admin-order-items span,
 .admin-order-totals dt,
 .admin-order-empty {
@@ -5583,7 +5584,6 @@ button {
   font-size: 0.82rem;
 }
 
-.admin-order-product-select select,
 .admin-order-message textarea {
   width: 100%;
   min-height: 44px;
@@ -5628,7 +5628,7 @@ button {
 .admin-order-pattern img {
   display: block;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   background: var(--soft);
 }
@@ -5750,4 +5750,82 @@ button {
 
 .admin-order-totals .total dd {
   font-weight: 800;
+}
+
+.admin-order-product-trigger,
+.admin-order-product-menu button {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.admin-order-product-trigger {
+  border-color: var(--ink);
+}
+
+.admin-order-product-trigger img,
+.admin-order-product-menu img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  background: var(--soft);
+}
+
+.admin-order-product-trigger > span,
+.admin-order-product-menu button > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-order-product-trigger strong,
+.admin-order-product-menu strong {
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-order-product-trigger small,
+.admin-order-product-menu small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.admin-order-product-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 2px;
+  max-height: min(420px, 60dvh);
+  margin-top: 4px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--ink);
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  overscroll-behavior: contain;
+}
+
+.admin-order-product-menu button {
+  border-color: transparent;
+}
+
+.admin-order-product-menu button:hover,
+.admin-order-product-menu button.selected {
+  border-color: var(--line);
+  background: var(--soft);
 }
