@@ -5681,7 +5681,7 @@ button {
 
 .admin-order-items img {
   width: 56px;
-  height: 72px;
+  height: 56px;
   object-fit: cover;
   background: var(--soft);
 }
