@@ -11,7 +11,8 @@ export type StorefrontStatsRange = {
   to: string;
 };
 
-export const DEFAULT_STOREFRONT_STATS_FILTER: StorefrontStatsFilter = { mode: "today" };
+// A week is the smallest window with enough events for a small shop to read trends.
+export const DEFAULT_STOREFRONT_STATS_FILTER: StorefrontStatsFilter = { mode: "7d" };
 
 function padNumber(value: number) {
   return String(value).padStart(2, "0");

@@ -42,27 +42,9 @@ export type SizeStatsRow = {
   total: number;
 };
 
-export type FunnelStep = {
-  id: StorefrontEventType;
-  label: string;
-  count: number;
-  /** Share of the previous step, null for the first step or when the previous step is 0. */
-  stepRate: number | null;
-};
-
-export type HeatmapMetric = Extract<StorefrontEventType, "site_visit" | "product_view" | "add_to_cart">;
-
-export type Heatmap = {
-  /** Rows Monday..Sunday, 24 hourly columns each. */
-  cells: number[][];
-  max: number;
-};
-
 const SIZE_IDS: SizeId[] = ["1", "2"];
 // A product needs this many views before "xem nhiều, ít thêm giỏ" is meaningful.
 const LOW_CONVERSION_MIN_VIEWS = 10;
-
-export const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 export function createEmptyEventCounts(): EventCounts {
   return {
@@ -86,28 +68,23 @@ export function getRate(part: number, whole: number) {
   return whole > 0 ? part / whole : null;
 }
 
+// Below this many interactions a percentage is mostly noise (1/1 = 100%), so it isn't shown.
+export const MIN_RATE_SAMPLE = 5;
+
+/**
+ * Add-to-cart rate for a product / pattern. Shoppers can add straight from the "+" button without
+ * opening the photo, so an add also counts as an interaction: rate = adds / max(views, adds) ≤ 100%.
+ */
+export function getAddRate(adds: number, views: number) {
+  const interactions = Math.max(views, adds);
+  return interactions >= MIN_RATE_SAMPLE ? adds / interactions : null;
+}
+
 /** Relative change vs the previous period; null when there is nothing to compare against. */
 export function getChange(current: number, previous: number | undefined) {
   if (previous === undefined) return null;
   if (previous === 0) return current === 0 ? 0 : null;
   return (current - previous) / previous;
-}
-
-const FUNNEL: Array<{ id: StorefrontEventType; label: string }> = [
-  { id: "site_visit", label: "Truy cập" },
-  { id: "product_view", label: "Xem sản phẩm" },
-  { id: "pattern_view", label: "Xem hoạ tiết" },
-  { id: "add_to_cart", label: "Thêm giỏ" },
-  { id: "order_image_created", label: "Tạo ảnh đơn" },
-  { id: "message_click", label: "Mở tin nhắn" },
-];
-
-export function getFunnelSteps(counts: EventCounts): FunnelStep[] {
-  return FUNNEL.map((step, index) => ({
-    ...step,
-    count: counts[step.id],
-    stepRate: index === 0 ? null : getRate(counts[step.id], counts[FUNNEL[index - 1].id]),
-  }));
 }
 
 function isProductEvent(event: StorefrontEventRow) {
@@ -142,10 +119,10 @@ export function getProductStatsRows(events: StorefrontEventRow[], products: Prod
   const activeRows = Array.from(rows.values()).filter((row) => row.views + row.patternViews + row.adds > 0);
   const totalViews = activeRows.reduce((total, row) => total + row.views, 0);
   const totalAdds = activeRows.reduce((total, row) => total + row.adds, 0);
-  const shopAddRate = getRate(totalAdds, totalViews) ?? 0;
+  const shopAddRate = getRate(totalAdds, Math.max(totalViews, totalAdds)) ?? 0;
 
   return activeRows.map((row) => {
-    const addRate = getRate(row.adds, row.views);
+    const addRate = getAddRate(row.adds, row.views);
     return {
       ...row,
       addRate,
@@ -180,7 +157,7 @@ export function getPatternStatsRows(events: StorefrontEventRow[], products: Prod
 
   return Array.from(rows.values())
     .filter((row) => row.views + row.adds > 0)
-    .map((row) => ({ ...row, addRate: getRate(row.adds, row.views) }));
+    .map((row) => ({ ...row, addRate: getAddRate(row.adds, row.views) }));
 }
 
 export function getTypeStatsRows(productRows: ProductStatsRow[], products: Product[], productTypes: ProductType[]) {
@@ -202,7 +179,7 @@ export function getTypeStatsRows(productRows: ProductStatsRow[], products: Produ
 
   return Array.from(rows.values())
     .filter((row) => row.views + row.patternViews + row.adds > 0)
-    .map((row) => ({ ...row, addRate: getRate(row.adds, row.views) }));
+    .map((row) => ({ ...row, addRate: getAddRate(row.adds, row.views) }));
 }
 
 /** Add-to-cart split by size: one row for the whole shop, then one per product. */
@@ -235,13 +212,87 @@ export function getSizeStats(events: StorefrontEventRow[], products: Product[], 
   };
 }
 
-export function getHeatmap(events: StorefrontEventRow[], metric: HeatmapMetric): Heatmap {
-  const cells = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
+
+export type StatsHighlight = {
+  id: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "warning";
+};
+
+/** Short, plain-language takeaways for the top of the stats screen. Skips anything without enough data. */
+export function getStatsHighlights({
+  productRows,
+  patternRows,
+  sizeOverall,
+  sizeLabels,
+  events,
+}: {
+  productRows: ProductStatsRow[];
+  patternRows: PatternStatsRow[];
+  sizeOverall: SizeStatsRow;
+  sizeLabels: Record<SizeId, string>;
+  events: StorefrontEventRow[];
+}): StatsHighlight[] {
+  const highlights: StatsHighlight[] = [];
+
+  const topProduct = [...productRows].sort((a, b) => b.adds - a.adds || b.views - a.views)[0];
+  if (topProduct && topProduct.adds > 0) {
+    highlights.push({
+      id: "top-product",
+      label: "Thêm giỏ nhiều nhất",
+      value: topProduct.name,
+      detail: `${topProduct.adds} giỏ`,
+    });
+  }
+
+  const topPattern = [...patternRows].sort((a, b) => b.adds - a.adds || b.views - a.views)[0];
+  if (topPattern && topPattern.adds > 0) {
+    highlights.push({
+      id: "top-pattern",
+      label: "Hoạ tiết hút khách",
+      value: topPattern.name.split(" · ").pop() ?? topPattern.name,
+      detail: `${topPattern.adds} giỏ`,
+    });
+  }
+
+  const weakProduct = productRows
+    .filter((row) => row.isLowConversion)
+    .sort((a, b) => b.views - a.views)[0];
+  if (weakProduct) {
+    highlights.push({
+      id: "weak-product",
+      label: "Xem nhiều, ít thêm giỏ",
+      value: weakProduct.name,
+      detail: `${weakProduct.views} xem · ${weakProduct.adds} giỏ`,
+      tone: "warning",
+    });
+  }
+
+  if (sizeOverall.total >= MIN_RATE_SAMPLE) {
+    const topSize = SIZE_IDS.reduce((best, sizeId) => (sizeOverall.counts[sizeId] > sizeOverall.counts[best] ? sizeId : best), SIZE_IDS[0]);
+    highlights.push({
+      id: "top-size",
+      label: "Size được chọn nhiều",
+      value: sizeLabels[topSize],
+      detail: `${Math.round((sizeOverall.counts[topSize] / sizeOverall.total) * 100)}%`,
+    });
+  }
+
+  const hourCounts = Array.from({ length: 24 }, () => 0);
   events.forEach((event) => {
-    if (event.event_type !== metric) return;
-    const date = new Date(event.created_at);
-    const weekday = (date.getDay() + 6) % 7;
-    cells[weekday][date.getHours()] += 1;
+    if (event.event_type === "site_visit") hourCounts[new Date(event.created_at).getHours()] += 1;
   });
-  return { cells, max: Math.max(0, ...cells.flat()) };
+  const peakHour = hourCounts.indexOf(Math.max(...hourCounts));
+  if (hourCounts[peakHour] >= MIN_RATE_SAMPLE) {
+    highlights.push({
+      id: "peak-hour",
+      label: "Giờ đông khách",
+      value: `${peakHour}h – ${peakHour + 1}h`,
+      detail: `${hourCounts[peakHour]} lượt`,
+    });
+  }
+
+  return highlights;
 }

@@ -1,6 +1,6 @@
 import { BarChart3, ClipboardList, Eye, LogOut, RotateCcw, Save, ShoppingBag, X } from "lucide-react";
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
-import { getAdminProductTypeSlugFromPath } from "./routes";
+import { ADMIN_SCREEN_PATHS, type AdminScreen, getAdminProductTypeSlugFromPath, getAdminScreenFromPath } from "./routes";
 import {
   fetchStorefrontStats,
   markAnalyticsOptOutDevice,
@@ -62,7 +62,17 @@ type AdminSaveState = {
   message: string;
 };
 
-type AdminScreen = "catalog" | "stats" | "order";
+const ADMIN_ORDER_DRAFT_KEY = "kng.admin.order-draft";
+
+function loadAdminOrderDraft(): CartItem[] {
+  try {
+    const raw = window.localStorage.getItem(ADMIN_ORDER_DRAFT_KEY);
+    const items = raw ? (JSON.parse(raw) as CartItem[]) : [];
+    return Array.isArray(items) ? items : [];
+  } catch {
+    return [];
+  }
+}
 type AdminEditSession = {
   mode: "productType" | "product";
   id: string;
@@ -118,9 +128,10 @@ export default function AdminPage({
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [selectedAdminProductTypeId, setSelectedAdminProductTypeId] = useState<string | null>(null);
   const [adminProductTypeSlug, setAdminProductTypeSlug] = useState<string | null>(() => getAdminProductTypeSlugFromPath());
-  const [adminScreen, setAdminScreen] = useState<AdminScreen>(() => (getAdminProductTypeSlugFromPath() ? "catalog" : "stats"));
+  const [adminScreen, setAdminScreen] = useState<AdminScreen>(() => getAdminScreenFromPath());
   const [statsFilter, setStatsFilter] = useState<StorefrontStatsFilter>(DEFAULT_STOREFRONT_STATS_FILTER);
-  const [adminOrderItems, setAdminOrderItems] = useState<CartItem[]>([]);
+  const [adminOrderItems, setAdminOrderItems] = useState<CartItem[]>(() => loadAdminOrderDraft());
+  const adminOrderQuantity = adminOrderItems.reduce((total, item) => total + item.quantity, 0);
   const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
   const [previousStorefrontEvents, setPreviousStorefrontEvents] = useState<StorefrontEventRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -281,9 +292,36 @@ export default function AdminPage({
     setAdminProductDetailOrigin(null);
     setAdminTypeEditSession(null);
     setAdminProductEditSession(null);
-    if (syncPath && window.location.pathname !== "/admin") {
-      window.history.pushState(null, "", "/admin");
+    if (syncPath && window.location.pathname !== ADMIN_SCREEN_PATHS.catalog) {
+      window.history.pushState(null, "", ADMIN_SCREEN_PATHS.catalog);
     }
+  };
+
+  const goToAdminScreen = (screen: AdminScreen) => {
+    if (screen === adminScreen && !(screen === "catalog" && adminProductTypeSlug)) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (
+      adminScreen === "catalog" &&
+      (hasAdminProductChanges || hasAdminTypeChanges) &&
+      !window.confirm("Bạn có thay đổi chưa lưu. Rời trang sẽ mất các thay đổi này?")
+    ) {
+      return;
+    }
+    if (adminScreen === "catalog" || screen === "catalog") {
+      setSelectedAdminProductTypeId(null);
+      setAdminProductTypeSlug(null);
+      setExpandedProductId(null);
+      setAdminProductDetailOrigin(null);
+      setAdminTypeEditSession(null);
+      setAdminProductEditSession(null);
+    }
+    setAdminScreen(screen);
+    if (window.location.pathname !== ADMIN_SCREEN_PATHS[screen]) {
+      window.history.pushState(null, "", ADMIN_SCREEN_PATHS[screen]);
+    }
+    window.scrollTo({ top: 0 });
   };
 
   const selectAdminProduct = (productId: string | null, origin: AdminProductDetailOrigin = "home") => {
@@ -362,9 +400,20 @@ export default function AdminPage({
     });
   }, [isAdminProductDetailOpen, selectedProduct?.id, productTypes, products]);
 
+  // Keep the order being drafted across reloads and tab switches.
+  useEffect(() => {
+    try {
+      if (adminOrderItems.length > 0) window.localStorage.setItem(ADMIN_ORDER_DRAFT_KEY, JSON.stringify(adminOrderItems));
+      else window.localStorage.removeItem(ADMIN_ORDER_DRAFT_KEY);
+    } catch {
+      // Storage blocked: the draft just lives in memory.
+    }
+  }, [adminOrderItems]);
+
   useEffect(() => {
     const syncAdminRoute = () => {
       setAdminProductTypeSlug(getAdminProductTypeSlugFromPath());
+      setAdminScreen(getAdminScreenFromPath());
     };
 
     window.addEventListener("popstate", syncAdminRoute);
@@ -1129,64 +1178,51 @@ export default function AdminPage({
         </div>
       </header>
 
-      <div className="admin-actions admin-actions-secondary">
-        {adminScreen !== "catalog" ? (
-          <>
-            {adminScreen === "order" ? (
-              <button className="admin-button ghost" type="button" onClick={() => setAdminScreen("stats")}>
-                <BarChart3 size={17} aria-hidden="true" />
-                Thống kê
-              </button>
+      <nav className="admin-tabs" aria-label="Khu vực quản trị">
+        {(
+          [
+            { screen: "stats", label: "Thống kê", icon: <BarChart3 size={17} aria-hidden="true" /> },
+            { screen: "catalog", label: "Sản phẩm", icon: <ShoppingBag size={17} aria-hidden="true" /> },
+            { screen: "order", label: "Tạo đơn", icon: <ClipboardList size={17} aria-hidden="true" /> },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.screen}
+            type="button"
+            className={adminScreen === tab.screen ? "admin-tab active" : "admin-tab"}
+            aria-current={adminScreen === tab.screen ? "page" : undefined}
+            disabled={isBusy || (isHomeSorting && tab.screen !== "catalog")}
+            onClick={() => goToAdminScreen(tab.screen)}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+            {tab.screen === "order" && adminOrderQuantity > 0 ? (
+              <span className="admin-tab-badge" aria-label={`${adminOrderQuantity} bộ đang soạn`}>
+                {adminOrderQuantity}
+              </span>
             ) : null}
-            <button className="admin-button primary" type="button" onClick={() => setAdminScreen("catalog")}>
-              <ShoppingBag size={17} aria-hidden="true" />
-              Quản lý sản phẩm
-            </button>
-            {adminScreen === "stats" ? (
-              <button className="admin-button primary" type="button" onClick={() => setAdminScreen("order")}>
-                <ClipboardList size={17} aria-hidden="true" />
-                Tạo đơn
+          </button>
+        ))}
+      </nav>
+
+      {adminScreen === "catalog" ? (
+        <div className="admin-actions admin-actions-secondary admin-catalog-actions">
+          {isHomeSorting ? (
+            <div className="admin-sort-actions">
+              <button className="admin-button ghost" type="button" disabled={isBusy} onClick={cancelHomeSorting}>
+                Huỷ
               </button>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <button
-              className="admin-button ghost"
-              type="button"
-              disabled={isBusy || isHomeSorting}
-              onClick={() => {
-                setAdminScreen("stats");
-                setSelectedAdminProductTypeId(null);
-                setAdminProductTypeSlug(null);
-                setExpandedProductId(null);
-                setAdminProductDetailOrigin(null);
-                setAdminTypeEditSession(null);
-                setAdminProductEditSession(null);
-                window.history.pushState(null, "", "/admin");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            >
-              <BarChart3 size={17} aria-hidden="true" />
-              Thống kê
-            </button>
-            {isHomeSorting ? (
-              <div className="admin-sort-actions">
-                <button className="admin-button ghost" type="button" disabled={isBusy} onClick={cancelHomeSorting}>
-                  Huỷ
-                </button>
-                <button className="admin-button primary" type="button" disabled={isBusy || !hasHomeReorderChanges} onClick={saveHomeSorting}>
-                  Lưu
-                </button>
-              </div>
-            ) : (
-              <button className="admin-button primary" type="button" disabled={isBusy} onClick={startHomeSorting}>
-                Sắp xếp
+              <button className="admin-button primary" type="button" disabled={isBusy || !hasHomeReorderChanges} onClick={saveHomeSorting}>
+                Lưu
               </button>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          ) : (
+            <button className="admin-button ghost" type="button" disabled={isBusy} onClick={startHomeSorting}>
+              Sắp xếp trang chủ
+            </button>
+          )}
+        </div>
+      ) : null}
 
       {adminScreen === "order" ? (
         <AdminOrderCreator

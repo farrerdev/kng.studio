@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type PointerEvent, type ReactNode } from "react";
 import type { StorefrontEventRow, StorefrontEventType } from "../../analytics/analyticsApi";
 import {
   getLocalDateInputValue,
@@ -7,18 +7,16 @@ import {
 } from "../../analytics/statsFilters";
 import type { Product, ProductType, SizeId } from "../../../types/catalog";
 import {
-  WEEKDAY_LABELS,
   getChange,
   getEventCounts,
-  getFunnelSteps,
-  getHeatmap,
   getPatternStatsRows,
   getProductStatsRows,
   getRate,
   getSizeStats,
+  getStatsHighlights,
+  type StatsHighlight,
   getTypeStatsRows,
   type EventCounts,
-  type HeatmapMetric,
   type SizeStatsRow,
 } from "../stats/storefrontStats";
 
@@ -147,14 +145,27 @@ export function AdminStatsDashboard({
   const patternRows = useMemo(() => getPatternStatsRows(events, products, productTypes), [events, products, productTypes]);
   const typeRows = useMemo(() => getTypeStatsRows(productRows, products, productTypes), [productRows, products, productTypes]);
   const sizeStats = useMemo(() => getSizeStats(events, products, productTypes), [events, products, productTypes]);
+  const highlights = useMemo(
+    () =>
+      getStatsHighlights({
+        productRows,
+        patternRows,
+        sizeOverall: sizeStats.overall,
+        sizeLabels: sizeStats.sizeLabels,
+        events,
+      }),
+    [events, patternRows, productRows, sizeStats],
+  );
   const [chartMetric, setChartMetric] = useState<ChartMetric>("site_visit");
   const activeMetric = CHART_METRICS.find((metric) => metric.id === chartMetric) ?? CHART_METRICS[0];
   const eventChart = useMemo(
     () => getEventChartBuckets(events, filter, chartMetric),
     [events, filter, chartMetric],
   );
-  const addToCartRate = getRate(eventCounts.add_to_cart, eventCounts.product_view);
-  const previousAddToCartRate = previousCounts ? getRate(previousCounts.add_to_cart, previousCounts.product_view) : null;
+  const addToCartRate = getRate(eventCounts.add_to_cart, Math.max(eventCounts.product_view, eventCounts.add_to_cart));
+  const previousAddToCartRate = previousCounts
+    ? getRate(previousCounts.add_to_cart, Math.max(previousCounts.product_view, previousCounts.add_to_cart))
+    : null;
   const overviewItems: Array<{ id: string; label: string; value: string | number; change: ReactNode }> = [
     ...(["site_visit", "product_view", "add_to_cart"] as const).map((id) => ({
       id,
@@ -270,81 +281,33 @@ export function AdminStatsDashboard({
         </div>
       </section>
 
-      <section className="admin-dashboard-group" aria-label="Phễu chuyển đổi">
-        <h3>Phễu chuyển đổi</h3>
-        <FunnelChart counts={eventCounts} />
+      <section className="admin-dashboard-group" aria-label="Điểm nổi bật">
+        <h3>Điểm nổi bật</h3>
+        <StatsHighlights highlights={highlights} isLoading={isLoading} />
       </section>
 
-      <section className="admin-dashboard-group" aria-label="Sản phẩm">
-        <h3>Sản phẩm</h3>
-        <AdminStatsTable
-          rows={productRows}
-          emptyText="Chưa có sản phẩm nào được ghi nhận trong khoảng thời gian này."
-          defaultSortKey="views"
-          columns={[
-            {
-              key: "name",
-              label: "Sản phẩm",
-              value: (row) => row.name,
-              render: (row) => (
-                <>
-                  {row.name}
-                  {row.isLowConversion ? <em className="admin-stats-flag">Xem nhiều, ít thêm giỏ</em> : null}
-                </>
-              ),
-            },
-            { key: "views", label: "Xem SP", value: (row) => row.views },
-            { key: "patternViews", label: "Xem HT", value: (row) => row.patternViews },
-            { key: "adds", label: "Giỏ", value: (row) => row.adds },
-            { key: "addRate", label: "Tỉ lệ", value: (row) => row.addRate ?? -1, render: (row) => formatPercent(row.addRate) },
-          ]}
-        />
-        <p className="admin-stats-note">
-          Tỉ lệ = thêm giỏ / xem sản phẩm. Đánh dấu khi có từ 10 lượt xem trở lên mà tỉ lệ dưới một nửa mức trung bình của shop.
-        </p>
+      <section className="admin-dashboard-group" aria-label="Phễu mua hàng">
+        <h3>Phễu mua hàng</h3>
+        <PurchaseFunnel counts={eventCounts} />
       </section>
 
-      <section className="admin-dashboard-group" aria-label="Hoạ tiết">
-        <h3>Hoạ tiết</h3>
-        <AdminStatsTable
-          rows={patternRows}
-          emptyText="Chưa có hoạ tiết nào được ghi nhận trong khoảng thời gian này."
-          defaultSortKey="adds"
-          columns={[
-            { key: "name", label: "Hoạ tiết", value: (row) => row.name },
-            { key: "views", label: "Xem", value: (row) => row.views },
-            { key: "adds", label: "Giỏ", value: (row) => row.adds },
-            { key: "addRate", label: "Tỉ lệ", value: (row) => row.addRate ?? -1, render: (row) => formatPercent(row.addRate) },
-          ]}
-        />
-        <p className="admin-stats-note">Xem = số lần bấm mở ảnh hoạ tiết. Tỉ lệ = thêm giỏ / xem hoạ tiết.</p>
-      </section>
-
-      <div className="admin-insight-grid">
-        <section className="admin-dashboard-group compact" aria-label="Loại sản phẩm">
-          <h3>Loại sản phẩm</h3>
-          <AdminStatsTable
-            rows={typeRows}
-            emptyText="Chưa có dữ liệu."
-            defaultSortKey="views"
-            columns={[
-              { key: "name", label: "Loại", value: (row) => row.name },
-              { key: "views", label: "Xem SP", value: (row) => row.views },
-              { key: "adds", label: "Giỏ", value: (row) => row.adds },
-              { key: "addRate", label: "Tỉ lệ", value: (row) => row.addRate ?? -1, render: (row) => formatPercent(row.addRate) },
-            ]}
-          />
+      <div className="admin-stats-grid">
+        <section className="admin-dashboard-group" aria-label="Xếp hạng">
+          <h3>Xếp hạng</h3>
+          <RankingCard productRows={productRows} patternRows={patternRows} typeRows={typeRows} />
         </section>
-        <section className="admin-dashboard-group compact" aria-label="Size được thêm giỏ">
-          <h3>Size được thêm giỏ</h3>
-          <SizeBreakdown overall={sizeStats.overall} productRows={sizeStats.productRows} sizeLabels={sizeStats.sizeLabels} />
-        </section>
+
+        <div className="admin-stats-side">
+          <section className="admin-dashboard-group compact" aria-label="Size được thêm giỏ">
+            <h3>Size được thêm giỏ</h3>
+            <SizeSplit overall={sizeStats.overall} sizeLabels={sizeStats.sizeLabels} />
+          </section>
+          <section className="admin-dashboard-group compact" aria-label="Giờ khách vào">
+            <h3>Giờ khách vào</h3>
+            <HourBars events={events} />
+          </section>
+        </div>
       </div>
-
-      <section className="admin-dashboard-group" aria-label="Khung giờ">
-        <h3>Khung giờ khách hoạt động</h3>
-        <HourHeatmap events={events} />
-      </section>
     </section>
   );
 }
@@ -481,240 +444,200 @@ function PointChangeBadge({ current, previous }: { current: number; previous: nu
   );
 }
 
-function FunnelChart({ counts }: { counts: EventCounts }) {
-  const steps = getFunnelSteps(counts);
-  const maxCount = Math.max(1, ...steps.map((step) => step.count));
+function StatsHighlights({ highlights, isLoading }: { highlights: StatsHighlight[]; isLoading: boolean }) {
+  if (highlights.length === 0) {
+    return (
+      <p className="admin-highlights-empty">
+        {isLoading ? "Đang tải số liệu…" : "Chưa đủ dữ liệu trong khoảng này. Thử chọn 30 ngày để xem xu hướng."}
+      </p>
+    );
+  }
+  return (
+    <ul className="admin-highlights">
+      {highlights.map((highlight) => (
+        <li className={highlight.tone === "warning" ? "admin-highlight warning" : "admin-highlight"} key={highlight.id}>
+          <span className="admin-highlight-label">{highlight.label}</span>
+          <strong title={highlight.value}>{highlight.value}</strong>
+          <span className="admin-highlight-detail">{highlight.detail}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const FUNNEL_STEPS: Array<{ id: keyof EventCounts; label: string }> = [
+  { id: "site_visit", label: "Truy cập" },
+  { id: "product_view", label: "Xem sản phẩm" },
+  { id: "add_to_cart", label: "Thêm giỏ" },
+  { id: "order_image_created", label: "Chốt đơn" },
+];
+
+// Four buying steps side by side; the step that loses the most shoppers is highlighted.
+function PurchaseFunnel({ counts }: { counts: EventCounts }) {
+  const steps = FUNNEL_STEPS.map((step, index) => {
+    const previous = index > 0 ? counts[FUNNEL_STEPS[index - 1].id] : null;
+    const rate = previous ? Math.min(1, counts[step.id] / previous) : null;
+    return { ...step, count: counts[step.id], rate };
+  });
+  const worstIndex = steps.reduce(
+    (worst, step, index) => (step.rate !== null && (worst < 0 || step.rate < (steps[worst].rate ?? 1)) ? index : worst),
+    -1,
+  );
 
   return (
-    <ol className="admin-funnel">
-      {steps.map((step) => (
-        <li key={step.id}>
-          <div className="admin-funnel-label">
-            <span>{step.label}</span>
-            <strong>{step.count}</strong>
-          </div>
-          <div className="admin-funnel-bar" aria-hidden="true">
-            <span style={{ width: `${(step.count / maxCount) * 100}%` }} />
-          </div>
-          <small>{step.stepRate === null ? "" : `${formatPercent(step.stepRate)} từ bước trước`}</small>
+    <ol className="admin-funnel-steps">
+      {steps.map((step, index) => (
+        <li key={step.id} className={index === worstIndex ? "is-worst" : undefined}>
+          <span className="admin-funnel-step-label">{step.label}</span>
+          <strong>{step.count}</strong>
+          {step.rate !== null ? (
+            <small>
+              {formatPercent(step.rate)} đi tiếp
+              {index === worstIndex ? " · rơi nhiều nhất" : ""}
+            </small>
+          ) : (
+            <small>Điểm bắt đầu</small>
+          )}
         </li>
       ))}
     </ol>
   );
 }
 
-type StatsColumn<Row> = {
-  key: string;
-  label: string;
-  value: (row: Row) => number | string;
-  render?: (row: Row) => ReactNode;
-};
+type RankingRow = { id: string; name: string; views: number; adds: number };
+type RankingTab = "product" | "pattern" | "type";
 
-const STATS_TABLE_PREVIEW_ROWS = 8;
-
-function AdminStatsTable<Row extends { id: string }>({
-  columns,
-  defaultSortKey,
-  emptyText,
-  rows,
-}: {
-  columns: StatsColumn<Row>[];
-  defaultSortKey: string;
-  emptyText: string;
-  rows: Row[];
-}) {
-  const [sortKey, setSortKey] = useState(defaultSortKey);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const sortColumn = columns.find((column) => column.key === sortKey) ?? columns[0];
-  const sortedRows = useMemo(
-    () =>
-      [...rows].sort((a, b) => {
-        const left = sortColumn.value(a);
-        const right = sortColumn.value(b);
-        // Text sorts A→Z, numbers high→low.
-        return typeof left === "string" || typeof right === "string"
-          ? String(left).localeCompare(String(right), "vi")
-          : right - left;
-      }),
-    [rows, sortColumn],
-  );
-  const visibleRows = isExpanded ? sortedRows : sortedRows.slice(0, STATS_TABLE_PREVIEW_ROWS);
-
-  if (rows.length === 0) {
-    return (
-      <section className="admin-interest-card">
-        <p>{emptyText}</p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="admin-interest-card">
-      <table>
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column.key} aria-sort={column.key === sortColumn.key ? "descending" : undefined}>
-                <button
-                  className={column.key === sortColumn.key ? "active" : undefined}
-                  type="button"
-                  onClick={() => setSortKey(column.key)}
-                >
-                  {column.label}
-                </button>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {visibleRows.map((row) => (
-            <tr key={row.id}>
-              {columns.map((column) => (
-                <td key={column.key}>{column.render ? column.render(row) : column.value(row)}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {sortedRows.length > STATS_TABLE_PREVIEW_ROWS ? (
-        <button className="admin-stats-more" type="button" onClick={() => setIsExpanded((expanded) => !expanded)}>
-          {isExpanded ? "Thu gọn" : `Xem tất cả (${sortedRows.length})`}
-        </button>
-      ) : null}
-    </section>
-  );
-}
-
-function SizeBreakdown({
-  overall,
-  productRows,
-  sizeLabels,
-}: {
-  overall: SizeStatsRow;
-  productRows: SizeStatsRow[];
-  sizeLabels: Record<SizeId, string>;
-}) {
-  if (overall.total === 0) {
-    return (
-      <section className="admin-interest-card">
-        <p>Chưa có lượt thêm giỏ nào trong khoảng thời gian này.</p>
-      </section>
-    );
-  }
-
-  const renderSplit = (row: SizeStatsRow) => {
-    const sizeOneShare = row.counts["1"] / row.total;
-    return (
-      <div className="admin-size-split" key={row.id}>
-        <div className="admin-size-split-label">
-          <span>{row.name}</span>
-          <small>
-            {sizeLabels["1"]}: {row.counts["1"]} · {sizeLabels["2"]}: {row.counts["2"]}
-          </small>
-        </div>
-        <div className="admin-size-split-bar" aria-label={`${sizeLabels["1"]} ${formatPercent(sizeOneShare)}`}>
-          <span style={{ width: `${sizeOneShare * 100}%` }}>{sizeOneShare >= 0.18 ? formatPercent(sizeOneShare) : ""}</span>
-          <span>{1 - sizeOneShare >= 0.18 ? formatPercent(1 - sizeOneShare) : ""}</span>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <section className="admin-interest-card admin-size-card">
-      <div className="admin-size-legend">
-        <span>
-          <i className="size-one" /> {sizeLabels["1"]}
-        </span>
-        <span>
-          <i className="size-two" /> {sizeLabels["2"]}
-        </span>
-      </div>
-      {renderSplit(overall)}
-      {productRows.map(renderSplit)}
-    </section>
-  );
-}
-
-const HEATMAP_METRICS: Array<{ id: HeatmapMetric; label: string }> = [
-  { id: "site_visit", label: "Truy cập" },
-  { id: "product_view", label: "Xem SP" },
-  { id: "add_to_cart", label: "Thêm giỏ" },
+const RANKING_TABS: Array<{ id: RankingTab; label: string }> = [
+  { id: "product", label: "Sản phẩm" },
+  { id: "pattern", label: "Hoạ tiết" },
+  { id: "type", label: "Kiểu dáng" },
 ];
+const RANKING_PREVIEW_ROWS = 5;
 
-function HourHeatmap({ events }: { events: StorefrontEventRow[] }) {
-  const [metric, setMetric] = useState<HeatmapMetric>("site_visit");
-  const heatmap = useMemo(() => getHeatmap(events, metric), [events, metric]);
-  const [activeCell, setActiveCell] = useState<{ day: number; hour: number } | null>(null);
-  const metricLabel = HEATMAP_METRICS.find((item) => item.id === metric)?.label ?? "";
-  const busiest = useMemo(() => {
-    let best: { day: number; hour: number; count: number } | null = null;
-    heatmap.cells.forEach((row, day) =>
-      row.forEach((count, hour) => {
-        if (count > 0 && (!best || count > best.count)) best = { day, hour, count };
-      }),
-    );
-    return best as { day: number; hour: number; count: number } | null;
-  }, [heatmap]);
-  const shownCell = activeCell ?? busiest;
+// One ranked list (by add-to-cart, then views) with tabs instead of three wide tables.
+function RankingCard({
+  productRows,
+  patternRows,
+  typeRows,
+}: {
+  productRows: RankingRow[];
+  patternRows: RankingRow[];
+  typeRows: RankingRow[];
+}) {
+  const [tab, setTab] = useState<RankingTab>("product");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const source = tab === "product" ? productRows : tab === "pattern" ? patternRows : typeRows;
+  const rows = [...source].sort((a, b) => b.adds - a.adds || b.views - a.views);
+  const visibleRows = isExpanded ? rows : rows.slice(0, RANKING_PREVIEW_ROWS);
+  const maxAdds = Math.max(1, ...rows.map((row) => row.adds));
 
   return (
-    <section className="admin-interest-card admin-heatmap-card">
-      <div className="admin-segmented" aria-label="Chỉ số khung giờ">
-        {HEATMAP_METRICS.map((item) => (
+    <div className="admin-ranking">
+      <div className="admin-ranking-tabs" role="tablist" aria-label="Xếp hạng theo">
+        {RANKING_TABS.map((item) => (
           <button
-            className={metric === item.id ? "active" : ""}
             key={item.id}
             type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            className={tab === item.id ? "active" : undefined}
             onClick={() => {
-              setMetric(item.id);
-              setActiveCell(null);
+              setTab(item.id);
+              setIsExpanded(false);
             }}
           >
             {item.label}
           </button>
         ))}
       </div>
-      {heatmap.max === 0 ? (
-        <p>Chưa có dữ liệu trong khoảng thời gian này.</p>
+      {rows.length === 0 ? (
+        <p className="admin-ranking-empty">Chưa có dữ liệu trong khoảng này.</p>
       ) : (
-        <>
-          <div className="admin-heatmap" role="grid" aria-label={`${metricLabel} theo thứ và giờ`}>
-            <span />
-            {Array.from({ length: 24 }, (_, hour) => (
-              <span className="admin-heatmap-hour" key={hour}>
-                {hour % 3 === 0 ? hour : ""}
-              </span>
-            ))}
-            {heatmap.cells.map((row, day) => (
-              <Fragment key={day}>
-                <span className="admin-heatmap-day">{WEEKDAY_LABELS[day]}</span>
-                {row.map((count, hour) => (
-                  <button
-                    aria-label={`${WEEKDAY_LABELS[day]} ${hour}h: ${count}`}
-                    className={activeCell?.day === day && activeCell.hour === hour ? "active" : undefined}
-                    key={hour}
-                    style={
-                      count > 0 ? { background: `rgba(17, 17, 17, ${0.14 + (count / heatmap.max) * 0.86})` } : undefined
-                    }
-                    type="button"
-                    onClick={() => setActiveCell({ day, hour })}
-                  />
-                ))}
-              </Fragment>
-            ))}
-          </div>
-          {shownCell ? (
-            <p>
-              {activeCell ? "" : "Đông nhất: "}
-              {WEEKDAY_LABELS[shownCell.day]}, {shownCell.hour}h–{shownCell.hour + 1}h:{" "}
-              <strong>
-                {heatmap.cells[shownCell.day][shownCell.hour]} lượt {metricLabel.toLowerCase()}
-              </strong>
-            </p>
-          ) : null}
-        </>
+        <ol className="admin-ranking-list">
+          {visibleRows.map((row) => {
+            const isCold = row.adds === 0 && row.views >= 10;
+            return (
+              <li key={row.id}>
+                <div className="admin-ranking-row">
+                  <span className="admin-ranking-name">{row.name}</span>
+                  <span className={isCold ? "admin-ranking-meta cold" : "admin-ranking-meta"}>
+                    {row.adds} giỏ · {row.views} xem
+                  </span>
+                </div>
+                <span className="admin-ranking-bar" aria-hidden="true">
+                  <i style={{ width: `${(row.adds / maxAdds) * 100}%` }} />
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       )}
-    </section>
+      {rows.length > RANKING_PREVIEW_ROWS ? (
+        <button className="admin-ranking-more" type="button" onClick={() => setIsExpanded((current) => !current)}>
+          {isExpanded ? "Thu gọn" : `Xem tất cả (${rows.length})`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function SizeSplit({ overall, sizeLabels }: { overall: SizeStatsRow; sizeLabels: Record<SizeId, string> }) {
+  if (overall.total === 0) return <p className="admin-ranking-empty">Chưa có lượt thêm giỏ.</p>;
+  const sizes = (Object.keys(sizeLabels) as SizeId[]).map((sizeId) => ({
+    id: sizeId,
+    label: sizeLabels[sizeId],
+    share: overall.counts[sizeId] / overall.total,
+    count: overall.counts[sizeId],
+  }));
+  return (
+    <div className="admin-mini-card">
+      <span className="admin-size-split" aria-hidden="true">
+        {sizes.map((size, index) => (
+          <i key={size.id} className={index === 0 ? "primary" : undefined} style={{ width: `${size.share * 100}%` }} />
+        ))}
+      </span>
+      <div className="admin-size-split-legend">
+        {sizes.map((size) => (
+          <span key={size.id}>
+            {size.label} · {formatPercent(size.share)} <small>({size.count})</small>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Visits per hour of day across the whole range; the busiest hour is drawn darker.
+function HourBars({ events }: { events: StorefrontEventRow[] }) {
+  const counts = Array.from({ length: 24 }, () => 0);
+  events.forEach((event) => {
+    if (event.event_type === "site_visit") counts[new Date(event.created_at).getHours()] += 1;
+  });
+  const max = Math.max(...counts);
+  if (max === 0) return <p className="admin-ranking-empty">Chưa có lượt truy cập.</p>;
+  const peak = counts.indexOf(max);
+  return (
+    <div className="admin-mini-card">
+      <div className="admin-hour-bars" role="img" aria-label={`Giờ đông nhất ${peak}h với ${max} lượt truy cập`}>
+        {counts.map((count, hour) => (
+          <span
+            key={hour}
+            className={hour === peak ? "peak" : undefined}
+            style={{ height: `${Math.max(4, (count / max) * 100)}%` }}
+            title={`${hour}h: ${count} lượt`}
+          />
+        ))}
+      </div>
+      <div className="admin-hour-axis" aria-hidden="true">
+        <span>0h</span>
+        <span>6h</span>
+        <span>12h</span>
+        <span>18h</span>
+        <span>23h</span>
+      </div>
+      <p className="admin-mini-note">
+        Đông nhất {peak}h–{peak + 1}h · {max} lượt
+      </p>
+    </div>
   );
 }
