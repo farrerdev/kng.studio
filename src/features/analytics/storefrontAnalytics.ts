@@ -34,6 +34,22 @@ function isBrowserLocalhost() {
   return LOCALHOST_NAMES.has(window.location.hostname);
 }
 
+// Private-network hosts (phone testing against the dev machine, e.g. 192.168.x.x:5173) and *.local names.
+function isPrivateNetworkHost() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  if (host.endsWith(".local")) return true;
+  const octets = host.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet))) return false;
+  const [first, second] = octets;
+  return first === 10 || (first === 192 && second === 168) || (first === 172 && second >= 16 && second <= 31);
+}
+
+// Never count our own testing: dev server builds, localhost, and private-network devices.
+function isTestEnvironment() {
+  return import.meta.env.DEV || isBrowserLocalhost() || isPrivateNetworkHost();
+}
+
 function isAnalyticsOptedOutDevice() {
   if (typeof window === "undefined") return false;
   try {
@@ -81,7 +97,7 @@ async function insertStorefrontEvent(row: Record<string, unknown>) {
 
 export async function trackStorefrontEvent(event: StorefrontEventInput): Promise<void> {
   if (!isSupabaseConfigured) return;
-  if (isBrowserLocalhost() || isAnalyticsOptedOutDevice() || hasAdminSessionOnDevice()) return;
+  if (isTestEnvironment() || isAnalyticsOptedOutDevice() || hasAdminSessionOnDevice()) return;
 
   try {
     const inserted = await insertStorefrontEvent({

@@ -2361,7 +2361,7 @@ body:has(.storefront) {
 /* ---------- Catalog (home) ---------- */
 
 .shop-catalog {
-  padding: 20px 0 32px;
+  padding: 14px 0 24px;
 }
 
 .shop-catalog-head {
@@ -2372,11 +2372,16 @@ body:has(.storefront) {
   margin-bottom: 12px;
 }
 
-.shop-catalog-head h2 {
+/* Section titles: small uppercase label, shared by "Sản phẩm" and the rails. */
+.shop-catalog-head h2,
+.shop-section-title h2 {
   margin: 0;
   color: var(--kng-ink);
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -3131,14 +3136,237 @@ body:has(.storefront) {
   padding-left: 18px;
 }
 
-/* The policy list already ends with a divider, so the carousel doesn't add another. */
-.storefront .shop-product + .other-products {
-  margin-top: 12px;
-  border-top: 0;
+
+
+
+
+/* ---------- Product rails (popular on home, suggestions on product pages) ---------- */
+
+.shop-rail {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0 20px;
 }
 
-.storefront .other-products .storefront-product-card img {
+.shop-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shop-section-title {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+
+
+.shop-section-title p {
+  margin: 0;
+  color: var(--kng-muted);
+  font-size: 0.84rem;
+}
+
+.shop-rail-controls {
+  display: none;
+  gap: 8px;
+}
+
+.shop-rail-controls button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--kng-line-strong);
+  border-radius: 50%;
+  background: var(--kng-surface);
+  color: var(--kng-ink);
+  cursor: pointer;
+  transition: border-color var(--kng-fast) ease, opacity var(--kng-fast) ease;
+}
+
+.shop-rail-controls button:hover:not(:disabled) {
+  border-color: var(--kng-ink);
+}
+
+.shop-rail-controls button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Mobile: edge-to-edge swipe, ~2.3 cards visible so the next one peeks in. */
+.shop-rail-track {
+  display: grid;
+  grid-auto-columns: calc((100% - 2 * 12px) / 2.3);
+  grid-auto-flow: column;
+  gap: 12px;
+  margin: 0 -16px;
+  padding: 0 16px 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.shop-rail-track::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-rail-track .shop-card {
+  scroll-snap-align: start;
+}
+
+/* Rank: a small solid square on the photo, like a hang tag number. */
+.shop-card-rank {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
   border-radius: var(--kng-radius-sm);
+  background: var(--kng-ink);
+  color: var(--kng-on-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* Overlay card (featured rail): name + price sit on the photo over a bottom scrim. */
+.shop-card-overlay .shop-card-caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+  padding: 36px 12px 12px;
+  background: linear-gradient(to top, rgba(17, 17, 17, 0.72) 0%, rgba(17, 17, 17, 0.45) 55%, rgba(17, 17, 17, 0) 100%);
+  color: var(--kng-on-ink);
+  text-align: left;
+}
+
+.shop-card-overlay .shop-card-title {
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(17, 17, 17, 0.35);
+}
+
+.shop-card-overlay .shop-card-price {
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Rank label (#1, #2…) in the top-left corner of the photo. */
+.shop-card-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  padding: 5px 8px;
+  border-radius: var(--kng-radius-sm);
+  background: var(--kng-surface);
+  color: var(--kng-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .shop-card-overlay:hover .shop-card-title {
+    text-decoration: none;
+  }
+}
+
+/* Featured rail on home sits on a full-bleed soft band to separate it from the grid below. */
+.storefront .shop-rail-featured {
+  position: relative;
+  isolation: isolate;
+  margin-top: 0;
+  padding: 18px 0 20px;
+}
+
+.storefront .shop-rail-featured::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: var(--kng-soft);
+}
+
+/* Featured overlay cards: ~1.9 per screen on phones, one more per row than the grid on wider screens. */
+.storefront .shop-rail-featured .shop-rail-track {
+  grid-auto-columns: calc((100% - 12px) / 1.9);
+}
+
+.shop-rail-featured .shop-card-overlay .shop-card-caption {
+  padding: 28px 10px 10px;
+}
+
+.shop-rail-featured .shop-card-overlay .shop-card-title {
+  font-size: 0.82rem;
+}
+
+.shop-rail-featured .shop-card-overlay .shop-card-price {
+  font-size: 0.86rem;
+}
+
+.storefront .shop-rail-featured .shop-card-media {
+  background-color: var(--kng-surface);
+}
+
+.storefront .shop-rail-featured + .shop-catalog {
+  padding-top: 16px;
+}
+
+/* Suggestions under a product: separated by the policy list's own divider on mobile. */
+.storefront .shop-product + .shop-rail {
+  margin-top: 8px;
+}
+
+@media (min-width: 760px) {
+  .shop-rail-controls {
+    display: flex;
+  }
+
+  .storefront .shop-rail-featured .shop-rail-track {
+    grid-auto-columns: calc((100% - 3 * 18px) / 4);
+  }
+
+  .shop-rail-track {
+    grid-auto-columns: calc((100% - 2 * 18px) / 3);
+    gap: 18px;
+    margin: 0;
+    padding: 0;
+    scroll-padding-inline: 0;
+  }
+}
+
+@media (min-width: 960px) {
+  .storefront .shop-product + .shop-rail {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--kng-line);
+  }
+}
+
+@media (min-width: 1100px) {
+  .storefront .shop-rail-featured .shop-rail-track {
+    grid-auto-columns: calc((100% - 4 * 18px) / 5);
+  }
+
+  .shop-rail-track {
+    grid-auto-columns: calc((100% - 3 * 18px) / 4);
+  }
 }
 
 /* ---------- Sticky cart bar ---------- */
@@ -3317,7 +3545,7 @@ body:has(.storefront) {
 
 @media (min-width: 960px) {
   .shop-catalog {
-    padding-top: 28px;
+    padding-top: 18px;
   }
 
   .shop-product-layout {
@@ -3350,11 +3578,6 @@ body:has(.storefront) {
     display: none;
   }
 
-  /* Two columns: the policy list ends in the right column, so the carousel needs its own full-width rule. */
-  .storefront .shop-product + .other-products {
-    margin-top: 32px;
-    border-top: 1px solid var(--kng-line);
-  }
 
   .shop-buybox {
     position: sticky;

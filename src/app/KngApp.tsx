@@ -28,8 +28,8 @@ import {
 import { createOrderFileName, createOrderImageBlob } from "../features/storefront/cart/orderImage";
 import { getProductGalleryImages, getVisibleProducts } from "../features/storefront/storefrontGallery";
 import { CART_STORAGE_KEY, IMAGE_WIDTHS } from "../features/storefront/storefrontConstants";
-import { getRecommendedProducts } from "../features/storefront/productRecommendations";
-import { OtherProductsCarousel } from "../features/storefront/components/OtherProductsCarousel";
+import { getPopularProducts, getRecommendedProducts } from "../features/storefront/productRecommendations";
+import { ProductRail } from "../features/storefront/components/ProductRail";
 import { PolicyModal, PolicySections } from "../features/storefront/components/PolicySections";
 import { ProductDetail } from "../features/storefront/components/ProductDetail";
 import { ProductGrid, ProductGridSkeleton } from "../features/storefront/components/ProductGrid";
@@ -170,6 +170,10 @@ function App() {
         ? storefrontProducts.find((product) => getProductSlug(product, catalogProductTypes) === selectedProductSlug) ?? null
         : null,
     [catalogProductTypes, selectedProductSlug, storefrontProducts],
+  );
+  const popularProducts = useMemo(
+    () => getPopularProducts(storefrontProducts, catalogPopularity),
+    [catalogPopularity, storefrontProducts],
   );
   const recommendedProducts = useMemo(
     () =>
@@ -720,6 +724,20 @@ function App() {
 
         {catalogLoadState !== "loading" && !selectedProduct ? (
           <>
+            {popularProducts.length > 0 ? (
+              <ProductRail
+                className="shop-rail-featured"
+                title="Đang được yêu thích"
+                ranked
+                cardVariant="overlay"
+                eager
+                allProducts={catalogProducts}
+                products={popularProducts}
+                productTypes={catalogProductTypes}
+                onProductOpen={openProduct}
+              />
+            ) : null}
+
             <ProductGrid
               allProducts={catalogProducts}
               products={storefrontProducts}
@@ -747,9 +765,9 @@ function App() {
               onQuantityChange={updateCartQuantity}
               getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
             />
-            <OtherProductsCarousel
+            <ProductRail
+              title="Có thể bạn cũng thích"
               allProducts={catalogProducts}
-              currentProductId={selectedProduct.id}
               onProductOpen={openProduct}
               products={recommendedProducts}
               productTypes={catalogProductTypes}

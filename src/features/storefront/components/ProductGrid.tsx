@@ -1,14 +1,8 @@
 import { useMemo, useState } from "react";
-import { getProductCoverImage, getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
-import { preloadImage, SmoothImage } from "../../../shared/components/SmoothImage";
-import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../../../shared/utils/image";
-import { formatPrice } from "../../../shared/utils/money";
 import type { Product, ProductType } from "../../../types/catalog";
-import { IMAGE_WIDTHS } from "../storefrontConstants";
-import { getProductHeroImage, PRODUCT_HERO_SIZES } from "./ProductDetail";
+import { ShopProductCard } from "./ShopProductCard";
 import { TypeFilterMenu } from "./TypeFilterMenu";
 
-const MAX_SWATCHES = 4;
 const PRIORITY_CARDS = 4;
 
 type ProductGridProps = {
@@ -36,11 +30,6 @@ export function ProductGrid({ allProducts, products, productTypes, onProductOpen
   const visibleProducts = activeTypeId
     ? products.filter((product) => product.productTypeId === activeTypeId)
     : products;
-
-  const warmProduct = (product: Product) => {
-    const hero = getProductHeroImage(product);
-    if (hero) preloadImage(getSupabaseImageSrc(hero.src, IMAGE_WIDTHS.catalog, 80), getSupabaseImageSrcSet(hero.src, 80), PRODUCT_HERO_SIZES);
-  };
 
   return (
     <section className="shop-catalog" id="products" aria-label="Sản phẩm">
@@ -75,49 +64,17 @@ export function ProductGrid({ allProducts, products, productTypes, onProductOpen
       ) : null}
 
       <div className="shop-grid">
-        {visibleProducts.map((product, index) => {
-          const coverImage = getProductCoverImage(product, productTypes, allProducts);
-          const productTitle = getProductTitle(product, productTypes);
-          const extraSwatches = product.patterns.length - MAX_SWATCHES;
-          return (
-            <button
-              className="shop-card"
-              key={product.id}
-              type="button"
-              onClick={() => onProductOpen(product)}
-              onPointerEnter={() => warmProduct(product)}
-              onTouchStart={() => warmProduct(product)}
-            >
-              <span className="shop-card-media kng-media">
-                <SmoothImage
-                  src={getSupabaseImageSrc(coverImage.src, IMAGE_WIDTHS.catalog, 80)}
-                  srcSet={getSupabaseImageSrcSet(coverImage.src, 80)}
-                  sizes="(max-width: 760px) 50vw, (max-width: 1100px) 33vw, 300px"
-                  alt={coverImage.alt}
-                  priority={index < PRIORITY_CARDS}
-                />
-              </span>
-              <span className="shop-card-body">
-                <span className="shop-card-title">{productTitle}</span>
-                <strong className="shop-card-price">{formatPrice(getProductPrice(product, productTypes))}</strong>
-                {product.patterns.length > 0 ? (
-                  <span className="shop-card-swatches" aria-label={`${product.patterns.length} họa tiết`}>
-                    {product.patterns.slice(0, MAX_SWATCHES).map((pattern) => (
-                      <img
-                        key={pattern.id}
-                        src={getSupabaseImageSrc(pattern.image.src, 96, 70)}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ))}
-                    {extraSwatches > 0 ? <small>+{extraSwatches}</small> : null}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          );
-        })}
+        {visibleProducts.map((product, index) => (
+          <ShopProductCard
+            key={product.id}
+            product={product}
+            allProducts={allProducts}
+            productTypes={productTypes}
+            onOpen={onProductOpen}
+            imageSizes="(max-width: 760px) 50vw, (max-width: 1100px) 33vw, 300px"
+            priority={index < PRIORITY_CARDS}
+          />
+        ))}
       </div>
     </section>
   );

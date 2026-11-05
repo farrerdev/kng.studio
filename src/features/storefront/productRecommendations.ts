@@ -52,3 +52,16 @@ export function getRecommendedProducts({
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map(({ product }) => product);
 }
+
+const POPULAR_LIMIT = 6;
+const POPULAR_MIN_PRODUCTS = 3;
+
+// Home "most interacted" list: in-stock products with any recent interaction, highest score first.
+// Returns nothing when there isn't enough signal yet, so the section simply stays hidden.
+export function getPopularProducts(products: Product[], popularity: Record<string, number> = {}) {
+  const ranked = products
+    .filter((product) => (popularity[product.id] ?? 0) > 0)
+    .sort((left, right) => (popularity[right.id] ?? 0) - (popularity[left.id] ?? 0))
+    .slice(0, POPULAR_LIMIT);
+  return ranked.length >= POPULAR_MIN_PRODUCTS ? ranked : [];
+}
