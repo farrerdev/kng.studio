@@ -8,7 +8,18 @@ export type CatalogData = {
   productTypes: ProductType[];
   products: Product[];
   shopInfoImage: ProductImage | null;
+  /** Interaction score per product id (views, pattern views, add-to-cart), last 30 days. */
+  popularity?: Record<string, number>;
 };
+
+export type PopularityRow = {
+  product_id: string;
+  score: number | string;
+};
+
+export function mapPopularityRows(rows: PopularityRow[] | null | undefined): Record<string, number> {
+  return Object.fromEntries((rows ?? []).map((row) => [row.product_id, Number(row.score) || 0]));
+}
 
 export type ProductRow = {
   id: string;
@@ -67,6 +78,7 @@ export type CatalogRows = {
   shopInfo: ShopInfoRow | null;
   /** Legacy model images listed from Storage, used only when product_images is empty. */
   storageModelImages?: Record<string, ProductImage[]>;
+  popularity?: PopularityRow[];
 };
 
 export const fallbackCatalog = {
@@ -87,6 +99,7 @@ export function mapCatalogRows(rows: CatalogRows): CatalogData {
       : deriveProductTypes(productRows);
   return {
     productTypes,
+    popularity: mapPopularityRows(rows.popularity),
     products: productRows.map((product) => {
       const legacyTitle = splitLegacyTitle(product.name);
       const productTypeId = product.product_type_id ?? createProductTypeId(legacyTitle.typeName, product.price);

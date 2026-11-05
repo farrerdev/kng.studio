@@ -5,6 +5,7 @@ import {
   mapCatalogRows,
   type CatalogData,
   type PatternRow,
+  type PopularityRow,
   type ProductImageRow,
   type ProductRow,
   type ProductTypeRow,
@@ -25,12 +26,14 @@ export async function fetchCatalog(): Promise<CatalogData> {
     return fallbackCatalog;
   }
 
-  const [productTypesResult, productsResult, patternsResult, imagesResult, shopInfoResult] = await Promise.all([
+  const [productTypesResult, productsResult, patternsResult, imagesResult, shopInfoResult, popularityResult] = await Promise.all([
     supabase.from("product_types").select("*").order("sort_order"),
     supabase.from("products").select("*").eq("active", true).order("sort_order"),
     supabase.from("product_patterns").select("*").order("sort_order"),
     supabase.from("product_images").select("*").order("sort_order"),
     supabase.from("shop_info").select("*").eq("id", "main").maybeSingle(),
+    // Optional: missing until the popularity migration is applied; recommendations then skip it.
+    supabase.rpc("storefront_product_popularity", { days: 30 }),
   ]);
 
   if (productTypesResult.error) throw productTypesResult.error;
@@ -51,6 +54,7 @@ export async function fetchCatalog(): Promise<CatalogData> {
     images: imageRows,
     shopInfo: shopInfoResult.data as ShopInfoRow | null,
     storageModelImages: Object.fromEntries(storageModelImages),
+    popularity: popularityResult.error ? [] : ((popularityResult.data ?? []) as PopularityRow[]),
   });
 }
 

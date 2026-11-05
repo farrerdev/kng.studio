@@ -28,6 +28,7 @@ import {
 import { createOrderFileName, createOrderImageBlob } from "../features/storefront/cart/orderImage";
 import { getProductGalleryImages, getVisibleProducts } from "../features/storefront/storefrontGallery";
 import { CART_STORAGE_KEY, IMAGE_WIDTHS } from "../features/storefront/storefrontConstants";
+import { getRecommendedProducts } from "../features/storefront/productRecommendations";
 import { OtherProductsCarousel } from "../features/storefront/components/OtherProductsCarousel";
 import { PolicyModal, PolicySections } from "../features/storefront/components/PolicySections";
 import { ProductDetail } from "../features/storefront/components/ProductDetail";
@@ -112,6 +113,9 @@ function App() {
   const [currentShopInfoImage, setCurrentShopInfoImage] = useState<ProductImage | null>(
     initialCatalog ? initialCatalog.shopInfoImage : isSupabaseConfigured ? null : fallbackCatalog.shopInfoImage,
   );
+  const [catalogPopularity, setCatalogPopularity] = useState<Record<string, number>>(
+    () => initialCatalog?.popularity ?? {},
+  );
   const [catalogStatus, setCatalogStatus] = useState("Đang tải catalog...");
   const [catalogLoadState, setCatalogLoadState] = useState<"loading" | "ready" | "error">(
     initialCatalog ? "ready" : "loading",
@@ -166,6 +170,20 @@ function App() {
         ? storefrontProducts.find((product) => getProductSlug(product, catalogProductTypes) === selectedProductSlug) ?? null
         : null,
     [catalogProductTypes, selectedProductSlug, storefrontProducts],
+  );
+  const recommendedProducts = useMemo(
+    () =>
+      selectedProduct
+        ? getRecommendedProducts({
+            current: selectedProduct,
+            products: storefrontProducts,
+            productTypes: catalogProductTypes,
+            selectedSize,
+            cartProductIds: new Set(cartItems.map((item) => item.productId)),
+            popularity: catalogPopularity,
+          })
+        : [],
+    [cartItems, catalogPopularity, catalogProductTypes, selectedProduct, selectedSize, storefrontProducts],
   );
   const selectedProductType = useMemo(
     () => (selectedProduct ? getProductType(selectedProduct, catalogProductTypes) : null),
@@ -590,6 +608,7 @@ function App() {
         setCatalogProductTypes(isSupabaseConfigured ? catalog.productTypes : fallbackCatalog.productTypes);
         setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
         setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
+        setCatalogPopularity(catalog.popularity ?? {});
         setCatalogStatus(isSupabaseConfigured ? "Đã tải dữ liệu thật." : "Đang dùng mock data.");
         setCatalogLoadState("ready");
       })
@@ -732,7 +751,7 @@ function App() {
               allProducts={catalogProducts}
               currentProductId={selectedProduct.id}
               onProductOpen={openProduct}
-              products={storefrontProducts}
+              products={recommendedProducts}
               productTypes={catalogProductTypes}
             />
           </>

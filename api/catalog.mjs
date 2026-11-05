@@ -20,16 +20,38 @@ export async function GET() {
       read("product_images", "select=*&order=sort_order.asc"),
       read("shop_info", "select=*&id=eq.main"),
     ]);
-    const storageModelImages =
-      images.length === 0 ? await fetchStorageModelImages(supabaseUrl, supabaseAnonKey, products) : {};
+    const [storageModelImages, popularity] = await Promise.all([
+      images.length === 0 ? fetchStorageModelImages(supabaseUrl, supabaseAnonKey, products) : {},
+      fetchPopularity(supabaseUrl, supabaseAnonKey),
+    ]);
 
     return jsonResponse(
-      { productTypes, products, patterns, images, shopInfo: shopInfoRows[0] ?? null, storageModelImages },
+      { productTypes, products, patterns, images, shopInfo: shopInfoRows[0] ?? null, storageModelImages, popularity },
       { status: 200, cacheable: true },
     );
   } catch (error) {
     console.error("Catalog API failed", error);
     return jsonResponse({ error: "Catalog unavailable." }, { status: 502, cacheable: false });
+  }
+}
+
+// Aggregate interaction score per product for recommendations. Optional: an empty list if the
+// storefront_product_popularity migration hasn't been applied or the call fails.
+async function fetchPopularity(supabaseUrl, supabaseAnonKey) {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/storefront_product_popularity`, {
+      method: "POST",
+      headers: {
+        apikey: supabaseAnonKey,
+        authorization: `Bearer ${supabaseAnonKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ days: 30 }),
+      signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS),
+    });
+    return response.ok ? await response.json() : [];
+  } catch {
+    return [];
   }
 }
 

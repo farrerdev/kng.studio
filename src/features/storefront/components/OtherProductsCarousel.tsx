@@ -40,9 +40,9 @@ export function OtherProductsCarousel({
   };
 
   return (
-    <section className="other-products" aria-label="Các sản phẩm khác">
+    <section className="other-products" aria-label="Có thể bạn cũng thích">
       <div className="other-products-header">
-        <h2>Các sản phẩm khác</h2>
+        <h2>Có thể bạn cũng thích</h2>
         <div className="other-products-controls" aria-label="Điều hướng sản phẩm khác">
           <button type="button" aria-label="Xem sản phẩm trước" onClick={() => scrollProducts(-1)}>
             <ChevronLeft size={18} aria-hidden="true" />

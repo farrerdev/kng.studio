@@ -33,6 +33,10 @@ For existing databases, run `supabase/migrations/202609280001_add_product_shopee
 in the Supabase SQL editor before deploying the Shopee link feature. Manage the optional
 link under each product's **Thông tin → Link sản phẩm Shopee** field in `/admin`.
 
+For product recommendations ranked by recent interactions, run
+`supabase/migrations/202611050001_storefront_product_popularity.sql` in the Supabase SQL editor.
+Until then the storefront falls back to ranking without popularity.
+
 ```bash
 npm run build
 ```
