@@ -84,6 +84,28 @@ export function PolicySections({ className, includeIds = false }: PolicySections
   );
 }
 
+export function PolicyAccordion() {
+  return (
+    <section className="shop-policy-accordion" aria-label="Quy định mua hàng">
+      <h3>Trước khi đặt hàng</h3>
+      {POLICY_SECTIONS.map((section) => (
+        <details key={section.id}>
+          <summary>{section.title}</summary>
+          {section.items ? (
+            <ul>
+              {section.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>{section.body}</p>
+          )}
+        </details>
+      ))}
+    </section>
+  );
+}
+
 type PolicyModalProps = {
   onClose: () => void;
 };

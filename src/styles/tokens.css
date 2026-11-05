@@ -1,0 +1,41 @@
+/* KNG design tokens — the single source for storefront colour, type, radius, motion.
+   Storefront CSS must only reference these variables (brand logo colours are the only exception).
+   Colours and type follow the production storefront: #111 ink on white, #dedede lines, Helvetica. */
+:root {
+  /* Colour */
+  --kng-bg: #ffffff;
+  --kng-surface: #ffffff;
+  --kng-soft: #f6f6f6;
+  --kng-line: #dedede;
+  --kng-line-strong: #cccccc;
+  --kng-ink: #111111;
+  --kng-ink-soft: #555555;
+  --kng-muted: #686868;
+  --kng-on-ink: #ffffff;
+  --kng-accent: #111111;
+  --kng-accent-hover: #333333;
+  --kng-accent-soft: #f6f6f6;
+  --kng-success: #29713c;
+  --kng-danger: #b00020;
+  --kng-danger-soft: #fff7f7;
+  --kng-overlay: rgba(17, 17, 17, 0.45);
+
+  /* Type */
+  --kng-font: "Helvetica Neue", Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --kng-font-display: var(--kng-font);
+
+  /* Shape */
+  --kng-radius-lg: 14px;
+  --kng-radius: 10px;
+  --kng-radius-sm: 8px;
+  --kng-radius-pill: 999px;
+  --kng-shadow: 0 10px 30px rgba(17, 17, 17, 0.1);
+
+  /* Motion */
+  --kng-ease: cubic-bezier(0.2, 0.82, 0.2, 1);
+  --kng-fast: 160ms;
+
+  /* Layout */
+  --kng-header-height: 54px;
+  --kng-cart-bar-height: 76px;
+}

@@ -12,9 +12,9 @@
   min-height: 36px;
   max-width: 100%;
   padding: 0 10px;
-  border: 1px solid var(--store-ink);
-  background: #fff;
-  color: var(--store-ink);
+  border: 1px solid var(--kng-ink);
+  background: var(--kng-surface);
+  color: var(--kng-ink);
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.4;
@@ -34,12 +34,12 @@
 }
 
 .product-shopee-external {
-  color: #737373;
+  color: var(--kng-muted);
 }
 
 .product-shopee-link:hover {
-  background: var(--store-soft);
-  color: var(--store-ink);
+  background: var(--kng-soft);
+  color: var(--kng-ink);
 }
 
 .product-shopee-link:focus-visible {

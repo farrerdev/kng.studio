@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { getStorefrontSlugFromPath } from "./routes";
 import { shopConfig } from "../config/shop";
 import { trackStorefrontEvent } from "../features/analytics/storefrontAnalytics";
-import { CartCheckoutCta } from "../features/storefront/cart/CartCheckoutCta";
+import { CartStickyBar } from "../features/storefront/cart/CartStickyBar";
 import { CartOverlay, OrderImagePreview } from "../features/storefront/cart/CartOverlay";
 import {
   getProductCoverImage,
@@ -30,8 +30,8 @@ import { getProductGalleryImages, getVisibleProducts } from "../features/storefr
 import { CART_STORAGE_KEY, IMAGE_WIDTHS } from "../features/storefront/storefrontConstants";
 import { OtherProductsCarousel } from "../features/storefront/components/OtherProductsCarousel";
 import { PolicyModal, PolicySections } from "../features/storefront/components/PolicySections";
-import { ProductCard } from "../features/storefront/components/ProductCard";
-import { ShopeeProductLink } from "../features/storefront/components/ShopeeProductLink";
+import { ProductDetail } from "../features/storefront/components/ProductDetail";
+import { ProductGrid, ProductGridSkeleton } from "../features/storefront/components/ProductGrid";
 import { ContactButtons, StorefrontFooter } from "../features/storefront/components/StorefrontChrome";
 import type { GalleryImage, ShareChannel } from "../features/storefront/storefrontTypes";
 import { fallbackCatalog, type CatalogData } from "../features/catalog/catalogRows";
@@ -656,7 +656,7 @@ function App() {
 
   return (
     <>
-      <main className="page-shell storefront">
+      <main className={cartQuantity > 0 ? "page-shell storefront has-cart-bar" : "page-shell storefront"}>
         <header className="site-header">
           <button
             className="site-menu-button"
@@ -686,116 +686,56 @@ function App() {
           </button>
         </header>
 
-        <section className="shipping-promo" aria-label="Ưu đãi vận chuyển">
-          <span>Miễn phí vận chuyển từ 2 bộ</span>
-          <button type="button" onClick={() => setIsPolicyModalOpen(true)}>
-            Xem chi tiết
-          </button>
-        </section>
+        {/* Product pages already list the perks under the price, so the bar only shows on the home list. */}
+        {!selectedProduct ? (
+          <section className="shipping-promo" aria-label="Ưu đãi vận chuyển">
+            <span>Miễn phí vận chuyển từ 2 bộ</span>
+            <button type="button" onClick={() => setIsPolicyModalOpen(true)}>
+              Xem chi tiết
+            </button>
+          </section>
+        ) : null}
 
-        {catalogLoadState === "loading" ? <LoadingPanel /> : null}
+
+        {catalogLoadState === "loading" ? <ProductGridSkeleton /> : null}
 
         {catalogLoadState !== "loading" && !selectedProduct ? (
           <>
-            <section
-              className={cartQuantity > 0 ? "product-type-showcase has-cart-cta" : "product-type-showcase"}
-              id="products"
-              aria-label="Sản phẩm"
-            >
-              <div className="section-title">
-                <h2>Sản phẩm</h2>
-                <span>{storefrontProducts.length} mẫu</span>
-              </div>
-              <div className="storefront-product-grid">
-                {storefrontProducts.map((product) => {
-                  const coverImage = getProductCoverImage(product, catalogProductTypes, catalogProducts);
-                  const productTitle = getProductTitle(product, catalogProductTypes);
-                  return (
-                    <button
-                      className="storefront-product-card"
-                      key={product.id}
-                      type="button"
-                      onClick={() => openProduct(product)}
-                    >
-                      <img
-                        src={getSupabaseImageSrc(coverImage.src, IMAGE_WIDTHS.catalog, 80)}
-                        srcSet={getSupabaseImageSrcSet(coverImage.src, 80)}
-                        sizes="(max-width: 760px) 50vw, 50vw"
-                        alt={coverImage.alt}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <span className="storefront-product-info">
-                        <span>{productTitle}</span>
-                        <strong>{formatPrice(getProductPrice(product, catalogProductTypes))}</strong>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <CartCheckoutCta
-                availableQuantity={checkoutCartQuantity}
-                cartQuantity={cartQuantity}
-                onClick={openCart}
-              />
-            </section>
+            <ProductGrid
+              allProducts={catalogProducts}
+              products={storefrontProducts}
+              productTypes={catalogProductTypes}
+              onProductOpen={openProduct}
+            />
 
             <PolicySections className="storefront-policy" includeIds />
           </>
         ) : null}
 
         {catalogLoadState !== "loading" && selectedProduct && selectedProductType ? (
-        <section className="product-type-screen" aria-label={`Sản phẩm ${getProductTitle(selectedProduct, catalogProductTypes)}`}>
-          <div className="product-detail-actions">
-            <button className="back-button" type="button" onClick={closeProduct}>
-              <ChevronLeft size={18} aria-hidden="true" />
-              Sản phẩm
-            </button>
-            <ShopeeProductLink url={selectedProduct.shopeeUrl} />
-          </div>
-          <header className="product-type-screen-header">
-            <h2>{getProductTitle(selectedProduct, catalogProductTypes)}</h2>
-            <strong>{formatPrice(getProductPrice(selectedProduct, catalogProductTypes))}</strong>
-          </header>
-          <div className="catalog-layout">
-            <section className="catalog-list" aria-label="Danh sách sản phẩm">
-              {visibleProduct ? (
-                <ProductCard
-                  key={visibleProduct.id}
-                  onImageOpen={setActiveImage}
-                  onAddToCart={addToCart}
-                  getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
-                  onOpenPolicy={() => setIsPolicyModalOpen(true)}
-                  product={visibleProduct}
-                  productTypes={catalogProductTypes}
-                  selectedSize={selectedSize}
-                  onSizeChange={setSelectedSize}
-                  sizeChartCaption={`${selectedProductType.name || "Loại sản phẩm"} - bảng size`}
-                  sizeChartImage={getProductTypeSizeChartImage(selectedProductType, catalogProducts)}
-                  compact
-                />
-              ) : (
-                <section className="empty-state">
-                  <h3>Size này tạm hết hàng</h3>
-                  <p>Bạn có thể chọn size khác hoặc nhắn Instagram/Messenger để shop kiểm tra mẫu mới nhất.</p>
-                </section>
-              )}
-              <CartCheckoutCta
-                availableQuantity={checkoutCartQuantity}
-                cartQuantity={cartQuantity}
-                onClick={openCart}
-                compact
-              />
-              <OtherProductsCarousel
-                allProducts={catalogProducts}
-                currentProductId={selectedProduct.id}
-                onProductOpen={openProduct}
-                products={storefrontProducts}
-                productTypes={catalogProductTypes}
-              />
-            </section>
-          </div>
-        </section>
+          <>
+            <ProductDetail
+              key={selectedProduct.id}
+              product={selectedProduct}
+              productTypes={catalogProductTypes}
+              selectedSize={selectedSize}
+              sizeChartImage={getProductTypeSizeChartImage(selectedProductType, catalogProducts)}
+              sizeChartCaption={`${selectedProductType.name || "Loại sản phẩm"} - bảng size`}
+              onBack={closeProduct}
+              onSizeChange={setSelectedSize}
+              onImageOpen={setActiveImage}
+              onAddToCart={addToCart}
+              onQuantityChange={updateCartQuantity}
+              getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
+            />
+            <OtherProductsCarousel
+              allProducts={catalogProducts}
+              currentProductId={selectedProduct.id}
+              onProductOpen={openProduct}
+              products={storefrontProducts}
+              productTypes={catalogProductTypes}
+            />
+          </>
         ) : null}
       </main>
 
@@ -877,7 +817,14 @@ function App() {
         />
       ) : null}
 
-      <ContactButtons />
+      <CartStickyBar
+        availableQuantity={checkoutCartQuantity}
+        cartQuantity={cartQuantity}
+        orderTotal={orderTotal}
+        onOpen={openCart}
+      />
+
+      <ContactButtons raised={cartQuantity > 0} />
 
       {activeImage ? (
         <div

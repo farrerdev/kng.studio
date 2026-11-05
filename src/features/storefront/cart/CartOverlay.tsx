@@ -366,7 +366,7 @@ export function CartOverlay({
           <section className="cart-empty">
             <ShoppingBag size={34} aria-hidden="true" />
             <h3>Chưa có mẫu nào trong giỏ</h3>
-            <p>Chọn hoạ tiết đang còn size rồi bấm dấu cộng để thêm vào giỏ.</p>
+            <p>Chọn size, rồi bấm “Thêm vào giỏ” ở họa tiết bạn thích.</p>
           </section>
         )}
       </aside>

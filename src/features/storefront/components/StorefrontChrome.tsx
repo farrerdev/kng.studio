@@ -2,9 +2,9 @@ import { Instagram, MapPin } from "lucide-react";
 import { shopConfig } from "../../../config/shop";
 import { FacebookIcon, InstagramBrandIcon, MessengerIcon, ThreadsIcon, ZaloIcon } from "../../../shared/icons/SocialIcons";
 
-export function ContactButtons() {
+export function ContactButtons({ raised = false }: { raised?: boolean }) {
   return (
-    <div className="contact-buttons" aria-label="Nhắn tin đặt hàng">
+    <div className={raised ? "contact-buttons raised" : "contact-buttons"} aria-label="Nhắn tin đặt hàng">
       <a
         className="contact-button instagram"
         href={shopConfig.contacts.instagramMessage}
