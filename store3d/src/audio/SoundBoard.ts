@@ -42,11 +42,33 @@ export class SoundBoard implements CatSounds {
     // needs touchend/click, not pointerdown), so try on all of them until the context runs.
     const events = ["pointerdown", "pointerup", "touchend", "click", "keydown"] as const;
     const unlock = () => {
+      if (document.visibilityState === "hidden") return;
       this.ensureContext();
       if (this.context && this.enabledFlag && this.context.state !== "running") void this.context.resume();
       if (this.context?.state === "running") for (const name of events) window.removeEventListener(name, unlock, true);
     };
-    for (const name of events) window.addEventListener(name, unlock, true);
+    const armUnlock = () => {
+      for (const name of events) window.addEventListener(name, unlock, true);
+    };
+    armUnlock();
+
+    // Music belongs to this page only: leaving it (another app, another tab, locking the phone)
+    // pauses everything and hands the phone's audio back, so other apps' music isn't cut off.
+    const pause = () => {
+      if (session) session.type = "ambient";
+      if (this.context && this.context.state === "running") void this.context.suspend();
+    };
+    const comeBack = () => {
+      if (document.visibilityState === "hidden") return;
+      if (session) session.type = "playback";
+      if (!this.context || !this.enabledFlag) return;
+      // Some phones only resume after a fresh tap: try now, and again on the next touch.
+      void this.context.resume().catch(() => undefined);
+      armUnlock();
+    };
+    document.addEventListener("visibilitychange", () => (document.visibilityState === "hidden" ? pause() : comeBack()));
+    window.addEventListener("pagehide", pause);
+    window.addEventListener("pageshow", comeBack);
   }
 
   get enabled(): boolean {
