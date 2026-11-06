@@ -9,7 +9,7 @@
   --hud-olive: #7f8c72;
   --hud-radius: 14px;
   --hud-shadow: 0 10px 30px rgba(94, 82, 70, 0.14);
-  --hud-serif: Georgia, "Times New Roman", serif;
+  --hud-serif: "Lora", Georgia, "Times New Roman", serif;
   --hud-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -859,10 +859,17 @@ html body,
   }
 }
 
-/* Desktop: the spot panel sits bottom-centre; keep the menu clear of it. */
+/* Desktop: a wide, tall card so content shows without an inner scrollbar; the quick menu
+   keeps its corner. */
 @media (min-width: 768px) {
   .hud-panel {
-    width: min(760px, calc(100% - 300px));
+    width: min(920px, calc(100% - 320px));
+    max-height: calc(100vh - 150px);
+    padding: 20px 24px 22px;
+  }
+
+  .owner-chat__log {
+    max-height: min(42vh, 380px);
   }
 }
 

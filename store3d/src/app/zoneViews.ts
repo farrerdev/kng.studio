@@ -11,6 +11,9 @@ export type ZoneActions = {
   openStore: (target: StoreTarget) => void;
   takePhoto: () => void;
   petCat: () => void;
+  /** Walk out to the pavement / back into the shop. */
+  goOutside: () => void;
+  goInside: () => void;
   /** Sit on the nearest lounge chair. */
   sitDown: () => void;
   greetOwner: () => void;
@@ -96,6 +99,19 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
         title: "Phân vân size?",
         text: "Gửi shop chiều cao, cân nặng và dáng người, shop chọn size giúp nhé.",
         actions: contactActions,
+      };
+    case "door-out":
+      return {
+        eyebrow: "Cửa ra vào",
+        title: "Ra phố một chút?",
+        text: "Bên kia đường là sông Hàn và cầu Rồng.",
+        actions: [{ label: "Ra ngoài", primary: true, run: actions.goOutside }],
+      };
+    case "door-in":
+      return {
+        eyebrow: "KNG.studio",
+        title: "Mời bạn vào tiệm",
+        actions: [{ label: "Vào tiệm", primary: true, run: actions.goInside }],
       };
     case "policy":
       return {

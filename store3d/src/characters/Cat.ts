@@ -10,6 +10,7 @@ import {
   SpriteMaterial,
   TorusGeometry,
 } from "three";
+import { SERIF } from "../config/fonts";
 import { CAT_ROUTE, CAT_SEAT } from "../config/layout";
 import { palette } from "../config/palette";
 import { mesh } from "../scene/build";
@@ -78,7 +79,7 @@ export class Cat {
     this.root.position.set(start.x, 0, start.z);
     this.heart = new Sprite(
       new SpriteMaterial({
-        map: labelTexture("♥", { width: 128, height: 128, color: "#D98C8C", font: "96px Georgia, serif" }),
+        map: labelTexture("♥", { width: 128, height: 128, color: "#D98C8C", font: `96px ${SERIF}` }),
         transparent: true,
         opacity: 0,
         depthWrite: false,

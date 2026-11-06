@@ -198,6 +198,7 @@ function buildPendants(materials: MaterialLibrary): Group {
     roughness: 0.9,
     emissive: "#FFDFAE",
     emissiveIntensity: 0.55,
+    userData: { glow: { day: 0.55, night: 1.6 } },
   });
   for (const pendant of PENDANTS) {
     const cordLength = ROOM.height - PENDANT_Y - 0.12;

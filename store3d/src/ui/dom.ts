@@ -41,6 +41,8 @@ export function lazyImage(src: string, alt: string, eager = false): HTMLImageEle
 const ICON_PATHS = {
   x: "M18 6 6 18M6 6l12 12",
   menu: "M4 7h16M4 12h16M4 17h16",
+  moon: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z",
+  sun: "M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.41 1.41M7.05 16.95l-1.41 1.41m0-12.72 1.41 1.41m9.9 9.9 1.41 1.41M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
   pin: "M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Zm0-8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
   sound: "M4 9v6h4l5 4V5L8 9H4Zm12.5 0a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11",
   mute: "M4 9v6h4l5 4V5L8 9H4Zm12 1 5 5m0-5-5 5",

@@ -59,6 +59,6 @@
   --kng-danger: #a4473f;
   --kng-danger-soft: #fbf1ee;
   --kng-overlay: rgba(94, 82, 70, 0.42);
-  --kng-font-display: Georgia, "Times New Roman", serif;
+  --kng-font-display: "Lora", Georgia, "Times New Roman", serif; /* Lora is loaded by the 3D shop */
   --kng-shadow: 0 10px 30px rgba(94, 82, 70, 0.12);
 }

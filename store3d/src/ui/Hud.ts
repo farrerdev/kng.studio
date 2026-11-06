@@ -46,6 +46,9 @@ type HudHandlers = {
   soundEnabled: boolean;
   /** Flips shop sounds on/off; returns the new state. */
   toggleSound: () => boolean;
+  evening: boolean;
+  /** Flips between day and evening; returns true when it is now evening. */
+  toggleEvening: () => boolean;
   openMenu: () => void;
   openCart: () => void;
   /** Renders a product rail into `host`; returns the cleanup. */
@@ -236,7 +239,8 @@ export class Hud {
   private syncFullScreen(): void {
     const body = this.panel.firstElementChild as HTMLElement | null;
     const phone = window.matchMedia("(max-width: 767px)").matches;
-    const limit = window.innerHeight * (phone ? 0.46 : 0.58);
+    // Desktop: the card may grow nearly to the top bar before it switches to full screen.
+    const limit = phone ? window.innerHeight * 0.46 : window.innerHeight - 190;
     const full = !this.panel.hidden && !!body && body.scrollHeight > limit;
     this.panel.classList.toggle("is-full", full);
     this.root.classList.toggle("has-full-panel", full);
@@ -296,7 +300,17 @@ export class Hud {
     };
     renderSound(this.handlers.soundEnabled);
     soundButton.addEventListener("click", () => renderSound(this.handlers.toggleSound()));
-    right.append(this.cartButton, soundButton, helpButton);
+    const eveningButton = el("button", "hud-icon-btn hud-icon-btn--svg");
+    eveningButton.type = "button";
+    const renderEvening = (evening: boolean) => {
+      // Shows what a tap switches to.
+      eveningButton.replaceChildren(icon(evening ? "sun" : "moon", 18));
+      eveningButton.setAttribute("aria-label", evening ? "Chuyển sang ban ngày" : "Chuyển sang buổi tối");
+      eveningButton.title = evening ? "Ban ngày" : "Buổi tối";
+    };
+    renderEvening(this.handlers.evening);
+    eveningButton.addEventListener("click", () => renderEvening(this.handlers.toggleEvening()));
+    right.append(this.cartButton, eveningButton, soundButton, helpButton);
     bar.append(right);
     this.setCartCount(0);
     return bar;

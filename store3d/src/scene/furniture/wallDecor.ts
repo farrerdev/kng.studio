@@ -11,6 +11,7 @@ import {
 } from "three";
 import { shopConfig } from "../../../../src/config/shop";
 import { POLICY_SECTIONS } from "../../../../src/features/storefront/policies";
+import { SERIF } from "../../config/fonts";
 import { CONSOLE, COUNTER, LOUNGE, POLICY_BOARD, ROOM, WALL_FRAMES } from "../../config/layout";
 import { palette } from "../../config/palette";
 import { mesh, slab, softBox, tagZone } from "../build";
@@ -45,7 +46,7 @@ function policyTexture(): CanvasTexture {
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
-  const serif = 'Georgia, "Times New Roman", serif';
+  const serif = SERIF;
   const sans = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   const left = POLICY_SECTIONS.filter((section) => section.body);
   const right = POLICY_SECTIONS.filter((section) => section.items);
@@ -169,7 +170,7 @@ function buildFrames(materials: MaterialLibrary): Group {
     softBox(frameMaterial, [width + 0.06, height + 0.06, 0.03], [0, 0, 0], frame, 0.01);
     mesh(new PlaneGeometry(width, height), new MeshBasicMaterial({ map: art }), [0, 0, 0.02], frame, { castShadow: false });
   };
-  hang(WALL_FRAMES.art.z, WALL_FRAMES.y, 0.6, 0.44, labelTexture("sleep well", { width: 512, height: 368, background: palette.linen, radius: 4, font: "italic 72px Georgia, serif" }));
+  hang(WALL_FRAMES.art.z, WALL_FRAMES.y, 0.6, 0.44, labelTexture("sleep well", { width: 512, height: 368, background: palette.linen, radius: 4, font: `italic 72px ${SERIF}` }));
   const prints = [drawBouquet, drawMoon, drawArches];
   WALL_FRAMES.prints.forEach((spot, index) => hang(spot.z, WALL_FRAMES.y + (index % 2 ? 0.08 : -0.04), 0.4, 0.54, artTexture(prints[index % prints.length]!)));
   return group;
@@ -247,7 +248,7 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   ctx.lineTo(0, h);
   ctx.fill();
   ctx.fillStyle = "#6B5E52";
-  ctx.font = "italic 34px Georgia, serif";
+  ctx.font = `italic 34px ${SERIF}`;
   ctx.textAlign = "center";
   ctx.fillText("sweet dreams", w / 2, h * 0.93);
 }

@@ -16,6 +16,8 @@ const ANCHOR_HEIGHT: Record<ZoneKind, number> = {
   mannequins: 2.05,
   "cat-seat": 1.05,
   policy: 2.5,
+  "door-out": 2.75,
+  "door-in": 2.75,
 };
 const SIZE = 0.3;
 

@@ -1,3 +1,4 @@
+import { SERIF } from "../../config/fonts";
 import { CylinderGeometry, Group, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
 import { COUNTER, ROOM } from "../../config/layout";
 import { palette } from "../../config/palette";
@@ -30,7 +31,7 @@ export function buildCounter(materials: MaterialLibrary): Group {
   const brandPlate = mesh(
     new PlaneGeometry(1.3, 0.3),
     new MeshBasicMaterial({
-      map: labelTexture("KNG.studio", { width: 640, height: 148, color: palette.linen, subtitle: TAGLINE, subtitleFont: "italic 30px Georgia, serif" }),
+      map: labelTexture("KNG.studio", { width: 640, height: 148, color: palette.linen, subtitle: TAGLINE, subtitleFont: `italic 30px ${SERIF}` }),
       transparent: true,
     }),
     [(main.x0 + main.x1) / 2 - 0.25, height * 0.55, main.z1 + 0.005],
@@ -70,7 +71,7 @@ export function buildCounter(materials: MaterialLibrary): Group {
   mesh(
     new PlaneGeometry(1.9, 0.56),
     new MeshBasicMaterial({
-      map: labelTexture("KNG.studio", { width: 1024, height: 302, subtitle: TAGLINE, subtitleFont: "italic 54px Georgia, serif" }),
+      map: labelTexture("KNG.studio", { width: 1024, height: 302, subtitle: TAGLINE, subtitleFont: `italic 54px ${SERIF}` }),
       transparent: true,
     }),
     [(back.x0 + back.x1) / 2, 2.45, -ROOM.halfDepth + 0.02],

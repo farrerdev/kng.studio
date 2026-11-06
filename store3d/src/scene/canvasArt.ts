@@ -1,3 +1,4 @@
+import { SERIF } from "../config/fonts";
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
 import { palette } from "../config/palette";
 
@@ -15,7 +16,6 @@ type LabelOptions = {
   subtitleFont?: string;
 };
 
-const SERIF = 'Georgia, "Times New Roman", serif';
 const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 function texture(canvas: HTMLCanvasElement): CanvasTexture {

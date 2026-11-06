@@ -15,6 +15,7 @@ import {
   Vector3,
 } from "three";
 import { shopConfig } from "../../../src/config/shop";
+import { SERIF } from "../config/fonts";
 import { FRONT_WINDOWS, ROOM, STREET } from "../config/layout";
 import { palette } from "../config/palette";
 import { mesh, slab, softBox } from "./build";
@@ -60,7 +61,7 @@ function buildStreet(materials: MaterialLibrary): Group {
   paving.userData.floor = true;
   // Street lamps.
   const iron = materials.surface("#6E7A66", { roughness: 0.6 });
-  const glow = materials.surface("#FFF3D6", { emissive: "#FFE9B8", emissiveIntensity: 0.6 });
+  const glow = new MeshStandardMaterial({ color: "#FFF3D6", emissive: "#FFE9B8", emissiveIntensity: 0.6, userData: { glow: { day: 0.6, night: 2.4 } } });
   for (const x of [-8.5, 0.0, 8.5]) {
     const z = STREET.kerb - 0.45;
     mesh(new CylinderGeometry(0.05, 0.07, 3.4, 10), iron, [x + 3.2, 1.7, z], group, quiet);
@@ -278,10 +279,10 @@ function signTexture(): CanvasTexture {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.textAlign = "center";
   ctx.fillStyle = palette.ink;
-  ctx.font = `${Math.round(canvas.height * 0.5)}px Georgia, "Times New Roman", serif`;
+  ctx.font = `${Math.round(canvas.height * 0.5)}px ${SERIF}`;
   ctx.fillText(shopConfig.brand, canvas.width / 2, canvas.height * 0.58);
   ctx.fillStyle = palette.brass;
-  ctx.font = `italic ${Math.round(canvas.height * 0.2)}px Georgia, "Times New Roman", serif`;
+  ctx.font = `italic ${Math.round(canvas.height * 0.2)}px ${SERIF}`;
   ctx.fillText(shopConfig.subtitle.toLowerCase(), canvas.width / 2, canvas.height * 0.85);
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
@@ -360,7 +361,16 @@ function buildDragonBridge(): Group {
   group.name = "dragon-bridge";
   const concrete = new MeshStandardMaterial({ color: "#D8D3CA", roughness: 0.9 });
   const underside = new MeshStandardMaterial({ color: "#5D6062", roughness: 0.9 });
-  const gold = new MeshStandardMaterial({ color: DRAGON_GOLD, roughness: 0.4, metalness: 0.35, emissive: "#5A3C00", emissiveIntensity: 0.15 });
+  // At night the dragon is lit up gold, as on the real bridge.
+  const gold = new MeshStandardMaterial({
+    color: DRAGON_GOLD,
+    roughness: 0.4,
+    metalness: 0.35,
+    emissive: "#8A5A00",
+    emissiveIntensity: 0.1,
+    userData: { glow: { day: 0.1, night: 1.1 } },
+  });
+  const lampHead = new MeshStandardMaterial({ color: "#FFF6E0", emissive: "#FFE2A0", emissiveIntensity: 0.2, userData: { glow: { day: 0.2, night: 2.2 } } });
   const hanger = new MeshStandardMaterial({ color: "#F4F2EE", roughness: 0.6 });
   const start = STREET.far + 1.5;
   const end = RIVER.far - 1;
@@ -391,7 +401,7 @@ function buildDragonBridge(): Group {
     for (const side of [-1, 1]) {
       const x = BRIDGE.x + side * (half - 0.15);
       mesh(new CylinderGeometry(0.04, 0.05, 2.6, 6), pole, [x, deckTop + 1.3, z], group, quiet);
-      mesh(new SphereGeometry(0.1, 8, 6), hanger, [x - side * 0.25, deckTop + 2.55, z], group, quiet);
+      mesh(new SphereGeometry(0.1, 8, 6), lampHead, [x - side * 0.25, deckTop + 2.55, z], group, quiet);
       const flag = mesh(new PlaneGeometry(0.4, 0.28), flags[flagIndex++ % flags.length]!, [x + side * 0.2, deckTop + 2.05, z], group, quiet);
       flag.rotation.y = Math.PI / 2;
     }

@@ -7,6 +7,7 @@ import {
   HemisphereLight,
   type Material,
   MathUtils,
+  type MeshStandardMaterial,
   type Mesh,
   NeutralToneMapping,
   type Object3D,
@@ -23,7 +24,7 @@ import { Cat } from "../characters/Cat";
 import { YarnBall } from "../characters/YarnBall";
 import { Player } from "../characters/Player";
 import { ShopOwner } from "../characters/ShopOwner";
-import { LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM } from "../config/layout";
+import { LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM, STREET } from "../config/layout";
 import type { StoreCatalog, StoreProduct } from "../data/types";
 import { InputController } from "../input/InputController";
 import { Joystick } from "../input/Joystick";
@@ -47,6 +48,14 @@ import { describeOwnerChat, describeZone, type ZoneActions } from "./zoneViews";
 
 const MAX_PIXEL_RATIO = 2;
 const SKY = "#E9EDEA";
+const DAY_SKY = new Color(SKY);
+/** Dusk blue over the river, as in the evening photos of the Dragon Bridge. */
+const EVENING_SKY = new Color("#3A4566");
+const DAY_HEMI = new Color("#FFFFFF");
+/** Indoors stays warm in the evening: the pendants carry the room, the fill only tints it. */
+const EVENING_HEMI = new Color("#C8B4A8");
+const DAY_SUN = new Color("#FFF6EA");
+const MOON = new Color("#A9B6E0");
 
 /**
  * Opening scene (seconds): the guest stands on the pavement outside, the glass doors open and she
@@ -278,6 +287,8 @@ export class StoreApp {
       if (object.userData.billboard) this.billboards.push(object);
       if (object.userData.spin) this.spinners.push(object);
       if (object.userData.occluder) this.registerOccluder(object);
+      const material = (object as Mesh).material as MeshStandardMaterial | undefined;
+      if (material?.userData?.glow && !this.glowMaterials.includes(material as never)) this.glowMaterials.push(material as never);
     });
 
     this.addLights();
@@ -297,9 +308,11 @@ export class StoreApp {
   }
 
   private addLights(): void {
-    this.scene.add(new HemisphereLight("#FFFFFF", "#EDE3D6", 1.5));
-    this.scene.add(new AmbientLight("#FFFFFF", 0.3));
+    this.hemisphere = new HemisphereLight("#FFFFFF", "#EDE3D6", 1.5);
+    this.ambient = new AmbientLight("#FFFFFF", 0.3);
+    this.scene.add(this.hemisphere, this.ambient);
     const sun = new DirectionalLight("#FFF6EA", 1.5);
+    this.sun = sun;
     sun.position.set(3, 8, 10);
     sun.target.position.set(-0.5, 0, -1);
     sun.castShadow = true;
@@ -313,8 +326,63 @@ export class StoreApp {
       const light = new PointLight("#FFE2BC", 2.4, 6.5, 2);
       light.position.set(pendant.x, PENDANT_Y - 0.12, pendant.z);
       this.scene.add(light);
+      this.pendantLights.push(light);
+    }
+    // Street lamps light the pavement in the evening only.
+    for (const x of [-5.3, 3.2, 11.7]) {
+      const light = new PointLight("#FFD9A0", 0, 9, 1.6);
+      light.position.set(x, 3.3, STREET.kerb - 0.45);
+      this.scene.add(light);
+      this.streetLights.push(light);
     }
   }
+
+  // ---------- Evening ----------
+
+  private hemisphere!: HemisphereLight;
+  private ambient!: AmbientLight;
+  private sun!: DirectionalLight;
+  private readonly pendantLights: PointLight[] = [];
+  private readonly streetLights: PointLight[] = [];
+  private readonly glowMaterials: Array<MeshStandardMaterial & { userData: { glow: { day: number; night: number } } }> = [];
+  /** 0 = day, 1 = evening; eased towards `eveningTarget`. */
+  private evening = 0;
+  private eveningTarget = 0;
+
+  /** Switches between daylight and the evening look (lights on, dusk sky). */
+  setEvening(on: boolean, instant = false): void {
+    this.eveningTarget = on ? 1 : 0;
+    if (instant) this.evening = this.eveningTarget;
+    this.applyEvening();
+  }
+
+  private updateEvening(dt: number): void {
+    if (this.evening === this.eveningTarget) return;
+    this.evening = MathUtils.damp(this.evening, this.eveningTarget, 3, dt);
+    if (Math.abs(this.evening - this.eveningTarget) < 0.002) this.evening = this.eveningTarget;
+    this.applyEvening();
+  }
+
+  private applyEvening(): void {
+    const k = this.evening;
+    const lerp = MathUtils.lerp;
+    const sky = this.scene.background as Color;
+    sky.copy(DAY_SKY).lerp(EVENING_SKY, k);
+    this.scene.fog?.color.copy(sky);
+    this.hemisphere.intensity = lerp(1.5, 0.62, k);
+    this.hemisphere.color.copy(DAY_HEMI).lerp(EVENING_HEMI, k);
+    this.ambient.intensity = lerp(0.3, 0.18, k);
+    this.sun.intensity = lerp(1.5, 0.22, k);
+    this.sun.color.copy(DAY_SUN).lerp(MOON, k);
+    for (const light of this.pendantLights) {
+      light.intensity = lerp(2.4, 7.5, k);
+      light.distance = lerp(6.5, 9.5, k);
+    }
+    for (const light of this.streetLights) light.intensity = lerp(0, 7, k);
+    for (const material of this.glowMaterials) material.emissiveIntensity = lerp(material.userData.glow.day, material.userData.glow.night, k);
+  }
+
+
 
   private resize(): void {
     const width = this.host.clientWidth || window.innerWidth;
@@ -358,6 +426,7 @@ export class StoreApp {
 
     this.updateWalls(dt);
     this.updateDoor(dt);
+    this.updateEvening(dt);
     this.updateOccluders(dt);
     this.updateBillboards(dt);
     this.updateZone();
@@ -530,6 +599,14 @@ export class StoreApp {
         const spot = { x: this.cat.x + 0.55, z: this.cat.z + 0.55, faceX: this.cat.x, faceZ: this.cat.z };
         this.player.walkTo({ ...spot, onArrive: pet, onBlocked: () => (this.hopTo(spot), pet()) });
       }
+    },
+    goOutside: () => {
+      this.hud.closePanel();
+      this.walkRoute({ x: 0.4, z: ROOM.halfDepth + 2.4, faceX: 0.4, faceZ: ROOM.halfDepth + 10 });
+    },
+    goInside: () => {
+      this.hud.closePanel();
+      this.walkRoute({ x: PLAYER_START.x, z: PLAYER_START.z - 0.4, faceX: 0, faceZ: 0 });
     },
     sitDown: () => {
       // The free chair closest to the guest; she walks to its front and sits facing the room.

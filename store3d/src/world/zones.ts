@@ -7,7 +7,7 @@ import { FITTING_ZONE } from "../scene/furniture/fittingRooms";
 import { POLICY_ZONE } from "../scene/furniture/wallDecor";
 import type { ShelfSection } from "../scene/furniture/shelving";
 
-export type ZoneKind = "shelf" | "popular" | "counter" | "fitting" | "mirror" | "scrunchies" | "lounge" | "mannequins" | "cat-seat" | "policy";
+export type ZoneKind = "shelf" | "popular" | "counter" | "fitting" | "mirror" | "scrunchies" | "lounge" | "mannequins" | "cat-seat" | "policy" | "door-out" | "door-in";
 
 export type Zone = {
   id: string;
@@ -89,6 +89,19 @@ export function buildZones(sections: ShelfSection[]): Zone[] {
         faceZ: MANNEQUINS[0].z,
       },
       radius: 0.9,
+    },
+    // The front door, from inside (go out to the street) and from the pavement (come back in).
+    {
+      id: "door-out",
+      kind: "door-out",
+      approach: { x: 0, z: ROOM.halfDepth - 0.7, faceX: 0, faceZ: ROOM.halfDepth + 2 },
+      radius: 0.45,
+    },
+    {
+      id: "door-in",
+      kind: "door-in",
+      approach: { x: 0, z: ROOM.halfDepth + ROOM.wall + 1.0, faceX: 0, faceZ: ROOM.halfDepth - 2 },
+      radius: 0.7,
     },
     {
       id: POLICY_ZONE,
