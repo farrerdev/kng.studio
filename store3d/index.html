@@ -25,15 +25,6 @@
       .boot-sub { margin: 0 0 18px; text-align: center; opacity: 0.8; }
       .boot-bar { width: 200px; height: 3px; background: #ddd2c3; border-radius: 3px; overflow: hidden; margin: 0 auto; }
       .boot-bar > span { display: block; height: 100%; width: 0; background: #a88b6a; transition: width 0.3s ease; }
-      .boot-bar[hidden], #boot-enter[hidden] { display: none; }
-      #boot-enter {
-        display: block; margin: 0 auto; padding: 12px 34px; border: 0; border-radius: 999px;
-        background: #5e5246; color: #f8f4ee; font: 16px system-ui, -apple-system, "Segoe UI", sans-serif;
-        cursor: pointer; box-shadow: 0 8px 20px rgba(94, 82, 70, 0.22); animation: enter-in 0.4s ease both;
-      }
-      #boot-enter:hover { background: #4b4137; }
-      .boot-note { margin: 12px 0 0; text-align: center; font-size: 12px; opacity: 0.6; }
-      @keyframes enter-in { from { opacity: 0; transform: translateY(6px); } }
     </style>
   </head>
   <body>
@@ -42,8 +33,6 @@
         <p class="boot-brand">KNG.studio</p>
         <p class="boot-sub" id="boot-text">Đang mở cửa tiệm…</p>
         <div class="boot-bar"><span id="boot-progress"></span></div>
-        <button id="boot-enter" type="button" hidden>Vào tiệm</button>
-        <p class="boot-note">Có nhạc nhẹ, tắt được bằng nút loa</p>
       </div>
     </div>
     <main id="app">

@@ -35,18 +35,6 @@ async function loadCatalog(): Promise<CatalogData | null> {
   }
 }
 
-/** Shows the "Vào tiệm" button on the loading screen and resolves when it is pressed. */
-function waitForEnter(): Promise<void> {
-  const enter = document.getElementById("boot-enter") as HTMLButtonElement | null;
-  const bar = document.querySelector<HTMLElement>(".boot-bar");
-  if (!enter) return Promise.resolve();
-  if (bar) bar.hidden = true;
-  if (statusText) statusText.textContent = "Tiệm đã mở cửa";
-  enter.hidden = false;
-  enter.focus();
-  return new Promise((resolve) => enter.addEventListener("click", () => resolve(), { once: true }));
-}
-
 async function boot(): Promise<void> {
   const stage = document.getElementById("stage");
   const hudRoot = document.getElementById("hud");
@@ -103,10 +91,9 @@ async function boot(): Promise<void> {
   progress(1);
   app.start();
   if (import.meta.env.DEV) Object.assign(window, { __store3d: app });
-  // Browsers only allow sound after a tap, so the shop opens on one: the tap starts the music and
-  // the walk-in together.
-  await waitForEnter();
-  app.playIntro(() => hud.showHelpIfNew());
+  // The welcome card's "Bắt đầu mua sắm" is the guest's first tap, which is what lets the music
+  // start (browsers block sound until then).
+  app.playIntro(() => hud.showWelcome());
   loader?.classList.add("is-done");
   window.setTimeout(() => loader?.remove(), 600);
   if (catalog.status === "unavailable") hud.toast("Chưa tải được sản phẩm, đang hiển thị kệ trống");

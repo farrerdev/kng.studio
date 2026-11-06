@@ -53,7 +53,6 @@ type HudHandlers = {
 };
 
 const CHIP_TITLE_MAX = 24;
-const HELP_KEY = "kng3d.help.dismissed";
 
 /** DOM overlay: top bar (menu, brand, cart, help), the spot panel, toasts and the first-visit help card. */
 export class Hud {
@@ -108,9 +107,9 @@ export class Hud {
     this.skipHint.hidden = !on;
   }
 
-  /** First visit: how to move and shop. */
-  showHelpIfNew(): void {
-    if (!readFlag(HELP_KEY)) this.toggleHelp(true);
+  /** After the walk-in: the welcome card; its "Bắt đầu mua sắm" tap also starts the music. */
+  showWelcome(): void {
+    this.toggleHelp(true);
   }
 
   get isHelpOpen(): boolean {
@@ -359,23 +358,5 @@ export class Hud {
   private toggleHelp(open: boolean): void {
     this.help.hidden = !open;
     if (open) this.help.querySelector("button")?.focus();
-    else writeFlag(HELP_KEY);
-  }
-}
-
-// localStorage can throw (private mode, blocked storage); the help card must still work.
-function readFlag(key: string): boolean {
-  try {
-    return window.localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeFlag(key: string): void {
-  try {
-    window.localStorage.setItem(key, "1");
-  } catch {
-    /* ignore */
   }
 }
