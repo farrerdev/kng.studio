@@ -90,7 +90,7 @@ async function boot(): Promise<void> {
   await app.warmUp();
   progress(1);
   app.start();
-  if (import.meta.env.DEV) Object.assign(window, { __store3d: app });
+  if (import.meta.env.DEV) Object.assign(window, { __store3d: app, __sounds: sounds });
   // The welcome card's "Bắt đầu mua sắm" is the guest's first tap, which is what lets the music
   // start (browsers block sound until then).
   app.playIntro(() => hud.showWelcome());

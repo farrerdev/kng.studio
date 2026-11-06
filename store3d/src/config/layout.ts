@@ -140,7 +140,7 @@ export const OUTDOOR_RECTS: readonly Rect[] = [
 export const OUTDOOR_CIRCLES: readonly Circle[] = [
   ...[-5.3, 3.2, 11.7].map((x) => ({ x, z: STREET.kerb - 0.45, r: 0.12 })),
   ...[-13, -9.5, 8.5, 12.5].map((x) => ({ x, z: STREET.kerb - 0.6, r: 0.2 })),
-  ...[-22, -12, -2, 8, 17, 36].map((x) => ({ x, z: STREET.far + 2.7, r: 0.2 })),
+  ...[-22, -12, -2, 8, 13, 36].map((x) => ({ x, z: STREET.far + 2.7, r: 0.2 })),
 ];
 
 export const OBSTACLE_CIRCLES: readonly Circle[] = [

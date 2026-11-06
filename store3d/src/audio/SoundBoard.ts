@@ -4,9 +4,9 @@
 
 const STORAGE_KEY = "kng3d.sound";
 /** Everything stays quiet: background ambience, not alerts. */
-const MASTER_VOLUME = 0.35;
+const MASTER_VOLUME = 0.6;
 /** Music sits under everything else. */
-const MUSIC_VOLUME = 0.32;
+const MUSIC_VOLUME = 0.7;
 const BAR_SECONDS = 4.4;
 /** Slow, warm progression (Fmaj7 – Em7 – Dm7 – Cmaj7), as MIDI notes. */
 const CHORDS = [
@@ -35,13 +35,18 @@ export class SoundBoard implements CatSounds {
 
   constructor() {
     this.enabledFlag = readSetting() !== "off";
+    // iOS mutes Web Audio with the ring/silent switch unless the page says it is "playback" audio.
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = "playback";
+    // Different browsers count different events as the gesture that allows sound (iOS Safari
+    // needs touchend/click, not pointerdown), so try on all of them until the context runs.
+    const events = ["pointerdown", "pointerup", "touchend", "click", "keydown"] as const;
     const unlock = () => {
       this.ensureContext();
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
+      if (this.context && this.enabledFlag && this.context.state !== "running") void this.context.resume();
+      if (this.context?.state === "running") for (const name of events) window.removeEventListener(name, unlock, true);
     };
-    window.addEventListener("pointerdown", unlock);
-    window.addEventListener("keydown", unlock);
+    for (const name of events) window.addEventListener(name, unlock, true);
   }
 
   get enabled(): boolean {
@@ -51,7 +56,10 @@ export class SoundBoard implements CatSounds {
   setEnabled(enabled: boolean): void {
     this.enabledFlag = enabled;
     writeSetting(enabled ? "on" : "off");
-    if (!this.context) return;
+    if (!this.context) {
+      if (enabled) this.ensureContext(); // the toggle tap itself is a valid gesture
+      return;
+    }
     void (enabled ? this.context.resume() : this.context.suspend());
   }
 
@@ -211,8 +219,8 @@ export class SoundBoard implements CatSounds {
       tone.detune.value = (Math.random() - 0.5) * 8;
       const gain = context.createGain();
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.06, start + 1.2);
-      gain.gain.setValueAtTime(0.06, start + BAR_SECONDS - 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.1, start + 1.2);
+      gain.gain.setValueAtTime(0.1, start + BAR_SECONDS - 0.6);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + BAR_SECONDS + 1.2);
       tone.connect(gain).connect(pad);
       tone.start(start);
@@ -229,7 +237,7 @@ export class SoundBoard implements CatSounds {
       tone.frequency.value = midiToHz(note);
       const gain = context.createGain();
       gain.gain.setValueAtTime(0.0001, time);
-      gain.gain.exponentialRampToValueAtTime(0.05, time + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.12, time + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.6);
       tone.connect(gain);
       gain.connect(this.music!);

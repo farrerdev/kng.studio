@@ -5,6 +5,7 @@ import {
   CylinderGeometry,
   Group,
   type Material,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
   RepeatWrapping,
@@ -13,6 +14,7 @@ import {
   TubeGeometry,
   Vector3,
 } from "three";
+import { shopConfig } from "../../../src/config/shop";
 import { FRONT_WINDOWS, ROOM, STREET } from "../config/layout";
 import { palette } from "../config/palette";
 import { mesh, slab, softBox } from "./build";
@@ -251,15 +253,50 @@ function buildShopFront(): Group {
   awning.rotation.x = -Math.PI / 2 + 0.55;
   // Scalloped valance hint: a slim oak bar at the lower edge.
   slab(new MeshStandardMaterial({ color: palette.oakDeep, roughness: 0.7, transparent: true }), -W - 0.1, W + 0.1, 2.62, 2.66, D + ROOM.wall + 0.92, D + ROOM.wall + 0.98, group, quiet);
+
+  // Shop sign above the awning: oak board, "KNG.studio" with "muslin homewear" under it.
+  const signZ = D + ROOM.wall + 0.03;
+  const board = { width: 4.6, height: 1.05, y: 3.85 };
+  slab(new MeshStandardMaterial({ color: palette.oakDeep, roughness: 0.6, transparent: true }), -board.width / 2 - 0.08, board.width / 2 + 0.08, board.y - board.height / 2 - 0.08, board.y + board.height / 2 + 0.08, signZ, signZ + 0.06, group, quiet);
+  const sign = mesh(
+    new PlaneGeometry(board.width, board.height),
+    new MeshBasicMaterial({ map: signTexture(), transparent: true }),
+    [0, board.y, signZ + 0.065],
+    group,
+    quiet,
+  );
+  sign.name = "shop-sign";
   return group;
+}
+
+function signTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = Math.round((1024 * 1.05) / 4.6);
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = palette.linen;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = "center";
+  ctx.fillStyle = palette.ink;
+  ctx.font = `${Math.round(canvas.height * 0.5)}px Georgia, "Times New Roman", serif`;
+  ctx.fillText(shopConfig.brand, canvas.width / 2, canvas.height * 0.58);
+  ctx.fillStyle = palette.brass;
+  ctx.font = `italic ${Math.round(canvas.height * 0.2)}px Georgia, "Times New Roman", serif`;
+  ctx.fillText(shopConfig.subtitle.toLowerCase(), canvas.width / 2, canvas.height * 0.85);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
 }
 
 // ---------- Hàn river and the Dragon Bridge ----------
 
 const RIVER = { near: STREET.far + 4.2, far: STREET.far + 78 } as const;
 /** The bridge crosses the river towards the far bank, a little to the side of the shop. */
-/** Set well off to the side so the whole dragon reads from the shop front. */
-const BRIDGE = { x: 27, deck: 3.4, width: 5.2 } as const;
+/** Off to the side of the shop, far enough that the whole dragon reads from the shop front. */
+const BRIDGE = { x: 20, deck: 3.4, width: 5.2 } as const;
+/** The dragon starts this far along the deck, so its head stands out over the river. */
+const DRAGON_START = 0.08;
 const DRAGON_GOLD = "#F0B92A";
 
 function buildRiverside(materials: MaterialLibrary): Group {
@@ -273,7 +310,7 @@ function buildRiverside(materials: MaterialLibrary): Group {
   for (let x = -60; x <= 60; x += 1.6) slab(rail, x - 0.03, x + 0.03, 0, 0.95, RIVER.near - 0.08, RIVER.near - 0.02, group, quiet);
   const trunk = materials.surface("#A08368", { roughness: 0.9 });
   const frond = materials.surface("#8FA27C", { roughness: 1 });
-  for (const x of [-22, -12, -2, 8, 17, 36]) palm(group, x, (STREET.far + RIVER.near) / 2 + 0.6, trunk, frond);
+  for (const x of [-22, -12, -2, 8, 13, 36]) palm(group, x, (STREET.far + RIVER.near) / 2 + 0.6, trunk, frond);
 
   // The river: a wide, calm sheet of water.
   const water = mesh(new PlaneGeometry(240, RIVER.far - RIVER.near), new MeshStandardMaterial({ color: "#A7C6C7", roughness: 0.25, metalness: 0.15 }), [0, -0.6, (RIVER.near + RIVER.far) / 2], group, quiet);
@@ -315,8 +352,8 @@ function palm(parent: Group, x: number, z: number, trunk: Material, frond: Mater
 /**
  * Cầu Rồng, modelled on the real bridge: a long deck on massive round piers, and the golden steel
  * dragon weaving along its middle, dipping under the deck between arches and rising in three
- * arches (white hangers beneath them), head raised high at the far bank, tail flicking up on the
- * near side. Lamp posts with flags line the deck.
+ * arches (white hangers beneath them), head raised high on the near side, tail flicking up at the
+ * far bank. Lamp posts with flags line the deck.
  */
 function buildDragonBridge(): Group {
   const group = new Group();
@@ -367,8 +404,9 @@ function buildDragonBridge(): Group {
     [0.5, -1.4], [0.56, -2.2], [0.62, -0.8], [0.68, 2.6], [0.75, 6.0], [0.82, 2.2], [0.87, -1.6], [0.92, -1.0],
     [0.96, 1.6], [1.0, 3.6],
   ];
-  // As on the real bridge, the head is at the far bank (facing the sea), the tail on the near side.
-  const curve = new CatmullRomCurve3(profile.map(([f, y]) => new Vector3(BRIDGE.x, deckTop + y, at(1 - f))));
+  // Head on the near side, a little way out over the river; the body runs on to the far bank.
+  const along = (f: number) => at(DRAGON_START + f * (1 - DRAGON_START));
+  const curve = new CatmullRomCurve3(profile.map(([f, y]) => new Vector3(BRIDGE.x, deckTop + y, along(f))));
   mesh(new TubeGeometry(curve, 400, 0.66, 14, false), gold, [0, 0, 0], group, quiet);
 
   // Scales: a crest of flat plates along the back, and white hangers under each arch.
@@ -387,12 +425,11 @@ function buildDragonBridge(): Group {
     }
   }
 
-  // Head at the top of the neck, looking out across the river: long open jaws, big eyes, horns,
+  // Head at the top of the neck, looking out towards the shop's side of the river: long open jaws, big eyes, horns,
   // and a mane of flame-shaped plates sweeping back (flattened sideways so it reads in profile).
   const top = curve.getPointAt(0);
   const head = new Group();
-  head.position.set(top.x, top.y + 0.2, top.z + 0.2);
-  head.rotation.y = Math.PI; // snout points away from the shop, along the bridge
+  head.position.set(top.x, top.y + 0.2, top.z - 0.2);
   head.scale.setScalar(1.25);
   group.add(head);
   const red = new MeshStandardMaterial({ color: "#B4472F", roughness: 0.6 });
