@@ -71,7 +71,8 @@ function buildStreet(materials: MaterialLibrary): Group {
   // A bench on the pavement.
   const wood = materials.surface(palette.oak, { roughness: 0.7 });
   softBox(wood, [1.4, 0.06, 0.4], [-3.4, 0.45, STREET.kerb - 0.9], group, 0.02, quiet);
-  softBox(wood, [1.4, 0.36, 0.05], [-3.4, 0.68, STREET.kerb - 0.7], group, 0.02, quiet);
+  // Backrest on the shop side, so whoever sits here looks out over the street to the river.
+  softBox(wood, [1.4, 0.36, 0.05], [-3.4, 0.68, STREET.kerb - 1.1], group, 0.02, quiet);
   for (const x of [-4, -2.8]) slab(iron, x - 0.03, x + 0.03, 0, 0.45, STREET.kerb - 1.05, STREET.kerb - 0.75, group, quiet);
   return group;
 }

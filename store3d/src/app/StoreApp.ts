@@ -36,6 +36,7 @@ import { buildMannequins, buildPodium, buildScrunchieStand } from "../scene/furn
 import { buildFittingRooms } from "../scene/furniture/fittingRooms";
 import { buildShelving } from "../scene/furniture/shelving";
 import { buildWallDecor } from "../scene/furniture/wallDecor";
+import { Fireworks } from "../scene/fireworks";
 import { buildSurroundings } from "../scene/surroundings";
 import { animateMarkers, buildZoneMarkers, markerSprite, type ZoneMarker } from "../scene/markers";
 import { MaterialLibrary } from "../scene/materials";
@@ -293,7 +294,7 @@ export class StoreApp {
     });
 
     this.addLights();
-    this.scene.add(this.player.root, this.owner.root, this.cat.root, this.ball.root);
+    this.scene.add(this.player.root, this.owner.root, this.cat.root, this.ball.root, this.fireworks.root);
     this.zones = buildZones(shelving.sections);
 
     // Markers show what can be tapped; they are pickable like the furniture they float over.
@@ -357,6 +358,7 @@ export class StoreApp {
   private readonly glowMaterials: Array<MeshStandardMaterial & { userData: { glow: { day: number; night: number } } }> = [];
   /** 0 = day, 1 = evening; eased towards `eveningTarget`. */
   private evening = 0;
+  private readonly fireworks = new Fireworks();
   private eveningTarget = 0;
 
   /** Switches between daylight and the evening look (lights on, dusk sky). */
@@ -379,17 +381,18 @@ export class StoreApp {
     const sky = this.scene.background as Color;
     sky.copy(DAY_SKY).lerp(EVENING_SKY, k);
     this.scene.fog?.color.copy(sky);
-    this.hemisphere.intensity = lerp(1.5, 0.95, k);
+    this.hemisphere.intensity = lerp(1.5, 1.25, k);
     this.hemisphere.color.copy(DAY_HEMI).lerp(EVENING_HEMI, k);
-    this.ambient.intensity = lerp(0.3, 0.3, k);
+    this.ambient.intensity = lerp(0.3, 0.6, k);
     this.sun.intensity = lerp(1.5, 0.22, k);
     this.sun.color.copy(DAY_SUN).lerp(MOON, k);
     for (const light of this.pendantLights) {
-      light.intensity = lerp(2.4, 7.5, k);
+      light.intensity = lerp(2.4, 9, k);
       light.distance = lerp(6.5, 9.5, k);
     }
     for (const light of this.streetLights) light.intensity = lerp(0, 7, k);
-    for (const light of this.accentLights) light.intensity = lerp(0, 14, k);
+    // Product spotlights stay on all day; they just matter more after dark.
+    for (const light of this.accentLights) light.intensity = lerp(7, 15, k);
     for (const material of this.glowMaterials) material.emissiveIntensity = lerp(material.userData.glow.day, material.userData.glow.night, k);
   }
 
@@ -413,6 +416,7 @@ export class StoreApp {
       this.cat.update(dt, this.player);
       this.updateWalls(dt);
       this.updateBillboards(dt);
+      this.fireworks.update(dt, this.evening);
       this.renderer.render(this.scene, this.cameraRig.camera);
       return;
     }
@@ -438,6 +442,7 @@ export class StoreApp {
     this.updateWalls(dt);
     this.updateDoor(dt);
     this.updateEvening(dt);
+    this.fireworks.update(dt, this.evening);
     this.updateOccluders(dt);
     this.updateBillboards(dt);
     this.updateZone();

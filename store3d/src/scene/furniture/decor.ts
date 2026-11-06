@@ -215,7 +215,7 @@ function buildTrackLights(materials: MaterialLibrary): Group {
   const group = new Group();
   group.name = "track-lights";
   const housing = materials.surface(palette.ink, { roughness: 0.5, metalness: 0.3 });
-  const lens = new MeshStandardMaterial({ color: "#FFF4DE", emissive: "#FFE2B0", emissiveIntensity: 0.3, userData: { glow: { day: 0.3, night: 3 } } });
+  const lens = new MeshStandardMaterial({ color: "#FFF4DE", emissive: "#FFE2B0", emissiveIntensity: 1.6, userData: { glow: { day: 1.6, night: 3 } } });
   const up = new Vector3(0, 1, 0);
   for (const accent of ACCENT_LIGHTS) {
     const head = new Group();

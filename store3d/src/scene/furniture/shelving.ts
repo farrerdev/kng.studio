@@ -33,7 +33,7 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
   const oak = materials.surface(palette.oak, { roughness: 0.7 });
   const oakDeep = materials.surface(palette.oakDeep, { roughness: 0.7 });
   const x0 = SHELVING.wallX;
-  const ledStrip = new MeshStandardMaterial({ color: "#FFF1D6", emissive: "#FFD9A0", emissiveIntensity: 0.4, userData: { glow: { day: 0.4, night: 3 } } });
+  const ledStrip = new MeshStandardMaterial({ color: "#FFF1D6", emissive: "#FFD9A0", emissiveIntensity: 1.4, userData: { glow: { day: 1.4, night: 3 } } });
 
   const runLengths = SHELVING.runs.map((run) => run.zFrom - run.zTo);
   const capacity = runLengths.reduce((sum, length) => sum + Math.floor(length / MIN_SECTION), 0);
@@ -66,6 +66,7 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
     const runItems = items.slice(next, next + perRun[runIndex]!);
     next += runItems.length;
     if (!runItems.length) return;
+    buildRunSign(group, runTitle(runItems, runIndex), centerZ, materials);
     const width = length / runItems.length;
     runItems.forEach((product, index) => {
       const zFrom = run.zFrom - width * index;
@@ -85,6 +86,44 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
   });
 
   return { group, sections };
+}
+
+const RUN_SIGN = { y: SHELVING.height + 0.62, width: 2.3, height: 0.62 } as const;
+/** Sign titles when a run mixes categories (front run first). */
+const RUN_TITLES = ["Đồ ngủ muslin", "Mẫu còn hàng"] as const;
+
+/** What a run holds, for its sign: the category when the run shares one, else the general label. */
+function runTitle(products: Array<StoreProduct | null>, runIndex: number): string {
+  const names = [...new Set(products.filter((product): product is StoreProduct => Boolean(product)).map((product) => product.categoryName))];
+  if (names.length === 1) return names[0]!;
+  return RUN_TITLES[runIndex % RUN_TITLES.length]!;
+}
+
+/** Big wall sign above a shelf run, like the podium's "Đang được yêu thích", so guests spot it from afar. */
+function buildRunSign(parent: Group, title: string, centerZ: number, materials: MaterialLibrary): void {
+  const x = SHELVING.wallX + 0.05;
+  const sign = mesh(
+    new PlaneGeometry(RUN_SIGN.width, RUN_SIGN.height),
+    new MeshBasicMaterial({
+      map: labelTexture(title, {
+        width: 1024,
+        height: 270,
+        background: palette.linen,
+        border: palette.brass,
+        radius: 60,
+        subtitle: "chạm vào từng bộ để xem",
+      }),
+      transparent: true,
+    }),
+    [x, RUN_SIGN.y, centerZ],
+    parent,
+    { castShadow: false, receiveShadow: false },
+  );
+  sign.rotation.y = Math.PI / 2;
+  // Two brass rods hold it off the wall.
+  for (const dz of [-RUN_SIGN.width * 0.38, RUN_SIGN.width * 0.38]) {
+    slab(materials.brass(), SHELVING.wallX, x - 0.01, RUN_SIGN.y + RUN_SIGN.height * 0.3, RUN_SIGN.y + RUN_SIGN.height * 0.3 + 0.025, centerZ + dz - 0.012, centerZ + dz + 0.012, parent);
+  }
 }
 
 /** Splits `count` sections across runs in proportion to their length. */
