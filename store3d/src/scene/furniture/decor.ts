@@ -1,4 +1,5 @@
 import {
+  Vector3,
   CircleGeometry,
   ConeGeometry,
   CylinderGeometry,
@@ -12,7 +13,7 @@ import {
   SphereGeometry,
   TorusGeometry,
 } from "three";
-import { CAT_SEAT, LOUNGE, MIRRORS, PENDANTS, PENDANT_Y, PLANTS, ROOM, RUG } from "../../config/layout";
+import { ACCENT_LIGHTS, CAT_SEAT, LOUNGE, MIRRORS, PENDANTS, PENDANT_Y, PLANTS, ROOM, RUG } from "../../config/layout";
 import { palette } from "../../config/palette";
 import { mesh, slab, softBox, tagZone } from "../build";
 import { labelTexture, mirrorTexture } from "../canvasArt";
@@ -27,7 +28,7 @@ export function buildDecor(materials: MaterialLibrary): Group {
   const group = new Group();
   group.name = "decor";
   group.add(buildRug(materials), buildMirrors(materials), buildLounge(materials), buildCatSeat(materials), buildPlants(materials));
-  group.add(buildPendants(materials));
+  group.add(buildPendants(materials), buildTrackLights(materials));
   return group;
 }
 
@@ -205,6 +206,27 @@ function buildPendants(materials: MaterialLibrary): Group {
     mesh(new CylinderGeometry(0.006, 0.006, cordLength, 5), cord, [pendant.x, ROOM.height - cordLength / 2, pendant.z], group, { castShadow: false });
     mesh(new CylinderGeometry(0.06, 0.06, 0.02, 16), cord, [pendant.x, ROOM.height - 0.01, pendant.z], group, { castShadow: false });
     mesh(new ConeGeometry(0.26, 0.24, 28, 1, true), shade, [pendant.x, PENDANT_Y, pendant.z], group, { castShadow: false });
+  }
+  return group;
+}
+
+/** Small ceiling spot heads aimed at the products; their lenses glow in the evening. */
+function buildTrackLights(materials: MaterialLibrary): Group {
+  const group = new Group();
+  group.name = "track-lights";
+  const housing = materials.surface(palette.ink, { roughness: 0.5, metalness: 0.3 });
+  const lens = new MeshStandardMaterial({ color: "#FFF4DE", emissive: "#FFE2B0", emissiveIntensity: 0.3, userData: { glow: { day: 0.3, night: 3 } } });
+  const up = new Vector3(0, 1, 0);
+  for (const accent of ACCENT_LIGHTS) {
+    const head = new Group();
+    head.position.set(...accent.at);
+    // Point the head's -Y axis (its lens) at the target.
+    const direction = new Vector3(...accent.aim).sub(head.position).normalize();
+    head.quaternion.setFromUnitVectors(up, direction.negate());
+    group.add(head);
+    mesh(new CylinderGeometry(0.012, 0.012, 0.22, 6), housing, [0, 0.11, 0], head, { castShadow: false });
+    mesh(new CylinderGeometry(0.065, 0.05, 0.16, 14), housing, [0, -0.04, 0], head, { castShadow: false });
+    mesh(new CircleGeometry(0.048, 14), lens, [0, -0.121, 0], head, { castShadow: false }).rotation.x = Math.PI / 2;
   }
   return group;
 }

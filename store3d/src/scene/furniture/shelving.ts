@@ -1,4 +1,4 @@
-import { CylinderGeometry, Group, MeshBasicMaterial, PlaneGeometry } from "three";
+import { CylinderGeometry, Group, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
 import { SHELVING } from "../../config/layout";
 import { palette } from "../../config/palette";
 import type { StoreCatalog, StoreProduct } from "../../data/types";
@@ -33,6 +33,7 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
   const oak = materials.surface(palette.oak, { roughness: 0.7 });
   const oakDeep = materials.surface(palette.oakDeep, { roughness: 0.7 });
   const x0 = SHELVING.wallX;
+  const ledStrip = new MeshStandardMaterial({ color: "#FFF1D6", emissive: "#FFD9A0", emissiveIntensity: 0.4, userData: { glow: { day: 0.4, night: 3 } } });
 
   const runLengths = SHELVING.runs.map((run) => run.zFrom - run.zTo);
   const capacity = runLengths.reduce((sum, length) => sum + Math.floor(length / MIN_SECTION), 0);
@@ -52,6 +53,8 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
     // Slatted back panel, cornice, rail on two brackets, cabinet.
     slab(oak, x0, x0 + 0.03, 0, SHELVING.height, run.zTo, run.zFrom, group, { castShadow: false });
     slab(oakDeep, x0, x0 + 0.12, SHELVING.height - 0.05, SHELVING.height, run.zTo, run.zFrom, group);
+    // Warm LED strip under the cornice, washing the hanging sets (glows in the evening).
+    slab(ledStrip, x0 + 0.1, x0 + 0.13, SHELVING.height - 0.08, SHELVING.height - 0.05, run.zTo + 0.05, run.zFrom - 0.05, group, { castShadow: false });
     const rail = mesh(new CylinderGeometry(0.012, 0.012, length - 0.04, 10), materials.brass(), [x0 + 0.12, SHELVING.railY, centerZ], group, {
       castShadow: false,
     });

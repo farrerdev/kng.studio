@@ -91,6 +91,20 @@ export const PLANTS = [
   { x: 5.35, z: 1.0, size: 1.15 },
   { x: 1.75, z: -4.1, size: 0.9 },
 ] as const;
+/**
+ * Ceiling spotlights that pick out the products in the evening (track heads are visible all day):
+ * the two clothing-wall runs, the podium, the mannequins and the counter.
+ */
+export const ACCENT_LIGHTS: ReadonlyArray<{ at: readonly [number, number, number]; aim: readonly [number, number, number]; angle: number }> = [
+  { at: [-3.7, ROOM.height - 0.25, 2.9], aim: [-5.6, 1.4, 2.9], angle: 0.62 },
+  { at: [-3.7, ROOM.height - 0.25, 1.65], aim: [-5.6, 1.4, 1.65], angle: 0.62 },
+  { at: [-3.7, ROOM.height - 0.25, -0.55], aim: [-5.6, 1.4, -0.55], angle: 0.62 },
+  { at: [-3.7, ROOM.height - 0.25, -1.85], aim: [-5.6, 1.4, -1.85], angle: 0.62 },
+  { at: [-0.25, ROOM.height - 0.25, 1.4], aim: [-0.25, 0.8, 0.15], angle: 0.5 },
+  { at: [-3.1, ROOM.height - 0.25, 2.3], aim: [-3.1, 1.3, 3.75], angle: 0.45 },
+  { at: [3.6, ROOM.height - 0.25, -2.2], aim: [3.6, 1.0, -3.3], angle: 0.6 },
+];
+
 /** Pendant shades hang at this height whatever the ceiling height. */
 export const PENDANT_Y = 2.75;
 export const PENDANTS = [

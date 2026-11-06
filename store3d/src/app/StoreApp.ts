@@ -15,6 +15,7 @@ import {
   PointLight,
   Raycaster,
   Scene,
+  SpotLight,
   Vector2,
   WebGLRenderer,
 } from "three";
@@ -24,7 +25,7 @@ import { Cat } from "../characters/Cat";
 import { YarnBall } from "../characters/YarnBall";
 import { Player } from "../characters/Player";
 import { ShopOwner } from "../characters/ShopOwner";
-import { LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM, STREET } from "../config/layout";
+import { ACCENT_LIGHTS, LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM, STREET } from "../config/layout";
 import type { StoreCatalog, StoreProduct } from "../data/types";
 import { InputController } from "../input/InputController";
 import { Joystick } from "../input/Joystick";
@@ -328,6 +329,14 @@ export class StoreApp {
       this.scene.add(light);
       this.pendantLights.push(light);
     }
+    // Accent spots on the products: off by day (daylight is enough), on in the evening.
+    for (const accent of ACCENT_LIGHTS) {
+      const spot = new SpotLight("#FFE6C4", 0, 9, accent.angle, 0.55, 1.1);
+      spot.position.set(...accent.at);
+      spot.target.position.set(...accent.aim);
+      this.scene.add(spot, spot.target);
+      this.accentLights.push(spot);
+    }
     // Street lamps light the pavement in the evening only.
     for (const x of [-5.3, 3.2, 11.7]) {
       const light = new PointLight("#FFD9A0", 0, 9, 1.6);
@@ -344,6 +353,7 @@ export class StoreApp {
   private sun!: DirectionalLight;
   private readonly pendantLights: PointLight[] = [];
   private readonly streetLights: PointLight[] = [];
+  private readonly accentLights: SpotLight[] = [];
   private readonly glowMaterials: Array<MeshStandardMaterial & { userData: { glow: { day: number; night: number } } }> = [];
   /** 0 = day, 1 = evening; eased towards `eveningTarget`. */
   private evening = 0;
@@ -369,9 +379,9 @@ export class StoreApp {
     const sky = this.scene.background as Color;
     sky.copy(DAY_SKY).lerp(EVENING_SKY, k);
     this.scene.fog?.color.copy(sky);
-    this.hemisphere.intensity = lerp(1.5, 0.62, k);
+    this.hemisphere.intensity = lerp(1.5, 0.95, k);
     this.hemisphere.color.copy(DAY_HEMI).lerp(EVENING_HEMI, k);
-    this.ambient.intensity = lerp(0.3, 0.18, k);
+    this.ambient.intensity = lerp(0.3, 0.3, k);
     this.sun.intensity = lerp(1.5, 0.22, k);
     this.sun.color.copy(DAY_SUN).lerp(MOON, k);
     for (const light of this.pendantLights) {
@@ -379,6 +389,7 @@ export class StoreApp {
       light.distance = lerp(6.5, 9.5, k);
     }
     for (const light of this.streetLights) light.intensity = lerp(0, 7, k);
+    for (const light of this.accentLights) light.intensity = lerp(0, 14, k);
     for (const material of this.glowMaterials) material.emissiveIntensity = lerp(material.userData.glow.day, material.userData.glow.night, k);
   }
 
