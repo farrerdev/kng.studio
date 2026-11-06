@@ -40,9 +40,11 @@ export function ShopProductCard({
   rank,
   variant = "default",
 }: ShopProductCardProps) {
-  const coverImage = getProductCoverImage(product, productTypes, allProducts);
+  // Cards only show patterns still in stock (any size); sold-out patterns stay on the product for cart checks.
+  const inStockPatterns = product.patterns.filter((pattern) => pattern.availableSizes.length > 0);
+  const coverImage = getProductCoverImage({ ...product, patterns: inStockPatterns }, productTypes, allProducts);
   const productTitle = getProductTitle(product, productTypes);
-  const extraSwatches = product.patterns.length - MAX_SWATCHES;
+  const extraSwatches = inStockPatterns.length - MAX_SWATCHES;
 
   const price = formatPrice(getProductPrice(product, productTypes));
 
@@ -102,9 +104,9 @@ export function ShopProductCard({
       <span className="shop-card-body">
         <span className="shop-card-title">{productTitle}</span>
         <strong className="shop-card-price">{price}</strong>
-        {product.patterns.length > 0 ? (
-          <span className="shop-card-swatches" aria-label={`${product.patterns.length} họa tiết`}>
-            {product.patterns.slice(0, MAX_SWATCHES).map((pattern) => (
+        {inStockPatterns.length > 0 ? (
+          <span className="shop-card-swatches" aria-label={`${inStockPatterns.length} họa tiết`}>
+            {inStockPatterns.slice(0, MAX_SWATCHES).map((pattern) => (
               <img key={pattern.id} src={getSupabaseImageSrc(pattern.image.src, 96, 70)} alt="" loading="lazy" decoding="async" />
             ))}
             {extraSwatches > 0 ? <small>+{extraSwatches}</small> : null}
