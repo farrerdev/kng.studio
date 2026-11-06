@@ -1,0 +1,21 @@
+{
+  "name": "kng-store3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Walk-in 3D version of the KNG.studio shop, deployed separately on its own subdomain.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5180 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4180 --strictPort"
+  },
+  "dependencies": {
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^5.7.2",
+    "vite": "^8.1.0"
+  }
+}

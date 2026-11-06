@@ -1,0 +1,971 @@
+:root {
+  --hud-linen: #f8f4ee;
+  --hud-sand: #efe8df;
+  --hud-oat: #d9cbb8;
+  --hud-oak: #b89474;
+  --hud-brass: #a88b6a;
+  --hud-ink: #5e5246;
+  --hud-ink-soft: #85786b;
+  --hud-olive: #7f8c72;
+  --hud-radius: 14px;
+  --hud-shadow: 0 10px 30px rgba(94, 82, 70, 0.14);
+  --hud-serif: Georgia, "Times New Roman", serif;
+  --hud-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Doubled selectors: the storefront stylesheet (loaded later with the shop) also styles html/body. */
+html:root,
+html body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--hud-sand);
+  color: var(--hud-ink);
+  font: 15px/1.5 var(--hud-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+
+#stage.is-grabbing {
+  cursor: grabbing;
+}
+
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+.hud-top {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.hud-top > * {
+  pointer-events: auto;
+}
+
+.hud-brand {
+  font: 19px var(--hud-serif);
+  letter-spacing: 0.14em;
+  color: var(--hud-ink);
+  text-decoration: none;
+  background: rgba(248, 244, 238, 0.86);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: var(--hud-shadow);
+}
+
+.hud-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(248, 244, 238, 0.86);
+  backdrop-filter: blur(8px);
+  color: var(--hud-ink);
+  font: 18px var(--hud-serif);
+  box-shadow: var(--hud-shadow);
+  cursor: pointer;
+}
+
+.hud-panel {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: min(760px, calc(100% - 32px));
+  max-height: min(62vh, 470px);
+  overflow-y: auto;
+  transform: translate(-50%, 14px);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  background: rgba(248, 244, 238, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(184, 148, 116, 0.25);
+  border-radius: 18px;
+  padding: 16px 18px 18px;
+  box-shadow: var(--hud-shadow);
+}
+
+.hud-panel.is-open {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.hud-panel__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.hud-panel__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.hud-panel__close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin: -6px -8px 0 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hud-ink);
+  cursor: pointer;
+}
+
+.hud-panel__close:hover {
+  background: rgba(217, 203, 184, 0.4);
+}
+
+.hud-top__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hud-cart {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(248, 244, 238, 0.86);
+  backdrop-filter: blur(8px);
+  color: var(--hud-ink);
+  box-shadow: var(--hud-shadow);
+  cursor: pointer;
+}
+
+.hud-cart.is-bumped {
+  animation: cart-bump 0.45s ease;
+}
+
+.hud-cart__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--hud-ink);
+  color: var(--hud-linen);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 19px;
+  text-align: center;
+}
+
+.hud-cart__badge[hidden] {
+  display: none;
+}
+
+@keyframes cart-bump {
+  40% {
+    transform: scale(1.18);
+  }
+}
+
+.hud-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hud-olive);
+}
+
+.hud-title {
+  margin: 2px 0 0;
+  font: 21px/1.3 var(--hud-serif);
+  font-weight: 400;
+}
+
+.hud-text {
+  margin: 4px 0 0;
+  color: var(--hud-ink-soft);
+  white-space: pre-line;
+}
+
+/* Storefront product rail (its own component + CSS) inside the spot panel. The panel already has
+   a title, so the rail keeps only its arrows; the track bleeds to the panel edges for swiping. */
+.hud-rail-host {
+  margin-top: 4px;
+  font-family: var(--kng-font);
+}
+
+.hud-rail-host .shop-rail {
+  gap: 8px;
+  padding: 8px 0 2px;
+}
+
+.hud-rail-host .shop-section-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hud-rail-host .shop-section-head {
+  justify-content: flex-end;
+}
+
+.hud-rail-host .shop-rail-track {
+  margin: 0 -18px;
+  padding: 0 18px 4px;
+  scroll-padding-inline: 18px;
+}
+
+.hud-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(94, 82, 70, 0.28);
+  background: transparent;
+  color: var(--hud-ink);
+  font: 14px var(--hud-sans);
+  padding: 9px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+  min-height: 40px;
+}
+
+.btn:hover {
+  background: rgba(217, 203, 184, 0.35);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  background: var(--hud-ink);
+  border-color: var(--hud-ink);
+  color: var(--hud-linen);
+}
+
+.btn--primary:hover {
+  background: #4c4238;
+}
+
+.btn--small {
+  padding: 6px 12px;
+  font-size: 13px;
+  min-height: 34px;
+}
+
+.btn:focus-visible,
+.hud-icon-btn:focus-visible,
+.hud-cart:focus-visible,
+.hud-panel__close:focus-visible,
+.hud-brand:focus-visible {
+  outline: 2px solid var(--hud-brass);
+  outline-offset: 2px;
+}
+
+.hud-toast {
+  position: absolute;
+  top: max(70px, calc(env(safe-area-inset-top) + 56px));
+  left: 50%;
+  transform: translate(-50%, -8px);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  background: var(--hud-ink);
+  color: var(--hud-linen);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  pointer-events: none;
+  max-width: calc(100% - 32px);
+  text-align: center;
+}
+
+.hud-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.hud-help {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(94, 82, 70, 0.18);
+  padding: 16px;
+}
+
+.hud-help[hidden],
+.hud-panel[hidden] {
+  display: none;
+}
+
+.hud-help__card {
+  width: min(420px, 100%);
+  background: var(--hud-linen);
+  border-radius: 20px;
+  padding: 22px 22px 20px;
+  box-shadow: var(--hud-shadow);
+}
+
+.hud-help__list {
+  margin: 12px 0 18px;
+  padding-left: 18px;
+  color: var(--hud-ink-soft);
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .hud-panel {
+    width: calc(100% - 16px);
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 14px 14px 16px;
+    max-height: 52vh;
+  }
+
+  .hud-title {
+    font-size: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-panel,
+  .hud-toast,
+  .btn,
+  .storefront.is-scene,
+  .hud-reopen__dot,
+  .owner-chat__bubble,
+  .owner-chat__dot {
+    animation: none;
+  }
+}
+
+/* "Xem lại" chip: same spot as the panel, one tap reopens it. */
+.hud-reopen {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 10px 18px;
+  border: 1px solid rgba(184, 148, 116, 0.3);
+  border-radius: 999px;
+  background: rgba(248, 244, 238, 0.94);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--hud-shadow);
+  color: var(--hud-ink);
+  font: 14px var(--hud-sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.hud-reopen {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-reopen[hidden] {
+  display: none;
+}
+
+/* Same hotspot dot as the markers in the scene, pulsing gently. */
+.hud-reopen__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--hud-brass);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--hud-brass) 0 3px, var(--hud-linen) 3.5px);
+  animation: hud-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hud-dot-pulse {
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+/* Thumbstick: touch screens only, always at the bottom-left; on phones the spot panel moves to the top so the two never overlap. */
+.joystick {
+  position: absolute;
+  left: 20px;
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 14px);
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgba(248, 244, 238, 0.55);
+  border: 1px solid rgba(184, 148, 116, 0.35);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--hud-shadow);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.16s ease;
+}
+
+.joystick.is-active {
+  background: rgba(248, 244, 238, 0.78);
+}
+
+.joystick__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: var(--hud-linen);
+  border: 1px solid rgba(184, 148, 116, 0.5);
+  box-shadow: 0 4px 12px rgba(94, 82, 70, 0.22);
+  pointer-events: none;
+}
+
+.joystick:not(.is-active) .joystick__knob {
+  transition: transform 0.18s ease;
+}
+
+@media not (pointer: coarse) {
+  .joystick {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .joystick {
+    left: 14px;
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 12px);
+  }
+
+  .hud-reopen {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joystick,
+  .joystick__knob {
+    transition: none !important;
+  }
+}
+
+/* ---------- Storefront inside the scene ----------
+   The storefront components and their CSS come from the main store (../src). Only how the page
+   sits over the scene is defined here: a full-screen layer the guest closes to walk on. */
+#overlays {
+  position: relative;
+  z-index: 20; /* above the HUD; the storefront's own layers stack inside */
+}
+
+.storefront.is-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 5; /* under every storefront layer: chat bubbles (20), cart bar (30), menu, cart, lightbox */
+  width: auto;
+  margin: 0;
+  padding: 0 max(16px, calc((100% - 1180px) / 2)) 112px;
+  overflow-x: clip; /* full-bleed bands use 100vw, which includes the scrollbar */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--kng-bg);
+  animation: scene-page-in 0.24s ease;
+}
+
+.storefront.is-scene[hidden] {
+  display: none;
+}
+
+.storefront.is-scene.has-cart-bar {
+  padding-bottom: calc(var(--kng-cart-bar-height) + 12px);
+}
+
+.site-header-start {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+@keyframes scene-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Phones (touch): the bottom belongs to the thumbstick, so the spot panel and its chip sit under the top bar. */
+@media (pointer: coarse) and (max-width: 767px) {
+  .hud-panel {
+    top: calc(max(14px, env(safe-area-inset-top)) + 52px);
+    bottom: auto;
+    max-height: 48vh;
+    transform: translate(-50%, -14px);
+  }
+
+  .hud-panel .hud-rail-host .shop-rail-track {
+    margin: 0 -14px;
+    padding: 0 14px 4px;
+    scroll-padding-inline: 14px;
+  }
+
+  .hud-reopen {
+    top: calc(max(14px, env(safe-area-inset-top)) + 54px);
+    bottom: auto;
+  }
+}
+
+/* ---------- Shop owner chat (published answers only) ---------- */
+.owner-chat__log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(34vh, 260px);
+  margin-top: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 14px;
+  background: rgba(239, 232, 223, 0.6);
+}
+
+.owner-chat__bubble {
+  max-width: 85%;
+  margin: 0;
+  padding: 9px 13px;
+  border-radius: 16px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.owner-chat__bubble {
+  animation: chat-in 0.26s cubic-bezier(0.2, 0.82, 0.2, 1) both;
+}
+
+.owner-chat__bubble--owner {
+  transform-origin: bottom left;
+  align-self: flex-start;
+  background: #fffdf9;
+  color: var(--hud-ink);
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(94, 82, 70, 0.08);
+}
+
+.owner-chat__bubble--guest {
+  transform-origin: bottom right;
+  align-self: flex-end;
+  background: var(--hud-ink);
+  color: var(--hud-linen);
+  border-bottom-right-radius: 4px;
+}
+
+/* Typing indicator: three dots bouncing in turn. */
+.owner-chat__typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.owner-chat__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hud-brass);
+  animation: chat-dot 1s ease-in-out infinite;
+}
+
+.owner-chat__dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.owner-chat__dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes chat-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+@keyframes chat-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.owner-chat__questions.is-busy .owner-chat__chip {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.owner-chat__questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.owner-chat__chip {
+  padding: 8px 14px;
+  border: 1px solid rgba(184, 148, 116, 0.5);
+  border-radius: 999px;
+  background: #fffdf9;
+  color: var(--hud-ink);
+  font: 14px var(--hud-sans);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.owner-chat__chip:hover {
+  background: var(--hud-sand);
+}
+
+.owner-chat__chip.is-asked {
+  border-color: transparent;
+  background: var(--hud-sand);
+  color: var(--hud-ink-soft);
+}
+
+.owner-chat__more {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(184, 148, 116, 0.25);
+}
+
+.owner-chat__hint {
+  font-size: 13px;
+  color: var(--hud-ink-soft);
+}
+
+/* Long panels go full screen: same card, pinned between the top bar and the bottom edge. */
+.hud-panel.is-full {
+  top: calc(max(14px, env(safe-area-inset-top)) + 54px);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-height: none;
+}
+
+.hud.quick-open .joystick,
+.hud.has-full-panel .joystick {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .hud-panel.is-full {
+    width: calc(100% - 16px);
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (pointer: coarse) and (max-width: 767px) {
+  .hud-panel.is-full {
+    top: calc(max(14px, env(safe-area-inset-top)) + 52px);
+    max-height: none;
+  }
+}
+
+/* Policy cards (bảng quy định). */
+.policy-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.policy-list__item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--hud-sand);
+}
+
+.policy-list__item h3 {
+  margin: 0 0 4px;
+  font: 17px/1.3 var(--hud-serif);
+  font-weight: 400;
+  color: var(--hud-ink);
+}
+
+.policy-list__item p,
+.policy-list__item ul {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--hud-ink-soft);
+}
+
+.policy-list__item ul {
+  padding-left: 18px;
+}
+
+.policy-list__item li + li {
+  margin-top: 4px;
+}
+
+/* "Đi tới" quick menu: bottom-right on every screen (the thumbstick owns bottom-left on phones). */
+.quick-go-wrap {
+  position: absolute;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.quick-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hud-ink);
+  color: var(--hud-linen);
+  font: 15px var(--hud-sans);
+  box-shadow: var(--hud-shadow);
+  cursor: pointer;
+}
+
+.quick-go.is-open {
+  background: #4b4137;
+}
+
+.quick-go__menu {
+  width: min(300px, calc(100vw - 32px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid rgba(184, 148, 116, 0.25);
+  border-radius: 18px;
+  background: rgba(248, 244, 238, 0.97);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--hud-shadow);
+}
+
+.quick-go__menu[hidden] {
+  display: none;
+}
+
+.quick-go__group + .quick-go__group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(184, 148, 116, 0.2);
+}
+
+.quick-go__title {
+  margin: 4px 8px 4px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hud-ink-soft);
+}
+
+.quick-go__item {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--hud-ink);
+  font: 15px var(--hud-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.quick-go__item:hover,
+.quick-go__item:focus-visible {
+  background: var(--hud-sand);
+  outline: none;
+}
+
+.quick-go__hint {
+  flex: none;
+  font-size: 12px;
+  color: var(--hud-ink-soft);
+}
+
+@media (max-width: 560px) {
+  .quick-go-wrap {
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Desktop: the spot panel sits bottom-centre; keep the menu clear of it. */
+@media (min-width: 768px) {
+  .hud-panel {
+    width: min(760px, calc(100% - 300px));
+  }
+}
+
+.hud-icon-btn--svg {
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Brand CTAs: Instagram / Messenger in their own colours with the logo, so they read at a glance. */
+.btn--brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(94, 82, 70, 0.18);
+}
+
+.btn--brand:hover {
+  filter: brightness(1.06);
+}
+
+.btn--instagram {
+  background: linear-gradient(135deg, #f58529 0%, #dd2a7b 50%, #8134af 100%);
+}
+
+.btn--messenger {
+  background: linear-gradient(135deg, #00b2ff 0%, #006aff 55%, #a033ff 100%);
+}
+
+.owner-chat__contacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.owner-chat__hint {
+  margin: 0;
+}
+
+/* The quick menu stays reachable over a full-screen panel: phones leave it a strip at the bottom. */
+@media (max-width: 767px) {
+  .hud-panel.is-full {
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 58px);
+  }
+}
+
+.hud-flash {
+  position: absolute;
+  inset: 0;
+  background: var(--hud-linen);
+  pointer-events: none;
+  animation: hud-flash 0.5s ease-out forwards;
+}
+
+@keyframes hud-flash {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-flash {
+    display: none;
+  }
+}
+
+/* Entrance: keep the view clean; a quiet hint says it can be skipped. */
+.hud.is-intro .hud-panel,
+.hud.is-intro .hud-reopen,
+.hud.is-intro .quick-go-wrap,
+.hud.is-intro .joystick {
+  display: none;
+}
+
+.hud-skip {
+  position: absolute;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 8px 16px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(248, 244, 238, 0.8);
+  color: var(--hud-ink-soft);
+  font: 13px var(--hud-sans);
+  pointer-events: none;
+  animation: hud-skip-in 0.6s ease 1s both;
+}
+
+.hud-skip[hidden] {
+  display: none;
+}
+
+@keyframes hud-skip-in {
+  from {
+    opacity: 0;
+  }
+}
