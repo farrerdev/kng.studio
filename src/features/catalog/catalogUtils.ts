@@ -27,6 +27,20 @@ export function isProductInStock(product: Product) {
   return getAvailablePatternCount(product) > 0;
 }
 
+/** Products the storefront lists: visible and in stock, ordered by product type then catalog order. */
+export function getStorefrontProducts(productTypes: ProductType[], products: Product[]) {
+  const typeOrder = new Map(productTypes.map((productType, index) => [productType.id, index]));
+  return products
+    .map((product, index) => ({ product, index }))
+    .filter(({ product }) => product.active !== false && isProductInStock(product))
+    .sort((left, right) => {
+      const leftTypeOrder = typeOrder.get(left.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
+      const rightTypeOrder = typeOrder.get(right.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
+      return leftTypeOrder === rightTypeOrder ? left.index - right.index : leftTypeOrder - rightTypeOrder;
+    })
+    .map(({ product }) => product);
+}
+
 export function getProductCoverImage(product: Product, productTypes: ProductType[], _products: Product[]): ProductImage {
   const firstPatternImage = product.patterns[0]?.image;
   if (firstPatternImage) return firstPatternImage;

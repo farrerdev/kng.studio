@@ -1,11 +1,26 @@
 import { sizeOptions } from "../../../data/mockCatalog";
-import { getPriceValue } from "../../../shared/utils/money";
-import type { Product, SizeId } from "../../../types/catalog";
+import { formatPrice, getPriceValue } from "../../../shared/utils/money";
+import type { Product, ProductPattern, ProductType, SizeId } from "../../../types/catalog";
+import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
 import { MULTI_SET_DISCOUNT, SHIPPING_FEE } from "../storefrontConstants";
-import type { CartItem } from "./cartTypes";
+import type { CartDraft, CartItem } from "./cartTypes";
 
 export function createCartItemId(productId: string, patternId: string, sizeId: SizeId) {
   return `${productId}__${patternId}__${sizeId}`;
+}
+
+/** Cart line for one pattern in one size; the same fields wherever the guest adds it. */
+export function createCartDraft(product: Product, pattern: ProductPattern, sizeId: SizeId, productTypes: ProductType[]): CartDraft {
+  return {
+    id: createCartItemId(product.id, pattern.id, sizeId),
+    productId: product.id,
+    patternId: pattern.id,
+    sizeId,
+    productName: getProductTitle(product, productTypes),
+    patternName: pattern.name,
+    price: formatPrice(getProductPrice(product, productTypes)),
+    image: pattern.image,
+  };
 }
 
 export function formatSelectedSize(sizeId: SizeId) {

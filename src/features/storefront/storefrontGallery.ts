@@ -1,7 +1,6 @@
 import type { Product, ProductType, SizeId } from "../../types/catalog";
-import { getProductPrice, getProductTitle } from "../catalog/catalogUtils";
-import { formatPrice } from "../../shared/utils/money";
-import { createCartItemId, formatSelectedSize } from "./cart/cartUtils";
+import { getProductTitle } from "../catalog/catalogUtils";
+import { createCartDraft, formatSelectedSize } from "./cart/cartUtils";
 import type { GalleryImage } from "./storefrontTypes";
 
 export function getVisibleProducts(selectedSize: SizeId, catalogProducts: Product[]) {
@@ -17,22 +16,12 @@ export function getProductGalleryImages(
   selectedSize: SizeId,
 ): GalleryImage[] {
   const productTitle = getProductTitle(product, productTypes);
-  const price = formatPrice(getProductPrice(product, productTypes));
 
   return [
     ...product.patterns.map((pattern) => ({
       ...pattern.image,
       caption: `${productTitle} - ${pattern.name} · ${formatSelectedSize(selectedSize)}`,
-      cartItem: {
-        id: createCartItemId(product.id, pattern.id, selectedSize),
-        productId: product.id,
-        patternId: pattern.id,
-        sizeId: selectedSize,
-        productName: productTitle,
-        patternName: pattern.name,
-        price,
-        image: pattern.image,
-      },
+      cartItem: createCartDraft(product, pattern, selectedSize, productTypes),
     })),
     ...product.modelImages.map((image, index) => ({
       ...image,
