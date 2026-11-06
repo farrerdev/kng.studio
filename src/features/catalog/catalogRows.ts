@@ -29,6 +29,7 @@ export type ProductRow = {
   fit: string;
   material: string;
   shopee_url?: string | null;
+  active?: boolean | null;
   size_chart_image_src: string;
   size_chart_image_alt: string;
   sort_order: number;
@@ -113,6 +114,7 @@ export function mapCatalogRows(rows: CatalogRows): CatalogData {
         fit: product.fit,
         material: product.material,
         shopeeUrl: product.shopee_url ?? "",
+        active: product.active !== false,
         patterns: patternRows
           .filter((pattern) => pattern.product_id === product.id)
           .map(mapPatternRow),

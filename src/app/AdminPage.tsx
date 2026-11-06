@@ -14,6 +14,7 @@ import {
 } from "../features/analytics/statsFilters";
 import { AdminOrderCreator } from "../features/admin/components/AdminOrderCreator";
 import { AdminProductManager } from "../features/admin/components/AdminProductManager";
+import { AdminQuickStock } from "../features/admin/components/AdminQuickStock";
 import { AdminStatsDashboard } from "../features/admin/components/AdminStatsDashboard";
 import { getProductTitle, getProductTypeSlug } from "../features/catalog/catalogUtils";
 import type { CartItem } from "../features/storefront/cart/cartTypes";
@@ -132,6 +133,9 @@ export default function AdminPage({
   const [statsFilter, setStatsFilter] = useState<StorefrontStatsFilter>(DEFAULT_STOREFRONT_STATS_FILTER);
   const [adminOrderItems, setAdminOrderItems] = useState<CartItem[]>(() => loadAdminOrderDraft());
   const adminOrderQuantity = adminOrderItems.reduce((total, item) => total + item.quantity, 0);
+  // Quick stock is what the admin opens most, so it is the default view of the products tab.
+  const [catalogView, setCatalogView] = useState<"list" | "stock">("stock");
+  const [savingProductIds, setSavingProductIds] = useState<ReadonlySet<string>>(() => new Set());
   const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
   const [previousStorefrontEvents, setPreviousStorefrontEvents] = useState<StorefrontEventRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -807,6 +811,70 @@ export default function AdminPage({
     );
   };
 
+  // Quick-stock edits save one product immediately (only the changed fields are sent) and roll back on error.
+  const saveProductInstantly = async (previousProduct: Product, nextProduct: Product, successMessage: string) => {
+    const productType = productTypes.find((type) => type.id === nextProduct.productTypeId);
+    if (!productType) return;
+    const sortOrder = products.findIndex((product) => product.id === nextProduct.id);
+    onProductsChange((currentProducts) => currentProducts.map((product) => (product.id === nextProduct.id ? nextProduct : product)));
+    setSavingProductIds((current) => new Set(current).add(nextProduct.id));
+    try {
+      await patchCatalogProduct({
+        product: nextProduct,
+        baselineProduct: previousProduct,
+        productType,
+        sortOrder,
+        baselineSortOrder: sortOrder,
+      });
+      setAdminMessage(`${successMessage} · ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`);
+    } catch (error) {
+      onProductsChange((currentProducts) =>
+        currentProducts.map((product) => (product.id === previousProduct.id ? previousProduct : product)),
+      );
+      setSaveState({ status: "error", message: error instanceof Error ? error.message : "Không lưu được thay đổi tồn kho." });
+    } finally {
+      setSavingProductIds((current) => {
+        const next = new Set(current);
+        next.delete(nextProduct.id);
+        return next;
+      });
+    }
+  };
+
+  const quickToggleSize = (product: Product, patternId: string, sizeId: SizeId) => {
+    const pattern = product.patterns.find((current) => current.id === patternId);
+    if (!pattern) return;
+    const isOn = pattern.availableSizes.includes(sizeId);
+    const availableSizes = isOn
+      ? pattern.availableSizes.filter((current) => current !== sizeId)
+      : [...pattern.availableSizes, sizeId].sort();
+    const nextProduct = {
+      ...product,
+      patterns: product.patterns.map((current) => (current.id === patternId ? { ...current, availableSizes } : current)),
+    };
+    void saveProductInstantly(product, nextProduct, `${pattern.name || "Hoạ tiết"} · Size ${sizeId}: ${isOn ? "hết hàng" : "còn hàng"}`);
+  };
+
+  const quickToggleActive = (product: Product) => {
+    const nextProduct = { ...product, active: product.active === false };
+    void saveProductInstantly(
+      product,
+      nextProduct,
+      `${getProductTitle(product, productTypes)}: ${nextProduct.active ? "đang hiển thị" : "đã ẩn"}`,
+    );
+  };
+
+  const reorderPattern = (productId: string, patternId: string, direction: -1 | 1) => {
+    onProductsChange((currentProducts) =>
+      currentProducts.map((product) => {
+        if (product.id !== productId) return product;
+        const patternIndex = product.patterns.findIndex((pattern) => pattern.id === patternId);
+        if (patternIndex === -1) return product;
+        return { ...product, patterns: moveItem(product.patterns, patternIndex, direction) };
+      }),
+    );
+  };
+
   const reorderModelImage = (productId: string, imageId: string, direction: -1 | 1) => {
     onProductsChange((currentProducts) =>
       currentProducts.map((product) => {
@@ -1207,7 +1275,17 @@ export default function AdminPage({
 
       {adminScreen === "catalog" ? (
         <div className="admin-actions admin-actions-secondary admin-catalog-actions">
-          {isHomeSorting ? (
+          {!isHomeSorting && !adminProductTypeSlug ? (
+            <div className="admin-view-switch" role="tablist" aria-label="Kiểu xem sản phẩm">
+              <button type="button" role="tab" aria-selected={catalogView === "list"} className={catalogView === "list" ? "active" : undefined} onClick={() => setCatalogView("list")}>
+                Danh sách
+              </button>
+              <button type="button" role="tab" aria-selected={catalogView === "stock"} className={catalogView === "stock" ? "active" : undefined} onClick={() => setCatalogView("stock")}>
+                Tồn kho nhanh
+              </button>
+            </div>
+          ) : null}
+          {catalogView === "stock" && !adminProductTypeSlug ? null : isHomeSorting ? (
             <div className="admin-sort-actions">
               <button className="admin-button ghost" type="button" disabled={isBusy} onClick={cancelHomeSorting}>
                 Huỷ
@@ -1240,6 +1318,16 @@ export default function AdminPage({
           onFilterChange={setStatsFilter}
           products={products}
           productTypes={productTypes}
+        />
+      ) : catalogView === "stock" && !adminProductTypeSlug ? (
+        <AdminQuickStock
+          products={products}
+          productTypes={productTypes}
+          savingProductIds={savingProductIds}
+          statusMessage={adminMessage}
+          disabled={isBusy}
+          onToggleSize={quickToggleSize}
+          onToggleActive={quickToggleActive}
         />
       ) : (
         <>
@@ -1276,6 +1364,7 @@ export default function AdminPage({
             onRemoveProduct={removeProduct}
             onRemoveProductType={removeProductType}
             onReorderModelImage={reorderModelImage}
+            onReorderPattern={reorderPattern}
             onReorderProductType={reorderProductType}
             onReorderProductWithinType={reorderProductWithinType}
             onSelectProductFromHome={(productId) => selectAdminProduct(productId, "home")}

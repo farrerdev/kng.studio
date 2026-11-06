@@ -36,6 +36,8 @@ export type Product = {
   fit: string;
   material: string;
   shopeeUrl?: string;
+  /** false = hidden from the storefront by the admin (independent of stock). */
+  active?: boolean;
   patterns: ProductPattern[];
   modelImages: ProductImage[];
   sizeChartImage: ProductImage;

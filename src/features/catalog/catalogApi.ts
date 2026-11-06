@@ -21,14 +21,17 @@ export type CatalogImageCleanupResult = {
   warning?: string;
 };
 
-export async function fetchCatalog(): Promise<CatalogData> {
+/** Storefront callers get only active products; the admin passes includeInactive to manage hidden ones. */
+export async function fetchCatalog({ includeInactive = false }: { includeInactive?: boolean } = {}): Promise<CatalogData> {
   if (!supabase) {
     return fallbackCatalog;
   }
 
   const [productTypesResult, productsResult, patternsResult, imagesResult, shopInfoResult, popularityResult] = await Promise.all([
     supabase.from("product_types").select("*").order("sort_order"),
-    supabase.from("products").select("*").eq("active", true).order("sort_order"),
+    includeInactive
+      ? supabase.from("products").select("*").order("sort_order")
+      : supabase.from("products").select("*").eq("active", true).order("sort_order"),
     supabase.from("product_patterns").select("*").order("sort_order"),
     supabase.from("product_images").select("*").order("sort_order"),
     supabase.from("shop_info").select("*").eq("id", "main").maybeSingle(),
@@ -281,7 +284,8 @@ export async function patchCatalogProduct({
   setProductField("size_chart_image_src", product.sizeChartImage.src, baselineProduct?.sizeChartImage.src);
   setProductField("size_chart_image_alt", product.sizeChartImage.alt, baselineProduct?.sizeChartImage.alt);
   setProductField("sort_order", sortOrder, baselineSortOrder);
-  if (!baselineProduct) productPatch.active = true;
+  if (!baselineProduct) productPatch.active = product.active !== false;
+  else if ((product.active !== false) !== (baselineProduct.active !== false)) productPatch.active = product.active !== false;
 
   const baselinePatterns = new Map(baselineProduct?.patterns.map((pattern, index) => [pattern.id, { pattern, index }]) ?? []);
   const patternChanges = product.patterns.flatMap((pattern, index) => {

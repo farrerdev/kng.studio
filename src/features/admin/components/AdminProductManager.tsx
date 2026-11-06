@@ -3,7 +3,6 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
-  ChevronDown,
   ChevronLeft,
   Link2,
   Plus,
@@ -61,6 +60,7 @@ type AdminProductManagerProps = {
   onRemoveProduct: (product: Product) => void;
   onRemoveProductType: (productTypeId: string) => void;
   onReorderModelImage: (productId: string, imageId: string, direction: -1 | 1) => void;
+  onReorderPattern: (productId: string, patternId: string, direction: -1 | 1) => void;
   onReorderProductType: (productTypeId: string, direction: -1 | 1) => void;
   onReorderProductWithinType: (productId: string, direction: -1 | 1) => void;
   onSelectProductFromHome: (productId: string) => void;
@@ -109,6 +109,7 @@ export function AdminProductManager({
   onRemoveProduct,
   onRemoveProductType,
   onReorderModelImage,
+  onReorderPattern,
   onReorderProductType,
   onReorderProductWithinType,
   onSelectProductFromHome,
@@ -208,6 +209,7 @@ export function AdminProductManager({
               onRemovePattern={onRemovePattern}
               onRemoveProduct={onRemoveProduct}
               onReorderModelImage={onReorderModelImage}
+              onReorderPattern={onReorderPattern}
               onSetPatternAsCover={onSetPatternAsCover}
               onTogglePatternSize={onTogglePatternSize}
               onUpdateModelImage={onUpdateModelImage}
@@ -399,7 +401,9 @@ function AdminProductTypeList({
                             <em className="admin-product-stock-summary">
                               {formatPrice(getProductPrice(product, productTypes))} · {availablePatternCount}/{product.patterns.length} họa tiết còn hàng
                             </em>
-                            {availablePatternCount === 0 ? (
+                            {product.active === false ? (
+                              <em className="admin-stock-status out-of-stock">Đang ẩn khỏi cửa hàng</em>
+                            ) : availablePatternCount === 0 ? (
                               <em className="admin-stock-status out-of-stock">Đang ẩn khỏi cửa hàng vì hết hàng</em>
                             ) : null}
                           </span>
@@ -562,6 +566,7 @@ function AdminProductDetail({
   onRemovePattern,
   onRemoveProduct,
   onReorderModelImage,
+  onReorderPattern,
   onSetPatternAsCover,
   onTogglePatternSize,
   onUpdateModelImage,
@@ -579,6 +584,7 @@ function AdminProductDetail({
   onRemovePattern: (productId: string, patternId: string) => void;
   onRemoveProduct: (product: Product) => void;
   onReorderModelImage: (productId: string, imageId: string, direction: -1 | 1) => void;
+  onReorderPattern: (productId: string, patternId: string, direction: -1 | 1) => void;
   onSetPatternAsCover: (productId: string, patternId: string) => void;
   onTogglePatternSize: (productId: string, pattern: ProductPattern, sizeId: SizeId) => void;
   onUpdateModelImage: (productId: string, imageId: string, patch: Partial<ProductImage>) => void;
@@ -602,6 +608,29 @@ function AdminProductDetail({
           </p>
         </div>
       </div>
+
+      <section className="admin-card admin-visibility-card">
+        <div>
+          <h3>Hiển thị trên cửa hàng</h3>
+          <p>
+            {product.active === false
+              ? "Đang ẩn: khách không thấy sản phẩm này."
+              : availablePatternCount === 0
+                ? "Đang bật nhưng tự ẩn vì hết hàng."
+                : "Khách đang thấy sản phẩm này."}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={product.active !== false}
+          aria-label="Hiển thị sản phẩm trên cửa hàng"
+          className={product.active !== false ? "admin-switch on" : "admin-switch"}
+          onClick={() => onUpdateProduct(product.id, { active: product.active === false })}
+        >
+          <span />
+        </button>
+      </section>
 
       <section className="admin-card">
         <h3>Thông tin</h3>
@@ -667,16 +696,11 @@ function AdminProductDetail({
             ) : null}
           </div>
         </div>
-        <div className="admin-detail-delete-row">
-          <button className="admin-button danger" type="button" onClick={() => onRemoveProduct(product)}>
-            <Trash2 size={16} aria-hidden="true" />
-            Xóa sản phẩm
-          </button>
-        </div>
       </section>
 
       <AdminPatternEditor
         product={product}
+        onReorderPattern={onReorderPattern}
         onAddPatterns={onAddPatterns}
         onPreviewImage={onPreviewImage}
         onRemovePattern={onRemovePattern}
@@ -698,12 +722,24 @@ function AdminProductDetail({
         onUploadImages={onUploadImages}
       />
 
+      {/* Destructive action lives at the very end, away from everyday edits. */}
+      <section className="admin-card admin-danger-zone">
+        <div>
+          <h3>Xoá sản phẩm</h3>
+          <p>Xoá vĩnh viễn sản phẩm, họa tiết và ảnh. Muốn tạm dừng bán thì tắt "Hiển thị trên cửa hàng" ở trên.</p>
+        </div>
+        <button className="admin-button danger" type="button" onClick={() => onRemoveProduct(product)}>
+          <Trash2 size={16} aria-hidden="true" />
+          Xoá sản phẩm
+        </button>
+      </section>
     </section>
   );
 }
 
 function AdminPatternEditor({
   product,
+  onReorderPattern,
   onAddPatterns,
   onPreviewImage,
   onRemovePattern,
@@ -714,6 +750,7 @@ function AdminPatternEditor({
   onUploadImages,
 }: {
   product: Product;
+  onReorderPattern: (productId: string, patternId: string, direction: -1 | 1) => void;
   onAddPatterns: (productId: string, urls: string[]) => void;
   onPreviewImage: (image: GalleryImage) => void;
   onRemovePattern: (productId: string, patternId: string) => void;
@@ -752,7 +789,6 @@ function AdminPatternEditor({
                     placeholder="Nhập tên phân loại"
                     onChange={(event) => onUpdatePattern(product.id, pattern.id, { name: event.target.value })}
                   />
-                  <ChevronDown size={18} aria-hidden="true" />
                 </div>
 
                 <div className="pattern-size-switches" aria-label={`Tồn size ${pattern.name}`}>
@@ -771,6 +807,24 @@ function AdminPatternEditor({
               </div>
 
               <div className="pattern-actions">
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={`Đưa ${pattern.name || "họa tiết"} lên`}
+                  disabled={patternIndex === 0}
+                  onClick={() => onReorderPattern(product.id, pattern.id, -1)}
+                >
+                  <ArrowUp size={15} aria-hidden="true" />
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={`Đưa ${pattern.name || "họa tiết"} xuống`}
+                  disabled={patternIndex === product.patterns.length - 1}
+                  onClick={() => onReorderPattern(product.id, pattern.id, 1)}
+                >
+                  <ArrowDown size={15} aria-hidden="true" />
+                </button>
                 <button
                   className={patternIndex === 0 ? "icon-button active cover-pattern-button" : "icon-button cover-pattern-button"}
                   type="button"

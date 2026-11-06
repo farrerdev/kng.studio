@@ -100,7 +100,7 @@ const AdminPage = lazy(() => import("./AdminPage"));
 const isAdminPath = () => typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
 
 // Admin always edits fresh data; the storefront paints the visitor's last-seen catalog immediately.
-const fetchAdminCatalog = async (): Promise<CatalogData> => (await import("../features/catalog/catalogApi")).fetchCatalog();
+const fetchAdminCatalog = async (): Promise<CatalogData> => (await import("../features/catalog/catalogApi")).fetchCatalog({ includeInactive: true });
 
 function App() {
   const [initialCatalog] = useState(() => (isSupabaseConfigured && !isAdminPath() ? readCachedCatalog() : null));
@@ -146,7 +146,7 @@ function App() {
     const typeOrder = new Map(catalogProductTypes.map((productType, index) => [productType.id, index]));
     return catalogProducts
       .map((product, index) => ({ product, index }))
-      .filter(({ product }) => isProductInStock(product))
+      .filter(({ product }) => product.active !== false && isProductInStock(product))
       .sort((left, right) => {
         const leftTypeOrder = typeOrder.get(left.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
         const rightTypeOrder = typeOrder.get(right.product.productTypeId) ?? Number.MAX_SAFE_INTEGER;
