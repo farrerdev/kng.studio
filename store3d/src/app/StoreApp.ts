@@ -60,6 +60,22 @@ const INTRO = {
   end: 4.6,
 } as const;
 
+/** Does the 2D segment a→b pass through (or start inside) the box grown by `pad`? (slab test) */
+function segmentHitsBox(ax: number, az: number, bx: number, bz: number, box: { x0: number; x1: number; z0: number; z1: number }, pad: number): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  const clip = (d: number, lo: number, hi: number, start: number): boolean => {
+    if (Math.abs(d) < 1e-9) return start >= lo && start <= hi;
+    let near = (lo - start) / d;
+    let far = (hi - start) / d;
+    if (near > far) [near, far] = [far, near];
+    t0 = Math.max(t0, near);
+    t1 = Math.min(t1, far);
+    return t0 <= t1;
+  };
+  return clip(bx - ax, box.x0 - pad, box.x1 + pad, ax) && clip(bz - az, box.z0 - pad, box.z1 + pad, az);
+}
+
 const smoothstep = (from: number, to: number, t: number) => {
   const x = MathUtils.clamp((t - from) / (to - from), 0, 1);
   return x * x * (3 - 2 * x);
@@ -97,7 +113,15 @@ export class StoreApp {
   private walls: FadeWall[] = [];
   private awning: Object3D | null = null;
   /** Plants and trees that fade when they stand between the camera and the guest. */
-  private occluders: Array<{ x: number; z: number; radius: number; height: number; opacity: number; materials: Material[] }> = [];
+  private occluders: Array<{
+    x: number;
+    z: number;
+    radius: number;
+    height: number;
+    box?: { x0: number; x1: number; z0: number; z1: number };
+    opacity: number;
+    materials: Material[];
+  }> = [];
   private door: FrontDoor | null = null;
   /** Flat roof, shown only while the guest is outside (inside, the camera looks in from above). */
   private roof: Object3D | null = null;
@@ -357,9 +381,11 @@ export class StoreApp {
     if (this.roof) this.roof.visible = this.player.z > ROOM.halfDepth - 0.3;
     for (const wall of this.walls) {
       // Inside: walls between the camera and the room fade. Outside (and during the entrance) the
-      // shop stays whole so its front shows, unless the camera itself is inside looking out.
+      // front stays up so the shop front shows, unless the camera itself is inside looking out.
       const outside = this.player.z > ROOM.halfDepth - 0.3;
-      const hides = outside ? wall === front && cameraPosition.z < ROOM.halfDepth + 0.3 : wall.isBehindCamera(cameraPosition);
+      // Side and back walls fade whenever the camera is beyond them; the front only when the camera
+      // and the guest are on opposite sides of it.
+      const hides = wall === front && outside ? cameraPosition.z < ROOM.halfDepth + 0.3 : wall.isBehindCamera(cameraPosition);
       const target = hides ? 0 : 1;
       wall.opacity = MathUtils.damp(wall.opacity, target, 10, dt);
       const solid = wall.opacity > 0.97;
@@ -382,7 +408,13 @@ export class StoreApp {
 
   /** Gives the occluder its own materials (so fading it leaves shared ones alone) and tracks it. */
   private registerOccluder(object: Object3D): void {
-    const info = object.userData.occluder as { x?: number; z?: number; radius: number; height: number };
+    const info = object.userData.occluder as {
+      x?: number;
+      z?: number;
+      radius?: number;
+      height: number;
+      box?: { x0: number; x1: number; z0: number; z1: number };
+    };
     const materials: Material[] = [];
     object.traverse((child) => {
       const mesh = child as Mesh;
@@ -392,7 +424,15 @@ export class StoreApp {
       mesh.material = own;
       materials.push(own);
     });
-    this.occluders.push({ x: info.x ?? object.position.x, z: info.z ?? object.position.z, radius: info.radius, height: info.height, opacity: 1, materials });
+    this.occluders.push({
+      x: info.x ?? object.position.x,
+      z: info.z ?? object.position.z,
+      radius: info.radius ?? 0,
+      height: info.height,
+      ...(info.box ? { box: info.box } : {}),
+      opacity: 1,
+      materials,
+    });
   }
 
   /** Fade plants/trees on the line of sight from the camera to the guest. */
@@ -404,17 +444,27 @@ export class StoreApp {
     const dz = fz - camera.z;
     const lengthSq = dx * dx + dz * dz || 1;
     for (const occluder of this.occluders) {
+      if (occluder.box) {
+        // Buildings: fade when the camera is inside one or it cuts the line to the guest.
+        const blocking = camera.y < occluder.height + 1 && segmentHitsBox(camera.x, camera.z, fx, fz, occluder.box, 0.4);
+        this.fadeOccluder(occluder, blocking, dt);
+        continue;
+      }
       const t = ((occluder.x - camera.x) * dx + (occluder.z - camera.z) * dz) / lengthSq;
       const px = camera.x + dx * MathUtils.clamp(t, 0, 1);
       const pz = camera.z + dz * MathUtils.clamp(t, 0, 1);
       const near = Math.hypot(occluder.x - px, occluder.z - pz) < occluder.radius + 0.25;
       // Only when it is in front of the guest and the camera looks down on it from about its height.
       const inWay = near && t > 0.02 && t < 0.97 && camera.y < occluder.height + 4;
-      occluder.opacity = MathUtils.damp(occluder.opacity, inWay ? 0.18 : 1, 8, dt);
-      for (const material of occluder.materials) {
-        material.opacity = occluder.opacity;
-        material.depthWrite = occluder.opacity > 0.95;
-      }
+      this.fadeOccluder(occluder, inWay, dt);
+    }
+  }
+
+  private fadeOccluder(occluder: { opacity: number; materials: Material[] }, inWay: boolean, dt: number): void {
+    occluder.opacity = MathUtils.damp(occluder.opacity, inWay ? 0.15 : 1, 8, dt);
+    for (const material of occluder.materials) {
+      material.opacity = occluder.opacity;
+      material.depthWrite = occluder.opacity > 0.95;
     }
   }
 

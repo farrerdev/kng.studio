@@ -86,9 +86,8 @@ export const CONSOLE = { x0: 0.05, x1: 1.05, depth: 0.32, height: 0.78 } as cons
 /** Right wall above the lounge: the "sleep well" print and three decor prints. */
 export const WALL_FRAMES = { x: ROOM.halfWidth, y: 1.65, art: { z: 1.2 }, prints: [{ z: 2.05 }, { z: 2.8 }, { z: 3.55 }] } as const;
 
+/** Potted plants, kept out of the sight lines to the clothing wall and the mannequins. */
 export const PLANTS = [
-  { x: -1.25, z: 4.05, size: 1.0 },
-  { x: 1.25, z: 4.05, size: 1.0 },
   { x: 5.35, z: 1.0, size: 1.15 },
   { x: 1.75, z: -4.1, size: 0.9 },
 ] as const;
@@ -141,7 +140,7 @@ export const OUTDOOR_RECTS: readonly Rect[] = [
 export const OUTDOOR_CIRCLES: readonly Circle[] = [
   ...[-5.3, 3.2, 11.7].map((x) => ({ x, z: STREET.kerb - 0.45, r: 0.12 })),
   ...[-13, -9.5, 8.5, 12.5].map((x) => ({ x, z: STREET.kerb - 0.6, r: 0.2 })),
-  ...[-22, -12, -2, 8, 24, 34].map((x) => ({ x, z: STREET.far + 2.7, r: 0.2 })),
+  ...[-22, -12, -2, 8, 17, 36].map((x) => ({ x, z: STREET.far + 2.7, r: 0.2 })),
 ];
 
 export const OBSTACLE_CIRCLES: readonly Circle[] = [

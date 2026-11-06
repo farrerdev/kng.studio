@@ -115,15 +115,19 @@ const HOUSES: House[] = [
 function buildNeighbours(): Group {
   const group = new Group();
   for (const house of HOUSES) {
+    const home = new Group();
+    // Fades when the camera ends up inside it or behind it (see StoreApp.updateOccluders).
+    home.userData.occluder = { box: { x0: house.x0, x1: house.x1, z0: house.z0, z1: house.z1 }, height: house.height };
+    group.add(home);
     const wall = new MeshStandardMaterial({ color: house.color, roughness: 0.95 });
-    slab(wall, house.x0, house.x1, 0, house.height, house.z0, house.z1, group, quiet);
+    slab(wall, house.x0, house.x1, 0, house.height, house.z0, house.z1, home, quiet);
     // Roof trim.
-    slab(new MeshStandardMaterial({ color: "#B9A48E", roughness: 0.8 }), house.x0 - 0.1, house.x1 + 0.1, house.height, house.height + 0.18, house.z0 - 0.1, house.z1 + 0.1, group, quiet);
+    slab(new MeshStandardMaterial({ color: "#B9A48E", roughness: 0.8 }), house.x0 - 0.1, house.x1 + 0.1, house.height, house.height + 0.18, house.z0 - 0.1, house.z1 + 0.1, home, quiet);
     // Windows on the street-facing side.
     const width = house.x1 - house.x0;
     const facade = new MeshStandardMaterial({ map: facadeTexture(house.color, width, house.height), transparent: true, roughness: 0.8 });
     const z = house.face === "+z" ? house.z1 + 0.01 : house.z0 - 0.01;
-    const plane = mesh(new PlaneGeometry(width, house.height), facade, [(house.x0 + house.x1) / 2, house.height / 2, z], group, quiet);
+    const plane = mesh(new PlaneGeometry(width, house.height), facade, [(house.x0 + house.x1) / 2, house.height / 2, z], home, quiet);
     if (house.face === "-z") plane.rotation.y = Math.PI;
   }
   return group;
@@ -207,7 +211,6 @@ function buildGreenery(materials: MaterialLibrary): Group {
   const leaves = [materials.surface("#9AA58C", { roughness: 1 }), materials.surface("#A9B49A", { roughness: 1 }), materials.surface("#8E9C7E", { roughness: 1 })];
   // Street trees along the kerb, a few more in the alleys and across the road.
   for (const x of [-13, -9.5, 8.5, 12.5]) tree(group, x, STREET.kerb - 0.6, 1.1, trunk, leaves);
-  for (const [x, z] of [[-6.4, -2], [6.4, 1.5], [-6.4, 2.6], [6.4, -4.5]] as const) tree(group, x, z, 0.9, trunk, leaves);
 
   // Window planters under the shop's front windows.
   const box = materials.surface(palette.oak, { roughness: 0.7 });
@@ -255,7 +258,8 @@ function buildShopFront(): Group {
 
 const RIVER = { near: STREET.far + 4.2, far: STREET.far + 78 } as const;
 /** The bridge crosses the river towards the far bank, a little to the side of the shop. */
-const BRIDGE = { x: 15, deck: 3.4, width: 5.2 } as const;
+/** Set well off to the side so the whole dragon reads from the shop front. */
+const BRIDGE = { x: 27, deck: 3.4, width: 5.2 } as const;
 const DRAGON_GOLD = "#F0B92A";
 
 function buildRiverside(materials: MaterialLibrary): Group {
@@ -269,7 +273,7 @@ function buildRiverside(materials: MaterialLibrary): Group {
   for (let x = -60; x <= 60; x += 1.6) slab(rail, x - 0.03, x + 0.03, 0, 0.95, RIVER.near - 0.08, RIVER.near - 0.02, group, quiet);
   const trunk = materials.surface("#A08368", { roughness: 0.9 });
   const frond = materials.surface("#8FA27C", { roughness: 1 });
-  for (const x of [-22, -12, -2, 8, 24, 34]) palm(group, x, (STREET.far + RIVER.near) / 2 + 0.6, trunk, frond);
+  for (const x of [-22, -12, -2, 8, 17, 36]) palm(group, x, (STREET.far + RIVER.near) / 2 + 0.6, trunk, frond);
 
   // The river: a wide, calm sheet of water.
   const water = mesh(new PlaneGeometry(240, RIVER.far - RIVER.near), new MeshStandardMaterial({ color: "#A7C6C7", roughness: 0.25, metalness: 0.15 }), [0, -0.6, (RIVER.near + RIVER.far) / 2], group, quiet);
@@ -311,8 +315,8 @@ function palm(parent: Group, x: number, z: number, trunk: Material, frond: Mater
 /**
  * Cầu Rồng, modelled on the real bridge: a long deck on massive round piers, and the golden steel
  * dragon weaving along its middle, dipping under the deck between arches and rising in three
- * arches (white hangers beneath them), head raised high at the near end, tail flicking up at the
- * far bank. Lamp posts with flags line the deck.
+ * arches (white hangers beneath them), head raised high at the far bank, tail flicking up on the
+ * near side. Lamp posts with flags line the deck.
  */
 function buildDragonBridge(): Group {
   const group = new Group();
@@ -363,7 +367,8 @@ function buildDragonBridge(): Group {
     [0.5, -1.4], [0.56, -2.2], [0.62, -0.8], [0.68, 2.6], [0.75, 6.0], [0.82, 2.2], [0.87, -1.6], [0.92, -1.0],
     [0.96, 1.6], [1.0, 3.6],
   ];
-  const curve = new CatmullRomCurve3(profile.map(([f, y]) => new Vector3(BRIDGE.x, deckTop + y, at(f))));
+  // As on the real bridge, the head is at the far bank (facing the sea), the tail on the near side.
+  const curve = new CatmullRomCurve3(profile.map(([f, y]) => new Vector3(BRIDGE.x, deckTop + y, at(1 - f))));
   mesh(new TubeGeometry(curve, 400, 0.66, 14, false), gold, [0, 0, 0], group, quiet);
 
   // Scales: a crest of flat plates along the back, and white hangers under each arch.
@@ -382,11 +387,12 @@ function buildDragonBridge(): Group {
     }
   }
 
-  // Head at the top of the neck, looking out over the street: long open jaws, big eyes, horns,
+  // Head at the top of the neck, looking out across the river: long open jaws, big eyes, horns,
   // and a mane of flame-shaped plates sweeping back (flattened sideways so it reads in profile).
   const top = curve.getPointAt(0);
   const head = new Group();
-  head.position.set(top.x, top.y + 0.2, top.z - 0.2);
+  head.position.set(top.x, top.y + 0.2, top.z + 0.2);
+  head.rotation.y = Math.PI; // snout points away from the shop, along the bridge
   head.scale.setScalar(1.25);
   group.add(head);
   const red = new MeshStandardMaterial({ color: "#B4472F", roughness: 0.6 });
