@@ -13,7 +13,7 @@ import {
   TubeGeometry,
   Vector3,
 } from "three";
-import { FRONT_WINDOWS, ROOM } from "../config/layout";
+import { FRONT_WINDOWS, ROOM, STREET } from "../config/layout";
 import { palette } from "../config/palette";
 import { mesh, slab, softBox } from "./build";
 import type { MaterialLibrary } from "./materials";
@@ -25,7 +25,6 @@ import type { MaterialLibrary } from "./materials";
 
 const W = ROOM.halfWidth;
 const D = ROOM.halfDepth;
-const STREET = { kerb: D + 2.6, far: D + 8.6 } as const;
 const quiet = { castShadow: false, receiveShadow: false } as const;
 
 /** `awning` fades with the shop's front wall so it never blocks the view inside. */
@@ -43,6 +42,7 @@ function buildStreet(materials: MaterialLibrary): Group {
   const group = new Group();
   const road = mesh(new PlaneGeometry(80, STREET.far - STREET.kerb), materials.surface("#CBC3B8", { roughness: 1 }), [0, -0.005, (STREET.kerb + STREET.far) / 2], group, quiet);
   road.rotation.x = -Math.PI / 2;
+  road.userData.floor = true;
   // Kerbs and the far pavement.
   slab(materials.surface("#E7DFD3", { roughness: 0.9 }), -40, 40, -0.01, 0.06, STREET.kerb - 0.18, STREET.kerb, group, quiet);
   slab(materials.surface("#E7DFD3", { roughness: 0.9 }), -40, 40, -0.01, 0.06, STREET.far, STREET.far + 0.18, group, quiet);
@@ -55,6 +55,7 @@ function buildStreet(materials: MaterialLibrary): Group {
   // Pavement slabs in front of the shop.
   const paving = mesh(new PlaneGeometry(80, STREET.kerb - D - 0.2), new MeshStandardMaterial({ map: pavingTexture(), roughness: 0.95 }), [0, -0.004, (D + 0.2 + STREET.kerb) / 2], group, quiet);
   paving.rotation.x = -Math.PI / 2;
+  paving.userData.floor = true;
   // Street lamps.
   const iron = materials.surface("#6E7A66", { roughness: 0.6 });
   const glow = materials.surface("#FFF3D6", { emissive: "#FFE9B8", emissiveIntensity: 0.6 });
@@ -184,7 +185,10 @@ function shade(hex: string, amount: number): string {
 
 // ---------- Trees and planters ----------
 
-function tree(group: Group, x: number, z: number, scale: number, trunk: Material, leaves: Material[]): void {
+function tree(parent: Group, x: number, z: number, scale: number, trunk: Material, leaves: Material[]): void {
+  const group = new Group();
+  group.userData.occluder = { x, z, radius: 1.0 * scale, height: 2.4 * scale };
+  parent.add(group);
   mesh(new CylinderGeometry(0.08 * scale, 0.12 * scale, 1.8 * scale, 8), trunk, [x, 0.9 * scale, z], group, quiet);
   const blobs: Array<[number, number, number, number]> = [
     [0, 2.2, 0, 0.9],
@@ -259,6 +263,7 @@ function buildRiverside(materials: MaterialLibrary): Group {
   // Riverside walk with palms and a white railing.
   const walk = mesh(new PlaneGeometry(120, RIVER.near - STREET.far - 0.2), materials.surface("#E9E0D2", { roughness: 0.95 }), [0, -0.003, (STREET.far + 0.2 + RIVER.near) / 2], group, quiet);
   walk.rotation.x = -Math.PI / 2;
+  walk.userData.floor = true;
   const rail = materials.surface("#F6F2EA", { roughness: 0.6 });
   slab(rail, -60, 60, 0.95, 1.0, RIVER.near - 0.08, RIVER.near - 0.02, group, quiet);
   for (let x = -60; x <= 60; x += 1.6) slab(rail, x - 0.03, x + 0.03, 0, 0.95, RIVER.near - 0.08, RIVER.near - 0.02, group, quiet);
@@ -284,8 +289,11 @@ function buildRiverside(materials: MaterialLibrary): Group {
   return group;
 }
 
-function palm(group: Group, x: number, z: number, trunk: Material, frond: Material): void {
+function palm(parent: Group, x: number, z: number, trunk: Material, frond: Material): void {
   const height = 4.2;
+  const group = new Group();
+  group.userData.occluder = { x, z, radius: 1.0, height: 3.5 };
+  parent.add(group);
   const stem = mesh(new CylinderGeometry(0.11, 0.17, height, 8), trunk, [x, height / 2, z], group, quiet);
   stem.rotation.z = 0.06;
   for (let i = 0; i < 7; i += 1) {

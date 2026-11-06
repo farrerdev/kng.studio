@@ -8,6 +8,11 @@ export type Point = { x: number; z: number };
 export const ROOM = { halfWidth: 5.75, halfDepth: 4.5, height: 4.6, wall: 0.18 } as const;
 
 export const DOOR = { x0: -0.75, x1: 0.75, height: 2.45 } as const;
+
+/** The street in front of the shop: pavement up to the kerb, the road, then the riverside walk. */
+export const STREET = { kerb: ROOM.halfDepth + 2.6, far: ROOM.halfDepth + 8.6 } as const;
+/** Where the guest can walk outside: from the shop front to the riverside railing. */
+export const OUTDOOR = { halfWidth: 16, zMax: STREET.far + 3.9 } as const;
 export const FRONT_WINDOWS = [
   { x0: -5.1, x1: -1.25 },
   { x0: 1.25, x1: 5.1 },
@@ -123,6 +128,20 @@ export const OBSTACLE_RECTS: readonly Rect[] = [
   { x0: COUNTER.main.x0, x1: ROOM.halfWidth, z0: -ROOM.halfDepth, z1: COUNTER.main.z0 },
   { x0: CAT_SEAT.x0, x1: CAT_SEAT.x1, z0: CAT_SEAT.z0, z1: ROOM.halfDepth },
   { x0: CONSOLE.x0, x1: CONSOLE.x1, z0: -ROOM.halfDepth, z1: -ROOM.halfDepth + CONSOLE.depth + 0.05 },
+];
+
+/** Outside: window planters, the bench, neighbouring house fronts. */
+export const OUTDOOR_RECTS: readonly Rect[] = [
+  ...FRONT_WINDOWS.map((w) => ({ x0: w.x0 + 0.15, x1: w.x1 - 0.15, z0: ROOM.halfDepth + ROOM.wall, z1: ROOM.halfDepth + ROOM.wall + 0.36 })),
+  { x0: -4.15, x1: -2.65, z0: STREET.kerb - 1.12, z1: STREET.kerb - 0.66 },
+  { x0: -30, x1: -6.8, z0: ROOM.halfDepth, z1: ROOM.halfDepth + 0.35 },
+  { x0: 6.8, x1: 30, z0: ROOM.halfDepth, z1: ROOM.halfDepth + 0.35 },
+];
+/** Outside: lamp posts, street trees and riverside palms (trunks). */
+export const OUTDOOR_CIRCLES: readonly Circle[] = [
+  ...[-5.3, 3.2, 11.7].map((x) => ({ x, z: STREET.kerb - 0.45, r: 0.12 })),
+  ...[-13, -9.5, 8.5, 12.5].map((x) => ({ x, z: STREET.kerb - 0.6, r: 0.2 })),
+  ...[-22, -12, -2, 8, 24, 34].map((x) => ({ x, z: STREET.far + 2.7, r: 0.2 })),
 ];
 
 export const OBSTACLE_CIRCLES: readonly Circle[] = [

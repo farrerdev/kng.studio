@@ -28,7 +28,7 @@ const { halfWidth: W, halfDepth: D, height: H, wall: T } = ROOM;
 /** The glass double door: two leaves hinged at the frame, swung open for the guest's entrance. */
 export type FrontDoor = { leaves: Group[]; setOpen: (amount: number) => void };
 
-export function buildRoom(materials: MaterialLibrary): { group: Group; walls: FadeWall[]; door: FrontDoor } {
+export function buildRoom(materials: MaterialLibrary): { group: Group; walls: FadeWall[]; door: FrontDoor; roof: Group } {
   const group = new Group();
   group.name = "room";
 
@@ -55,11 +55,13 @@ export function buildRoom(materials: MaterialLibrary): { group: Group; walls: Fa
   pavement.rotation.x = -Math.PI / 2;
 
   group.add(buildCeiling());
+  const roof = buildRoof();
+  group.add(roof);
 
   const front = frontWall(materials);
   const walls = [sideWall(palette.linen, -1), sideWall(palette.linen, 1), backWall(), front.wall];
   for (const wall of walls) group.add(wall.group);
-  return { group, walls, door: front.door };
+  return { group, walls, door: front.door, roof };
 }
 
 function fadeMaterial(color: string, roughness = 0.95): MeshStandardMaterial {
@@ -215,5 +217,22 @@ function buildCeiling(): Group {
     receiveShadow: false,
   });
   ceiling.rotation.x = Math.PI / 2; // faces down
+  return group;
+}
+
+/** Flat roof with a low parapet, facing up: covers the shop when seen from the street. */
+function buildRoof(): Group {
+  const group = new Group();
+  group.name = "roof";
+  group.userData.animated = true; // visibility toggles with the guest's position
+  const top = new MeshStandardMaterial({ color: "#D8CFC3", roughness: 1 });
+  const roof = mesh(new PlaneGeometry(2 * (W + T), 2 * (D + T)), top, [0, H + 0.02, 0], group, { castShadow: false, receiveShadow: false });
+  roof.rotation.x = -Math.PI / 2; // faces up
+  const parapet = new MeshStandardMaterial({ color: palette.linen, roughness: 0.95 });
+  slab(parapet, -W - T, W + T, H, H + 0.35, D, D + T, group, { castShadow: false });
+  slab(parapet, -W - T, W + T, H, H + 0.35, -D - T, -D, group, { castShadow: false });
+  slab(parapet, -W - T, -W, H, H + 0.35, -D, D, group, { castShadow: false });
+  slab(parapet, W, W + T, H, H + 0.35, -D, D, group, { castShadow: false });
+  group.visible = false;
   return group;
 }

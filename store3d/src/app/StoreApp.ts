@@ -96,7 +96,11 @@ export class StoreApp {
 
   private walls: FadeWall[] = [];
   private awning: Object3D | null = null;
+  /** Plants and trees that fade when they stand between the camera and the guest. */
+  private occluders: Array<{ x: number; z: number; radius: number; height: number; opacity: number; materials: Material[] }> = [];
   private door: FrontDoor | null = null;
+  /** Flat roof, shown only while the guest is outside (inside, the camera looks in from above). */
+  private roof: Object3D | null = null;
   private intro: { time: number; done: () => void } | null = null;
   private zones: Zone[] = [];
   private pickables: Object3D[] = [];
@@ -221,8 +225,9 @@ export class StoreApp {
   }
 
   private buildWorld(): void {
-    const { group: room, walls, door } = buildRoom(this.materials);
+    const { group: room, walls, door, roof } = buildRoom(this.materials);
     this.door = door;
+    this.roof = roof;
     this.walls = walls;
     const shelving = buildShelving(this.catalog, this.materials);
     const mannequins = buildMannequins(this.catalog, this.materials);
@@ -248,6 +253,7 @@ export class StoreApp {
       if (object.userData.zoneId || object.userData.floor) this.pickables.push(object);
       if (object.userData.billboard) this.billboards.push(object);
       if (object.userData.spin) this.spinners.push(object);
+      if (object.userData.occluder) this.registerOccluder(object);
     });
 
     this.addLights();
@@ -327,6 +333,8 @@ export class StoreApp {
     this.cameraRig.update(dt, this.player);
 
     this.updateWalls(dt);
+    this.updateDoor(dt);
+    this.updateOccluders(dt);
     this.updateBillboards(dt);
     this.updateZone();
     this.elapsed += dt;
@@ -346,16 +354,66 @@ export class StoreApp {
         if (material) material.opacity = front.opacity;
       });
     }
+    if (this.roof) this.roof.visible = this.player.z > ROOM.halfDepth - 0.3;
     for (const wall of this.walls) {
-      // During the entrance the front stays solid until she is through the door.
-      const keepFront = wall === front && this.intro !== null && this.player.z > ROOM.halfDepth - 0.5;
-      const target = wall.isBehindCamera(cameraPosition) && !keepFront ? 0 : 1;
+      // Inside: walls between the camera and the room fade. Outside (and during the entrance) the
+      // shop stays whole so its front shows, unless the camera itself is inside looking out.
+      const outside = this.player.z > ROOM.halfDepth - 0.3;
+      const hides = outside ? wall === front && cameraPosition.z < ROOM.halfDepth + 0.3 : wall.isBehindCamera(cameraPosition);
+      const target = hides ? 0 : 1;
       wall.opacity = MathUtils.damp(wall.opacity, target, 10, dt);
       const solid = wall.opacity > 0.97;
       wall.group.visible = wall.opacity > 0.1;
       for (const material of wall.materials) {
         material.opacity = (material.userData.baseOpacity ??= material.opacity) * wall.opacity;
         material.depthWrite = solid && material.userData.depthWrite !== false;
+      }
+    }
+  }
+
+  private doorOpen = 0;
+
+  /** The glass doors open by themselves when the guest comes near them (from either side). */
+  private updateDoor(dt: number): void {
+    const near = Math.abs(this.player.x) < 1.4 && Math.abs(this.player.z - ROOM.halfDepth) < 1.0;
+    this.doorOpen = MathUtils.damp(this.doorOpen, near ? 1 : 0, 6, dt);
+    this.door?.setOpen(this.doorOpen);
+  }
+
+  /** Gives the occluder its own materials (so fading it leaves shared ones alone) and tracks it. */
+  private registerOccluder(object: Object3D): void {
+    const info = object.userData.occluder as { x?: number; z?: number; radius: number; height: number };
+    const materials: Material[] = [];
+    object.traverse((child) => {
+      const mesh = child as Mesh;
+      if (!mesh.isMesh) return;
+      const own = (mesh.material as Material).clone();
+      own.transparent = true;
+      mesh.material = own;
+      materials.push(own);
+    });
+    this.occluders.push({ x: info.x ?? object.position.x, z: info.z ?? object.position.z, radius: info.radius, height: info.height, opacity: 1, materials });
+  }
+
+  /** Fade plants/trees on the line of sight from the camera to the guest. */
+  private updateOccluders(dt: number): void {
+    const camera = this.cameraRig.camera.position;
+    const fx = this.player.x;
+    const fz = this.player.z;
+    const dx = fx - camera.x;
+    const dz = fz - camera.z;
+    const lengthSq = dx * dx + dz * dz || 1;
+    for (const occluder of this.occluders) {
+      const t = ((occluder.x - camera.x) * dx + (occluder.z - camera.z) * dz) / lengthSq;
+      const px = camera.x + dx * MathUtils.clamp(t, 0, 1);
+      const pz = camera.z + dz * MathUtils.clamp(t, 0, 1);
+      const near = Math.hypot(occluder.x - px, occluder.z - pz) < occluder.radius + 0.25;
+      // Only when it is in front of the guest and the camera looks down on it from about its height.
+      const inWay = near && t > 0.02 && t < 0.97 && camera.y < occluder.height + 4;
+      occluder.opacity = MathUtils.damp(occluder.opacity, inWay ? 0.18 : 1, 8, dt);
+      for (const material of occluder.materials) {
+        material.opacity = occluder.opacity;
+        material.depthWrite = occluder.opacity > 0.95;
       }
     }
   }
@@ -370,8 +428,12 @@ export class StoreApp {
   }
 
   private updateZone(): void {
-    const nearCat = Math.hypot(this.cat.x - this.player.x, this.cat.z - this.player.z) < CAT_ZONE_DISTANCE;
-    const zone = nearCat ? null : zoneAt(this.zones, this.player.x, this.player.z);
+    // A spot the guest stands at wins over Min wandering past; Min's panel shows when there is no
+    // other spot, or when the guest went to her on purpose.
+    const catClose = Math.hypot(this.cat.x - this.player.x, this.cat.z - this.player.z) < CAT_ZONE_DISTANCE;
+    const spot = zoneAt(this.zones, this.player.x, this.player.z);
+    const nearCat = catClose && (!spot || this.pendingOpenKey === "cat" || this.activeZoneKey === "cat");
+    const zone = nearCat ? null : spot;
     const key = nearCat ? "cat" : zone?.id ?? null;
     if (key === this.activeZoneKey) return;
     this.activeZoneKey = key;
@@ -455,19 +517,24 @@ export class StoreApp {
     this.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.cameraRig.camera);
 
-    if (this.raycaster.intersectObject(this.cat.root, true).length) {
+    // Nearest visible thing under the finger: Min, a spot (furniture or its marker) or the floor.
+    const hit = this.raycaster
+      .intersectObjects([...this.pickables, this.cat.root], true)
+      .find((h) => h.object.visible && ((h.object as Mesh).material as Material | undefined)?.opacity !== 0);
+    if (!hit) return;
+    let node: Object3D | null = hit.object;
+    while (node && node !== this.cat.root) node = node.parent;
+    if (node === this.cat.root) {
       this.goToSpot("cat", { x: this.cat.x + 0.6, z: this.cat.z + 0.6, faceX: this.cat.x, faceZ: this.cat.z });
       return;
     }
-    const hit = this.raycaster.intersectObjects(this.pickables, false).find((h) => h.object.visible);
-    if (!hit) return;
     const zoneId = hit.object.userData.zoneId as string | undefined;
     const zone = zoneId ? this.zones.find((z) => z.id === zoneId) : undefined;
     if (zone) {
       this.goToSpot(zone.id, zone.approach);
     } else if (hit.object.userData.floor) {
       this.pendingOpenKey = null;
-      this.player.walkTo({ x: hit.point.x, z: hit.point.z });
+      this.walkRoute({ x: hit.point.x, z: hit.point.z });
     }
   }
 
@@ -483,7 +550,26 @@ export class StoreApp {
     this.pendingOpenKey = key;
     this.pendingThen = then ?? null;
     // If furniture is in the way, hop the rest of the way instead of getting stuck.
-    this.player.walkTo({ ...approach, onBlocked: () => this.hopTo(approach) });
+    this.walkRoute({ ...approach, onBlocked: () => this.hopTo(approach) });
+  }
+
+  /** Walks to a point, going through the front door when it is on the other side of the wall. */
+  private walkRoute(target: { x: number; z: number; faceX?: number; faceZ?: number; onArrive?: () => void; onBlocked?: () => void }): void {
+    const indoors = (z: number) => z < ROOM.halfDepth;
+    if (indoors(this.player.z) === indoors(target.z)) {
+      this.player.walkTo(target);
+      return;
+    }
+    const inner = { x: 0, z: ROOM.halfDepth - 0.6 };
+    const outer = { x: 0, z: ROOM.halfDepth + ROOM.wall + 0.7 };
+    const [first, second] = indoors(this.player.z) ? [inner, outer] : [outer, inner];
+    const hop = (point: { x: number; z: number }, next: () => void) => () => {
+      this.hopTo(point);
+      next();
+    };
+    const last = () => this.player.walkTo(target);
+    const middle = () => this.player.walkTo({ ...second, onArrive: last, onBlocked: hop(second, last) });
+    this.player.walkTo({ ...first, onArrive: middle, onBlocked: hop(first, middle) });
   }
 
   private hopTo(spot: { x: number; z: number; faceX?: number; faceZ?: number }): void {

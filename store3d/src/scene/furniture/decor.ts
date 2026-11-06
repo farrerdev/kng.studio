@@ -176,6 +176,8 @@ function buildPlants(materials: MaterialLibrary): Group {
     const g = new Group();
     g.position.set(plant.x, 0, plant.z);
     g.scale.setScalar(s);
+    // Fades out when it stands between the camera and the guest (see StoreApp.updateOccluders).
+    g.userData.occluder = { radius: 0.45 * s, height: 1.3 * s };
     group.add(g);
     mesh(new CylinderGeometry(0.2, 0.15, 0.4, 20), pot, [0, 0.2, 0], g);
     mesh(new CylinderGeometry(0.015, 0.025, 0.9, 6), trunk, [0, 0.82, 0], g);

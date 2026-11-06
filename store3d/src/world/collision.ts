@@ -1,16 +1,35 @@
-import { type Circle, OBSTACLE_CIRCLES, OBSTACLE_RECTS, ROOM, type Rect } from "../config/layout";
+import {
+  type Circle,
+  DOOR,
+  OBSTACLE_CIRCLES,
+  OBSTACLE_RECTS,
+  OUTDOOR,
+  OUTDOOR_CIRCLES,
+  OUTDOOR_RECTS,
+  ROOM,
+  type Rect,
+} from "../config/layout";
 
 const BODY_RADIUS = 0.24;
 
 /** Flat 2D collision against the static floor plan (the shop is a single level). */
 export class CollisionWorld {
   constructor(
-    private readonly rects: readonly Rect[] = OBSTACLE_RECTS,
-    private readonly circles: readonly Circle[] = OBSTACLE_CIRCLES,
+    private readonly rects: readonly Rect[] = [...OBSTACLE_RECTS, ...OUTDOOR_RECTS],
+    private readonly circles: readonly Circle[] = [...OBSTACLE_CIRCLES, ...OUTDOOR_CIRCLES],
   ) {}
 
+  /** Inside the shop, out through the front door, and along the street to the riverside. */
+  private outOfBounds(x: number, z: number, radius: number): boolean {
+    const front = ROOM.halfDepth;
+    const outside = front + ROOM.wall;
+    if (z < front - radius) return Math.abs(x) > ROOM.halfWidth - radius || z < -ROOM.halfDepth + radius;
+    if (z <= outside + radius) return x < DOOR.x0 + radius || x > DOOR.x1 - radius; // the doorway
+    return Math.abs(x) > OUTDOOR.halfWidth - radius || z > OUTDOOR.zMax - radius;
+  }
+
   isBlocked(x: number, z: number, radius = BODY_RADIUS): boolean {
-    if (Math.abs(x) > ROOM.halfWidth - radius || Math.abs(z) > ROOM.halfDepth - radius) return true;
+    if (this.outOfBounds(x, z, radius)) return true;
     for (const r of this.rects) {
       if (x > r.x0 - radius && x < r.x1 + radius && z > r.z0 - radius && z < r.z1 + radius) return true;
     }
