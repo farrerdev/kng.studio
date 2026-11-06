@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#EFE8DF" />
+    <meta name="description" content="Ghé tiệm KNG.studio bên sông Hàn trong không gian 3D: xem đồ ngủ muslin, hỏi chủ tiệm, đặt hàng và chơi với mèo Min." />
+    <title>KNG.studio · Ghé tiệm</title>
+    <link rel="canonical" href="https://3d.kngstudio.shop/" />
+    <link rel="icon" href="https://kngstudio.shop/favicon-192.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://3d.kngstudio.shop/" />
+    <meta property="og:title" content="KNG.studio · Ghé tiệm 3D" />
+    <meta property="og:description" content="Dạo tiệm đồ ngủ muslin KNG.studio bên cầu Rồng, xem mẫu và đặt hàng ngay trong tiệm 3D." />
+    <meta property="og:image" content="https://kngstudio.shop/favicon-192.png" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #efe8df; }
+      #boot-loader {
+        position: fixed; inset: 0; display: grid; place-items: center; z-index: 50;
+        background: #efe8df; color: #5e5246; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        transition: opacity 0.5s ease;
+      }
+      #boot-loader.is-done { opacity: 0; pointer-events: none; }
+      .boot-brand { font: 28px Georgia, "Times New Roman", serif; letter-spacing: 0.12em; margin: 0 0 6px; text-align: center; }
+      .boot-sub { margin: 0 0 18px; text-align: center; opacity: 0.8; }
+      .boot-bar { width: 200px; height: 3px; background: #ddd2c3; border-radius: 3px; overflow: hidden; margin: 0 auto; }
+      .boot-bar > span { display: block; height: 100%; width: 0; background: #a88b6a; transition: width 0.3s ease; }
+    </style>
+  </head>
+  <body>
+    <div id="boot-loader" role="status" aria-live="polite">
+      <div>
+        <p class="boot-brand">KNG.studio</p>
+        <p class="boot-sub" id="boot-text">Đang mở cửa tiệm…</p>
+        <div class="boot-bar"><span id="boot-progress"></span></div>
+      </div>
+    </div>
+    <main id="app">
+      <div id="stage" aria-label="Không gian 3D bên trong cửa hàng KNG.studio" role="application"></div>
+      <div id="hud"></div>
+      <div id="overlays"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

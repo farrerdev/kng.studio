@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { trackStorefrontEvent } from "../../analytics/storefrontAnalytics";
 import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
-import { createCartItemId, formatSelectedSize } from "../cart/cartUtils";
+import { createCartDraft, formatSelectedSize } from "../cart/cartUtils";
 import type { CartDraft } from "../cart/cartTypes";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import type { GalleryImage } from "../storefrontTypes";
@@ -175,16 +175,7 @@ export function ProductDetail({
             ) : null}
             <div className="shop-patterns">
               {availablePatterns.map((pattern) => {
-                const cartItem: CartDraft = {
-                  id: createCartItemId(product.id, pattern.id, selectedSize),
-                  productId: product.id,
-                  patternId: pattern.id,
-                  sizeId: selectedSize,
-                  productName: productTitle,
-                  patternName: pattern.name,
-                  price: productPrice,
-                  image: pattern.image,
-                };
+                const cartItem = createCartDraft(product, pattern, selectedSize, productTypes);
                 const quantity = getCartItemQuantity(cartItem.id);
                 return (
                   <article

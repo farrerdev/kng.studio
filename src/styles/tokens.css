@@ -39,3 +39,26 @@
   --kng-header-height: 54px;
   --kng-cart-bar-height: 76px;
 }
+
+/* Linen theme — used by the 3D shop (store3d/), which renders these same storefront components.
+   Same components and layout, only the tokens change. Palette matches the 3D scene. */
+:root[data-theme="linen"] {
+  --kng-bg: #f8f4ee;
+  --kng-surface: #fffdf9;
+  --kng-soft: #efe8df;
+  --kng-line: #e4d9cb;
+  --kng-line-strong: #d9cbb8;
+  --kng-ink: #5e5246;
+  --kng-ink-soft: #74675a;
+  --kng-muted: #7d6f61;
+  --kng-on-ink: #fffdf9;
+  --kng-accent: #5e5246;
+  --kng-accent-hover: #4b4137;
+  --kng-accent-soft: #efe8df;
+  --kng-success: #5f6e4f;
+  --kng-danger: #a4473f;
+  --kng-danger-soft: #fbf1ee;
+  --kng-overlay: rgba(94, 82, 70, 0.42);
+  --kng-font-display: Georgia, "Times New Roman", serif;
+  --kng-shadow: 0 10px 30px rgba(94, 82, 70, 0.12);
+}

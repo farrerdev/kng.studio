@@ -1,0 +1,559 @@
+import {
+  AmbientLight,
+  Clock,
+  Color,
+  DirectionalLight,
+  Fog,
+  HemisphereLight,
+  type Material,
+  MathUtils,
+  type Mesh,
+  NeutralToneMapping,
+  type Object3D,
+  PCFSoftShadowMap,
+  PointLight,
+  Raycaster,
+  Scene,
+  Vector2,
+  WebGLRenderer,
+} from "three";
+import { FollowOrbitCamera } from "../camera/FollowOrbitCamera";
+import type { SoundBoard } from "../audio/SoundBoard";
+import { Cat } from "../characters/Cat";
+import { YarnBall } from "../characters/YarnBall";
+import { Player } from "../characters/Player";
+import { ShopOwner } from "../characters/ShopOwner";
+import { LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM } from "../config/layout";
+import type { StoreCatalog, StoreProduct } from "../data/types";
+import { InputController } from "../input/InputController";
+import { Joystick } from "../input/Joystick";
+import { freezeStatic } from "../scene/build";
+import { buildCounter } from "../scene/furniture/counter";
+import { buildDecor } from "../scene/furniture/decor";
+import { buildMannequins, buildPodium, buildScrunchieStand } from "../scene/furniture/displays";
+import { buildFittingRooms } from "../scene/furniture/fittingRooms";
+import { buildShelving } from "../scene/furniture/shelving";
+import { buildWallDecor } from "../scene/furniture/wallDecor";
+import { buildSurroundings } from "../scene/surroundings";
+import { animateMarkers, buildZoneMarkers, markerSprite, type ZoneMarker } from "../scene/markers";
+import { MaterialLibrary } from "../scene/materials";
+import { type FadeWall, type FrontDoor, buildRoom } from "../scene/room";
+import type { Hud } from "../ui/Hud";
+import type { StoreTarget } from "../shop/types";
+import { CollisionWorld } from "../world/collision";
+import { type Zone, buildZones, zoneAt } from "../world/zones";
+import type { FaqEntry } from "../shop/faq";
+import { describeOwnerChat, describeZone, type ZoneActions } from "./zoneViews";
+
+const MAX_PIXEL_RATIO = 2;
+const SKY = "#E9EDEA";
+
+/**
+ * Opening scene (seconds): the guest stands on the pavement outside, the glass doors open and she
+ * walks in. Any tap or key skips it.
+ */
+const INTRO = {
+  startZ: ROOM.halfDepth + 1.9, // on the pavement, just outside the door
+  walk: [0.6, 3.9],
+  doorOpen: [0.2, 1.0],
+  doorClose: [3.6, 4.4],
+  end: 4.6,
+} as const;
+
+const smoothstep = (from: number, to: number, t: number) => {
+  const x = MathUtils.clamp((t - from) / (to - from), 0, 1);
+  return x * x * (3 - 2 * x);
+};
+
+/** What the scene needs from the shopping layer (the main store's storefront, see shop/mountShop.tsx). */
+export type ShopBridge = {
+  open: (target: StoreTarget) => void;
+  /** Keyboard belongs to the storefront while any of it is open. */
+  readonly isOpen: boolean;
+  /** The storefront page covers the whole screen: skip rendering. */
+  readonly coversScene: boolean;
+};
+const CAT_ZONE_DISTANCE = 1.15;
+
+/** Owns the renderer, the world and the frame loop. Created once by main.ts. */
+export class StoreApp {
+  private readonly renderer: WebGLRenderer;
+  private readonly scene = new Scene();
+  private readonly cameraRig: FollowOrbitCamera;
+  private readonly clock = new Clock();
+  private readonly materials: MaterialLibrary;
+  private readonly collision = new CollisionWorld();
+  private readonly player: Player;
+  private readonly owner = new ShopOwner();
+  private readonly cat: Cat;
+  /** Min's yarn ball, on the floor between the podium and the lounge. */
+  private readonly ball: YarnBall;
+  private readonly input: InputController;
+  private readonly joystick: Joystick;
+  private readonly raycaster = new Raycaster();
+  private readonly pointer = new Vector2();
+  private readonly resizeObserver: ResizeObserver;
+
+  private walls: FadeWall[] = [];
+  private awning: Object3D | null = null;
+  private door: FrontDoor | null = null;
+  private intro: { time: number; done: () => void } | null = null;
+  private zones: Zone[] = [];
+  private pickables: Object3D[] = [];
+  private billboards: Object3D[] = [];
+  private spinners: Object3D[] = [];
+  private mannequinProducts: StoreProduct[] = [];
+  private activeZoneKey: string | null = null;
+  /** Spot the guest tapped from afar: its panel opens when they arrive (or `then` runs instead). */
+  private pendingOpenKey: string | null = null;
+  private pendingThen: (() => void) | null = null;
+  private markers: ZoneMarker[] = [];
+  private elapsed = 0;
+  private pixelRatio: number;
+  private frameTimes: number[] = [];
+
+  constructor(
+    private readonly host: HTMLElement,
+    private readonly hud: Hud,
+    private readonly catalog: StoreCatalog,
+    private readonly shop: ShopBridge,
+    /** What the shop owner can answer (published info only, see shop/faq.ts). */
+    private readonly faq: FaqEntry[],
+    sounds: SoundBoard,
+  ) {
+    this.ball = new YarnBall(this.collision, { x: 1.7, z: 1.55 });
+    this.cat = new Cat({ ball: this.ball, sounds });
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    this.renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.renderer.toneMapping = NeutralToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    // Furniture never moves: render the shadow map once instead of every frame.
+    this.renderer.shadowMap.autoUpdate = false;
+    host.append(this.renderer.domElement);
+
+    this.cameraRig = new FollowOrbitCamera(1, reducedMotion);
+    this.materials = new MaterialLibrary(Math.min(8, this.renderer.capabilities.getMaxAnisotropy()));
+    this.player = new Player(this.collision);
+
+    // Soft daylight sky; a light haze blends the far end of the street into it.
+    this.scene.background = new Color(SKY);
+    this.scene.fog = new Fog(SKY, 40, 140);
+    this.buildWorld();
+    this.input = new InputController(host, {
+      onTap: (x, y) => this.handleTap(x, y),
+      onOrbit: (dx, dy) => this.cameraRig.orbit(dx, dy),
+      onZoom: (factor) => this.cameraRig.zoom(factor),
+    });
+    this.joystick = new Joystick(hud.root);
+    this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(host);
+    this.resize();
+  }
+
+  /** Compiles shaders up front so the first seconds of walking don't hitch. */
+  async warmUp(): Promise<void> {
+    this.cameraRig.update(0, this.player);
+    this.updateWalls(10); // settle wall fading before the first visible frame
+    await this.renderer.compileAsync(this.scene, this.cameraRig.camera);
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  /** The guest arrives from the street and walks in through the glass doors. */
+  playIntro(done: () => void): void {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      done();
+      return;
+    }
+    this.intro = { time: 0, done };
+    this.player.scriptedStep(PLAYER_START.x, INTRO.startZ, Math.PI, 0, 0);
+    this.cameraRig.snap();
+    this.hud.setIntro(true);
+  }
+
+  private finishIntro(): void {
+    const intro = this.intro;
+    if (!intro) return;
+    this.intro = null;
+    this.player.scriptedStep(PLAYER_START.x, PLAYER_START.z, Math.PI, 0, 0);
+    this.door?.setOpen(0);
+    this.cameraRig.snap();
+    this.hud.setIntro(false);
+    intro.done();
+  }
+
+  private updateIntro(dt: number): void {
+    const intro = this.intro!;
+    intro.time += dt;
+    const t = intro.time;
+    const walk = smoothstep(INTRO.walk[0], INTRO.walk[1], t);
+    const walking = t > INTRO.walk[0] && t < INTRO.walk[1];
+    this.player.scriptedStep(PLAYER_START.x, MathUtils.lerp(INTRO.startZ, PLAYER_START.z, walk), Math.PI, walking ? 1.3 : 0, dt);
+    this.door?.setOpen(smoothstep(INTRO.doorOpen[0], INTRO.doorOpen[1], t) * (1 - smoothstep(INTRO.doorClose[0], INTRO.doorClose[1], t)));
+
+    this.cameraRig.update(dt, this.player);
+    if (t >= INTRO.end) this.finishIntro();
+  }
+
+  start(): void {
+    this.clock.start();
+    this.renderer.setAnimationLoop(() => this.frame());
+  }
+
+  dispose(): void {
+    this.renderer.setAnimationLoop(null);
+    this.resizeObserver.disconnect();
+    this.input.dispose();
+    this.joystick.dispose();
+    this.materials.dispose();
+    this.scene.traverse((object) => {
+      const mesh = object as Mesh;
+      mesh.geometry?.dispose();
+      const material = mesh.material as Material | Material[] | undefined;
+      if (Array.isArray(material)) material.forEach((m) => m.dispose());
+      else material?.dispose();
+    });
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
+  }
+
+  private buildWorld(): void {
+    const { group: room, walls, door } = buildRoom(this.materials);
+    this.door = door;
+    this.walls = walls;
+    const shelving = buildShelving(this.catalog, this.materials);
+    const mannequins = buildMannequins(this.catalog, this.materials);
+    const surroundings = buildSurroundings(this.materials);
+    this.awning = surroundings.awning;
+    this.mannequinProducts = mannequins.products;
+
+    const furniture = [
+      shelving.group,
+      buildFittingRooms(this.materials),
+      buildCounter(this.materials),
+      buildPodium(this.catalog, this.materials),
+      buildScrunchieStand(this.materials),
+      mannequins.group,
+      buildDecor(this.materials),
+      buildWallDecor(this.materials),
+      surroundings.group,
+    ];
+    this.scene.add(room, ...furniture);
+    for (const object of [room, ...furniture]) freezeStatic(object);
+
+    this.scene.traverse((object) => {
+      if (object.userData.zoneId || object.userData.floor) this.pickables.push(object);
+      if (object.userData.billboard) this.billboards.push(object);
+      if (object.userData.spin) this.spinners.push(object);
+    });
+
+    this.addLights();
+    this.scene.add(this.player.root, this.owner.root, this.cat.root, this.ball.root);
+    this.zones = buildZones(shelving.sections);
+
+    // Markers show what can be tapped; they are pickable like the furniture they float over.
+    const markers = buildZoneMarkers(this.zones);
+    this.markers = markers.markers;
+    const catMarker = markerSprite("cat");
+    catMarker.position.y = 0.78;
+    this.cat.root.add(catMarker);
+    this.markers.push({ zoneId: "cat", sprite: catMarker, baseY: 0.78, phase: 0 });
+    this.scene.add(markers.group);
+    this.setupQuickActions();
+    this.pickables.push(...markers.markers.map((marker) => marker.sprite));
+  }
+
+  private addLights(): void {
+    this.scene.add(new HemisphereLight("#FFFFFF", "#EDE3D6", 1.5));
+    this.scene.add(new AmbientLight("#FFFFFF", 0.3));
+    const sun = new DirectionalLight("#FFF6EA", 1.5);
+    sun.position.set(3, 8, 10);
+    sun.target.position.set(-0.5, 0, -1);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
+    sun.shadow.radius = 4;
+    Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 30 });
+    this.scene.add(sun, sun.target);
+    for (const pendant of PENDANTS) {
+      const light = new PointLight("#FFE2BC", 2.4, 6.5, 2);
+      light.position.set(pendant.x, PENDANT_Y - 0.12, pendant.z);
+      this.scene.add(light);
+    }
+  }
+
+  private resize(): void {
+    const width = this.host.clientWidth || window.innerWidth;
+    const height = this.host.clientHeight || window.innerHeight;
+    this.renderer.setSize(width, height, false);
+    this.cameraRig.setAspect(width / height);
+  }
+
+  private frame(): void {
+    const dt = Math.min(this.clock.getDelta(), 1 / 20);
+    if (this.shop.coversScene) return; // nothing visible; also keeps phones cool while shopping
+    this.trackPerformance(dt);
+
+    if (this.intro) {
+      this.updateIntro(dt);
+      this.owner.update(dt, this.player);
+      this.cat.update(dt, this.player);
+      this.updateWalls(dt);
+      this.updateBillboards(dt);
+      this.renderer.render(this.scene, this.cameraRig.camera);
+      return;
+    }
+
+    // Arrow keys belong to the shop panel/help while they are open.
+    const intent = this.shop.isOpen || this.hud.isHelpOpen ? null : this.input.keyboardIntent ?? this.joystick.intent;
+    let move: { x: number; z: number } | null = null;
+    if (intent) {
+      this.pendingOpenKey = null; // steering by hand cancels "open when I get there"
+      const heading = this.cameraRig.heading;
+      // forward = away from the camera, right = screen right
+      move = {
+        x: -Math.sin(heading) * intent.y + Math.cos(heading) * intent.x,
+        z: -Math.cos(heading) * intent.y - Math.sin(heading) * intent.x,
+      };
+    }
+    this.player.update(dt, move, this.cameraRig.camera.position);
+    this.owner.update(dt, this.player);
+    this.cat.update(dt, this.player);
+    this.updateBall(dt);
+    this.cameraRig.update(dt, this.player);
+
+    this.updateWalls(dt);
+    this.updateBillboards(dt);
+    this.updateZone();
+    this.elapsed += dt;
+    animateMarkers(this.markers, this.activeZoneKey, this.elapsed);
+
+    this.renderer.render(this.scene, this.cameraRig.camera);
+  }
+
+  private updateWalls(dt: number): void {
+    const cameraPosition = this.cameraRig.camera.position;
+    // The awning hangs off the front wall: it fades together with it.
+    const front = this.walls[this.walls.length - 1];
+    if (this.awning && front) {
+      this.awning.visible = front.opacity > 0.1;
+      this.awning.traverse((child) => {
+        const material = (child as Mesh).material as Material | undefined;
+        if (material) material.opacity = front.opacity;
+      });
+    }
+    for (const wall of this.walls) {
+      // During the entrance the front stays solid until she is through the door.
+      const keepFront = wall === front && this.intro !== null && this.player.z > ROOM.halfDepth - 0.5;
+      const target = wall.isBehindCamera(cameraPosition) && !keepFront ? 0 : 1;
+      wall.opacity = MathUtils.damp(wall.opacity, target, 10, dt);
+      const solid = wall.opacity > 0.97;
+      wall.group.visible = wall.opacity > 0.1;
+      for (const material of wall.materials) {
+        material.opacity = (material.userData.baseOpacity ??= material.opacity) * wall.opacity;
+        material.depthWrite = solid && material.userData.depthWrite !== false;
+      }
+    }
+  }
+
+  private updateBillboards(dt: number): void {
+    const camera = this.cameraRig.camera.position;
+    for (const object of this.billboards) {
+      const world = object.parent ? object.parent.localToWorld(object.position.clone()) : object.position;
+      object.rotation.y = Math.atan2(camera.x - world.x, camera.z - world.z) - (object.parent?.rotation.y ?? 0);
+    }
+    for (const spinner of this.spinners) spinner.rotation.y += (spinner.userData.spin as number) * dt;
+  }
+
+  private updateZone(): void {
+    const nearCat = Math.hypot(this.cat.x - this.player.x, this.cat.z - this.player.z) < CAT_ZONE_DISTANCE;
+    const zone = nearCat ? null : zoneAt(this.zones, this.player.x, this.player.z);
+    const key = nearCat ? "cat" : zone?.id ?? null;
+    if (key === this.activeZoneKey) return;
+    this.activeZoneKey = key;
+    this.hud.show(key, key ? describeZone(nearCat ? "cat" : zone!, this.catalog, this.zoneActions) : null);
+    if (key && key === this.pendingOpenKey) {
+      const then = this.pendingThen;
+      this.pendingOpenKey = null;
+      this.pendingThen = null;
+      this.hud.openCurrent();
+      then?.();
+    }
+  }
+
+  private readonly zoneActions: ZoneActions = {
+    openStore: (target) => this.shop.open(target),
+    greetOwner: () => this.owner.greet(),
+    shelfPosition: (zoneId) => {
+      const shelves = this.shelfZones();
+      return { index: shelves.findIndex((zone) => zone.id === zoneId), count: shelves.length };
+    },
+    goToShelf: (index) => {
+      const target = this.shelfZones()[index];
+      if (target) this.goToSpot(target.id, target.approach);
+    },
+    showOwnerChat: () => {
+      this.owner.greet();
+      this.hud.replaceView(describeOwnerChat(this.zoneActions));
+    },
+    showCounter: () => {
+      const counter = this.zones.find((zone) => zone.kind === "counter");
+      if (counter) this.hud.replaceView(describeZone(counter, this.catalog, this.zoneActions));
+    },
+    faq: () => this.faq,
+    takePhoto: () => this.takePhoto(),
+    petCat: () => {
+      const pet = () => {
+        // Kneel down beside her; she rolls over and purrs.
+        this.player.crouch(this.cat.petDuration, this.cat.x, this.cat.z);
+        this.cat.pet();
+        this.hud.toast("Min lăn ra kêu gừ gừ, thích lắm");
+      };
+      if (Math.hypot(this.cat.x - this.player.x, this.cat.z - this.player.z) < 1.3) pet();
+      else {
+        const spot = { x: this.cat.x + 0.55, z: this.cat.z + 0.55, faceX: this.cat.x, faceZ: this.cat.z };
+        this.player.walkTo({ ...spot, onArrive: pet, onBlocked: () => (this.hopTo(spot), pet()) });
+      }
+    },
+    sitDown: () => {
+      // The free chair closest to the guest; she walks to its front and sits facing the room.
+      const chair = [...LOUNGE.chairs].sort(
+        (a, b) => Math.hypot(a.x - this.player.x, a.z - this.player.z) - Math.hypot(b.x - this.player.x, b.z - this.player.z),
+      )[0]!;
+      const front = { x: chair.x + Math.sin(chair.yaw) * 0.6, z: chair.z + Math.cos(chair.yaw) * 0.6 };
+      this.hud.closePanel();
+      this.player.walkTo({ ...front, onArrive: () => this.player.sit(chair), onBlocked: () => this.player.sit(chair) });
+    },
+    mannequinProducts: () => this.mannequinProducts,
+    catAtHome: () => Math.hypot(this.cat.x - 4.25, this.cat.z - 3.98) < 0.4,
+  };
+
+  private takePhoto(): void {
+    this.renderer.render(this.scene, this.cameraRig.camera);
+    this.renderer.domElement.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "kng-studio-outfit.png";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.hud.toast("Đã lưu ảnh outfit");
+    }, "image/png");
+  }
+
+  private handleTap(clientX: number, clientY: number): void {
+    if (this.intro) {
+      this.finishIntro();
+      return;
+    }
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointer, this.cameraRig.camera);
+
+    if (this.raycaster.intersectObject(this.cat.root, true).length) {
+      this.goToSpot("cat", { x: this.cat.x + 0.6, z: this.cat.z + 0.6, faceX: this.cat.x, faceZ: this.cat.z });
+      return;
+    }
+    const hit = this.raycaster.intersectObjects(this.pickables, false).find((h) => h.object.visible);
+    if (!hit) return;
+    const zoneId = hit.object.userData.zoneId as string | undefined;
+    const zone = zoneId ? this.zones.find((z) => z.id === zoneId) : undefined;
+    if (zone) {
+      this.goToSpot(zone.id, zone.approach);
+    } else if (hit.object.userData.floor) {
+      this.pendingOpenKey = null;
+      this.player.walkTo({ x: hit.point.x, z: hit.point.z });
+    }
+  }
+
+  /** Panels open only when asked: right away if the guest is already there, otherwise on arrival. */
+  private goToSpot(key: string, approach: { x: number; z: number; faceX?: number; faceZ?: number }, then?: () => void): void {
+    if (key === this.activeZoneKey) {
+      this.pendingOpenKey = null;
+      this.pendingThen = null;
+      this.hud.openCurrent();
+      then?.();
+      return;
+    }
+    this.pendingOpenKey = key;
+    this.pendingThen = then ?? null;
+    // If furniture is in the way, hop the rest of the way instead of getting stuck.
+    this.player.walkTo({ ...approach, onBlocked: () => this.hopTo(approach) });
+  }
+
+  private hopTo(spot: { x: number; z: number; faceX?: number; faceZ?: number }): void {
+    this.hud.flash();
+    this.player.teleport(spot.x, spot.z, spot.faceX ?? spot.x, spot.faceZ ?? spot.z + 1);
+    this.cameraRig.snap();
+  }
+
+
+
+  /** Quick menu: jump straight to a key spot and open it (no walking, so nothing to get stuck on). */
+  private teleportTo(zone: Zone | undefined, then?: () => void): void {
+    if (!zone) return;
+    this.hud.closePanel();
+    this.hud.flash();
+    const { x, z, faceX, faceZ } = zone.approach;
+    this.player.teleport(x, z, faceX, faceZ);
+    this.cameraRig.snap();
+    this.activeZoneKey = null; // re-announce the spot even if she was already there
+    this.pendingOpenKey = zone.id;
+    this.pendingThen = then ?? null;
+  }
+
+  /** "Đi tới": only the spots that matter most. */
+  private setupQuickActions(): void {
+    const kind = (k: Zone["kind"]) => this.zones.find((zone) => zone.kind === k);
+    this.hud.setQuickActions([
+      {
+        title: "Đi tới",
+        actions: [
+          { label: "Xem hàng", hint: "mẫu đang hot nhất", run: () => this.teleportTo(this.hottestShelf()) },
+          { label: "Quy định mua hàng", hint: "bảng trên tường", run: () => this.teleportTo(kind("policy")) },
+          { label: "Hỏi shop", hint: "quầy chủ tiệm", run: () => this.teleportTo(kind("counter"), () => this.zoneActions.showOwnerChat()) },
+        ],
+      },
+    ]);
+  }
+
+
+  /** Roll the yarn ball; the guest nudges it when she walks into it. */
+  private updateBall(dt: number): void {
+    const dx = this.ball.x - this.player.x;
+    const dz = this.ball.z - this.player.z;
+    if (this.player.isMoving && Math.hypot(dx, dz) < 0.32 && this.ball.speed < 0.3) this.ball.push(dx, dz, 1.1);
+    this.ball.update(dt);
+  }
+
+  /** The wall section of the most-loved product (first section if there is no ranking yet). */
+  private hottestShelf(): Zone | undefined {
+    const shelves = this.shelfZones();
+    const top = this.catalog.popular[0];
+    return shelves.find((zone) => zone.product?.id === top?.id) ?? shelves[0];
+  }
+
+  /** Shelf sections with a product, in wall order (front to back). */
+  private shelfZones(): Zone[] {
+    return this.zones.filter((zone) => zone.kind === "shelf" && zone.product);
+  }
+
+
+  /** Drops the pixel ratio on devices that can't hold ~45 fps, so walking stays smooth. */
+  private trackPerformance(dt: number): void {
+    this.frameTimes.push(dt);
+    if (this.frameTimes.length < 120) return;
+    const average = this.frameTimes.reduce((sum, t) => sum + t, 0) / this.frameTimes.length;
+    this.frameTimes = [];
+    if (average > 1 / 45 && this.pixelRatio > 1) {
+      this.pixelRatio = Math.max(1, this.pixelRatio - 0.25);
+      this.renderer.setPixelRatio(this.pixelRatio);
+      this.resize();
+    }
+  }
+}
