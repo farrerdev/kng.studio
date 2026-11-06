@@ -1,4 +1,4 @@
-import { Group, Vector3 } from "three";
+import { Group, type MeshStandardMaterial, Vector3 } from "three";
 import { COUNTER } from "../config/layout";
 import { palette } from "../config/palette";
 import { HumanFigure } from "./HumanFigure";
@@ -18,7 +18,6 @@ export class ShopOwner {
     outfit: { kind: "plain", top: palette.linen, bottom: palette.oatDeep, trim: "#FFFFFF" },
     longSleeves: true,
     slippers: palette.ink,
-    apron: palette.oat,
   });
   private readonly tag = nameTag("Chủ tiệm", 0.62);
   private readonly lookPoint = new Vector3();
@@ -47,6 +46,11 @@ export class ShopOwner {
     const material = this.tag.material;
     material.opacity += ((near ? 1 : 0) - material.opacity) * Math.min(1, dt * 6);
     this.figure.update(dt, 0);
+  }
+
+  /** She wears one of the shop's own long-sleeve sets (see StoreApp.buildWorld). */
+  wear(fabric: MeshStandardMaterial): void {
+    this.figure.wear(fabric);
   }
 
   greet(): void {

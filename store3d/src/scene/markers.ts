@@ -3,14 +3,13 @@ import { palette } from "../config/palette";
 import type { Zone, ZoneKind } from "../world/zones";
 
 /** Where along face → approach the marker floats (0 = on the object, 1 = where the guest stands). */
-const ANCHOR_ALONG: Partial<Record<ZoneKind, number>> = { shelf: 0.3, fitting: 0.65, mirror: 0.1, policy: 0.05 };
+const ANCHOR_ALONG: Partial<Record<ZoneKind, number>> = { shelf: 0.3, fitting: 0.65, policy: 0.05 };
 /** Height above the floor per kind of spot (metres). */
 const ANCHOR_HEIGHT: Record<ZoneKind, number> = {
   shelf: 2.45, // above the name tag
   popular: 1.45,
   counter: 2.1,
   fitting: 2.3,
-  mirror: 2.05,
   scrunchies: 1.95,
   lounge: 1.25,
   mannequins: 2.05,

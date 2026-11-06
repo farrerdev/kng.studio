@@ -3,6 +3,7 @@ import {
   CylinderGeometry,
   Group,
   LatheGeometry,
+  type Mesh,
   MathUtils,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -72,6 +73,7 @@ export class HumanFigure {
   private blendPose: FigurePose = "crouch";
   private poseBlend = 0;
   private cup: Group | null = null;
+  private outfit: { top: MeshStandardMaterial; bottom: MeshStandardMaterial };
 
   constructor(style: FigureStyle) {
     this.root.name = "human";
@@ -81,6 +83,7 @@ export class HumanFigure {
     const skin = new MeshStandardMaterial({ color: style.skin, roughness: 0.7 });
     const hair = new MeshStandardMaterial({ color: style.hair, roughness: 0.55 });
     const { top, bottom, trim } = outfitMaterials(style.outfit);
+    this.outfit = { top, bottom };
 
     this.buildLegs(bottom, new MeshStandardMaterial({ color: style.slippers, roughness: 0.95 }));
     this.buildTorso(top, bottom, trim, skin);
@@ -122,6 +125,16 @@ export class HumanFigure {
       });
     }
     this.cup.visible = visible;
+  }
+
+  /** Dresses the set (top and bottom) in another fabric, e.g. one of the shop's own prints. */
+  wear(fabric: MeshStandardMaterial): void {
+    const { top, bottom } = this.outfit;
+    this.root.traverse((child) => {
+      const piece = child as Mesh;
+      if (piece.material === top || piece.material === bottom) piece.material = fabric;
+    });
+    this.outfit = { top: fabric, bottom: fabric };
   }
 
   wave(): void {

@@ -9,7 +9,6 @@ import type { Zone } from "../world/zones";
 
 export type ZoneActions = {
   openStore: (target: StoreTarget) => void;
-  takePhoto: () => void;
   petCat: () => void;
   /** Walk out to the pavement / back into the shop. */
   goOutside: () => void;
@@ -122,13 +121,6 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
           { label: "Xem đầy đủ", primary: true, run: () => actions.openStore({ kind: "home", sectionId: "policy" }) },
           { label: "Hỏi chủ tiệm", run: actions.showOwnerChat },
         ],
-      };
-    case "mirror":
-      return {
-        eyebrow: "Gương",
-        title: "Soi gương một chút",
-        text: "Chụp lại khoảnh khắc ghé tiệm để lưu hoặc gửi bạn bè.",
-        actions: [{ label: "Chụp ảnh", primary: true, run: actions.takePhoto }],
       };
     case "scrunchies":
       return {

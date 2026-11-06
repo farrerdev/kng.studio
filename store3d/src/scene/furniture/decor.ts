@@ -19,8 +19,6 @@ import { mesh, slab, softBox, tagZone } from "../build";
 import { labelTexture, mirrorTexture } from "../canvasArt";
 import type { MaterialLibrary } from "../materials";
 
-export const MIRROR_ZONE_PREFIX = "mirror:";
-export const PHOTO_ZONE = "photo-mirror";
 export const LOUNGE_ZONE = "lounge";
 export const CAT_SEAT_ZONE = "cat-seat";
 
@@ -52,27 +50,20 @@ function buildMirrors(materials: MaterialLibrary): Group {
   const glass = new MeshBasicMaterial({ map: mirrorTexture() });
   const brass = materials.brass();
 
-  MIRRORS.wall.forEach((spec, index) => {
-    const zoneId = `${MIRROR_ZONE_PREFIX}${index}`;
+  MIRRORS.wall.forEach((spec) => {
     const mirror = new Group();
     mirror.position.set(spec.x, 0, spec.z);
     mirror.rotation.y = spec.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
     group.add(mirror);
-    mesh(new PlaneGeometry(spec.width, spec.height), glass, [0, 0.15 + spec.height / 2, 0.012], mirror, { castShadow: false, zoneId });
-    slab(brass, -spec.width / 2 - 0.03, spec.width / 2 + 0.03, 0.12, 0.15, -0.01, 0.03, mirror, { castShadow: false, zoneId });
-    slab(brass, -spec.width / 2 - 0.03, spec.width / 2 + 0.03, 0.15 + spec.height, 0.18 + spec.height, -0.01, 0.03, mirror, {
-      castShadow: false,
-      zoneId,
-    });
+    mesh(new PlaneGeometry(spec.width, spec.height), glass, [0, 0.15 + spec.height / 2, 0.012], mirror, { castShadow: false });
+    slab(brass, -spec.width / 2 - 0.03, spec.width / 2 + 0.03, 0.12, 0.15, -0.01, 0.03, mirror, { castShadow: false });
+    slab(brass, -spec.width / 2 - 0.03, spec.width / 2 + 0.03, 0.15 + spec.height, 0.18 + spec.height, -0.01, 0.03, mirror, { castShadow: false });
     for (const side of [-1, 1]) {
-      slab(brass, side * (spec.width / 2) - 0.03, side * (spec.width / 2), 0.12, 0.18 + spec.height, -0.01, 0.03, mirror, {
-        castShadow: false,
-        zoneId,
-      });
+      slab(brass, side * (spec.width / 2) - 0.03, side * (spec.width / 2), 0.12, 0.18 + spec.height, -0.01, 0.03, mirror, { castShadow: false });
     }
   });
 
-  // Arched photo mirror with a small olive garland.
+  // Arched mirror (decor) with a small olive garland.
   const { x, z, width, height } = MIRRORS.photo;
   const arch = new Shape();
   const r = width / 2;
@@ -91,15 +82,12 @@ function buildMirrors(materials: MaterialLibrary): Group {
   const photo = new Group();
   photo.position.set(x, 0.25, z);
   group.add(photo);
-  mesh(new ShapeGeometry(frame, 24), brass, [0, 0, 0.005], photo, { castShadow: false, zoneId: PHOTO_ZONE });
-  mesh(new ShapeGeometry(arch, 24), glass, [0, 0, 0.012], photo, { castShadow: false, zoneId: PHOTO_ZONE });
+  mesh(new ShapeGeometry(frame, 24), brass, [0, 0, 0.005], photo, { castShadow: false });
+  mesh(new ShapeGeometry(arch, 24), glass, [0, 0, 0.012], photo, { castShadow: false });
   const leaf = materials.surface(palette.olive, { roughness: 1 });
   for (let i = 0; i <= 10; i += 1) {
     const a = Math.PI - (i / 10) * Math.PI;
-    const berry = mesh(new SphereGeometry(0.035, 8, 6), leaf, [Math.cos(a) * (fr + 0.02), height - r + Math.sin(a) * (fr + 0.02), 0.03], photo, {
-      castShadow: false,
-      zoneId: PHOTO_ZONE,
-    });
+    const berry = mesh(new SphereGeometry(0.035, 8, 6), leaf, [Math.cos(a) * (fr + 0.02), height - r + Math.sin(a) * (fr + 0.02), 0.03], photo, { castShadow: false });
     berry.scale.set(1, 0.6, 0.6);
     berry.rotation.z = a;
   }

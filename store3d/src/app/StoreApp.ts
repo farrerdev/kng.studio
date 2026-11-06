@@ -37,6 +37,7 @@ import { buildFittingRooms } from "../scene/furniture/fittingRooms";
 import { buildShelving } from "../scene/furniture/shelving";
 import { buildWallDecor } from "../scene/furniture/wallDecor";
 import { Fireworks } from "../scene/fireworks";
+import { productFabric } from "../scene/furniture/productDisplay";
 import { buildSurroundings } from "../scene/surroundings";
 import { animateMarkers, buildZoneMarkers, markerSprite, type ZoneMarker } from "../scene/markers";
 import { MaterialLibrary } from "../scene/materials";
@@ -51,6 +52,8 @@ import { describeOwnerChat, describeZone, type ZoneActions } from "./zoneViews";
 const MAX_PIXEL_RATIO = 2;
 const SKY = "#E9EDEA";
 const DAY_SKY = new Color(SKY);
+/** Print scale on the owner's set (same look as the guest's floral pajamas). */
+const OWNER_PRINT_REPEAT = 3;
 /** Dusk blue over the river, as in the evening photos of the Dragon Bridge. */
 const EVENING_SKY = new Color("#3A4566");
 const DAY_HEMI = new Color("#FFFFFF");
@@ -143,6 +146,8 @@ export class StoreApp {
   private spinners: Object3D[] = [];
   private mannequinProducts: StoreProduct[] = [];
   private activeZoneKey: string | null = null;
+  /** Door prompts only after the guest has really left the doorway (see updateZone). */
+  private readonly doorArmed = { "door-in": false, "door-out": true };
   /** Spot the guest tapped from afar: its panel opens when they arrive (or `then` runs instead). */
   private pendingOpenKey: string | null = null;
   private pendingThen: (() => void) | null = null;
@@ -293,6 +298,7 @@ export class StoreApp {
       if (material?.userData?.glow && !this.glowMaterials.includes(material as never)) this.glowMaterials.push(material as never);
     });
 
+    this.dressOwner();
     this.addLights();
     this.scene.add(this.player.root, this.owner.root, this.cat.root, this.ball.root, this.fireworks.root);
     this.zones = buildZones(shelving.sections);
@@ -307,6 +313,13 @@ export class StoreApp {
     this.scene.add(markers.group);
     this.setupQuickActions();
     this.pickables.push(...markers.markers.map((marker) => marker.sprite));
+  }
+
+  /** The owner wears the shop's own long-sleeve, long-pants set (Peter Pan collar first), in stock. */
+  private dressOwner(): void {
+    const longSets = this.catalog.products.filter((product) => /tay dài.*quần dài/i.test(product.categoryName) && product.inStockPatterns.length);
+    const product = longSets.find((candidate) => /cổ sen/i.test(candidate.shortName)) ?? longSets[0];
+    if (product) this.owner.wear(productFabric(product, product.inStockPatterns[0], this.materials, OWNER_PRINT_REPEAT));
   }
 
   private addLights(): void {
@@ -566,7 +579,19 @@ export class StoreApp {
     // A spot the guest stands at wins over Min wandering past; Min's panel shows when there is no
     // other spot, or when the guest went to her on purpose.
     const catClose = Math.hypot(this.cat.x - this.player.x, this.cat.z - this.player.z) < CAT_ZONE_DISTANCE;
-    const spot = zoneAt(this.zones, this.player.x, this.player.z);
+    // Stepping through the door shouldn't instantly offer to go back: "Vào tiệm" waits until the
+    // guest has walked a little way out, "Ra ngoài" until she is properly back inside.
+    const { x, z } = this.player;
+    const outside = z > ROOM.halfDepth;
+    if (outside) {
+      this.doorArmed["door-out"] = false;
+      if (Math.hypot(x, z - (ROOM.halfDepth + ROOM.wall)) > 1.9) this.doorArmed["door-in"] = true;
+    } else {
+      this.doorArmed["door-in"] = false;
+      if (z < ROOM.halfDepth - 1.4 || Math.abs(x) > 1.4) this.doorArmed["door-out"] = true;
+    }
+    let spot = zoneAt(this.zones, x, z);
+    if ((spot?.kind === "door-in" || spot?.kind === "door-out") && !this.doorArmed[spot.kind] && this.pendingOpenKey !== spot.id) spot = null;
     const nearCat = catClose && (!spot || this.pendingOpenKey === "cat" || this.activeZoneKey === "cat");
     const zone = nearCat ? null : spot;
     const key = nearCat ? "cat" : zone?.id ?? null;
@@ -602,7 +627,6 @@ export class StoreApp {
       if (counter) this.hud.replaceView(describeZone(counter, this.catalog, this.zoneActions));
     },
     faq: () => this.faq,
-    takePhoto: () => this.takePhoto(),
     petCat: () => {
       const pet = () => {
         // Kneel down beside her; she rolls over and purrs.
@@ -636,20 +660,6 @@ export class StoreApp {
     mannequinProducts: () => this.mannequinProducts,
     catAtHome: () => Math.hypot(this.cat.x - 4.25, this.cat.z - 3.98) < 0.4,
   };
-
-  private takePhoto(): void {
-    this.renderer.render(this.scene, this.cameraRig.camera);
-    this.renderer.domElement.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "kng-studio-outfit.png";
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      this.hud.toast("Đã lưu ảnh outfit");
-    }, "image/png");
-  }
 
   private handleTap(clientX: number, clientY: number): void {
     if (this.intro) {

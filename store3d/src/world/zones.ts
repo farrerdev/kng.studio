@@ -1,13 +1,13 @@
-import { CAT_SEAT, COUNTER, FITTING_ROOMS, LOUNGE, MANNEQUINS, MIRRORS, PODIUM, POLICY_BOARD, ROOM, SCRUNCHIE_STAND, SHELVING } from "../config/layout";
+import { CAT_SEAT, COUNTER, FITTING_ROOMS, LOUNGE, MANNEQUINS, PODIUM, POLICY_BOARD, ROOM, SCRUNCHIE_STAND, SHELVING } from "../config/layout";
 import type { StoreProduct } from "../data/types";
 import { COUNTER_ZONE } from "../scene/furniture/counter";
-import { CAT_SEAT_ZONE, LOUNGE_ZONE, MIRROR_ZONE_PREFIX, PHOTO_ZONE } from "../scene/furniture/decor";
+import { CAT_SEAT_ZONE, LOUNGE_ZONE } from "../scene/furniture/decor";
 import { MANNEQUIN_ZONE, PODIUM_ZONE, SCRUNCHIE_ZONE } from "../scene/furniture/displays";
 import { FITTING_ZONE } from "../scene/furniture/fittingRooms";
 import { POLICY_ZONE } from "../scene/furniture/wallDecor";
 import type { ShelfSection } from "../scene/furniture/shelving";
 
-export type ZoneKind = "shelf" | "popular" | "counter" | "fitting" | "mirror" | "scrunchies" | "lounge" | "mannequins" | "cat-seat" | "policy" | "door-out" | "door-in";
+export type ZoneKind = "shelf" | "popular" | "counter" | "fitting" | "scrunchies" | "lounge" | "mannequins" | "cat-seat" | "policy" | "door-out" | "door-in";
 
 export type Zone = {
   id: string;
@@ -55,18 +55,6 @@ export function buildZones(sections: ShelfSection[]): Zone[] {
       approach: { x: fittingX, z: fittingFront, faceX: fittingX, faceZ: FITTING_ROOMS.z0 },
       radius: 1.25,
     },
-    {
-      id: PHOTO_ZONE,
-      kind: "mirror",
-      approach: { x: MIRRORS.photo.x, z: MIRRORS.photo.z + 1.5, faceX: MIRRORS.photo.x, faceZ: MIRRORS.photo.z },
-      radius: 0.75,
-    },
-    ...MIRRORS.wall.map((mirror, index) => ({
-      id: `${MIRROR_ZONE_PREFIX}${index}`,
-      kind: "mirror" as const,
-      approach: { x: mirror.x + mirror.facing * 1.2, z: mirror.z, faceX: mirror.x, faceZ: mirror.z },
-      radius: 0.55,
-    })),
     {
       id: SCRUNCHIE_ZONE,
       kind: "scrunchies",
