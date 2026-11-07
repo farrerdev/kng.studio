@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type PointerEvent, type ReactNode } from "react";
-import type { StorefrontEventRow, StorefrontEventType } from "../../analytics/analyticsApi";
+import type { StorefrontEventRow, StorefrontEventSource, StorefrontEventType } from "../../analytics/analyticsApi";
 import {
   getLocalDateInputValue,
   getLocalMonthInputValue,
@@ -122,12 +122,24 @@ function getEventChartBuckets(events: StorefrontEventRow[], filter: StorefrontSt
   return { buckets, isHourly };
 }
 
+type SourceFilter = "all" | StorefrontEventSource;
+
+const SOURCE_TABS: Array<{ id: SourceFilter; label: string }> = [
+  { id: "all", label: "Tất cả" },
+  { id: "web", label: "Web" },
+  { id: "3d", label: "Tiệm 3D" },
+];
+
+function bySource(events: StorefrontEventRow[], source: SourceFilter) {
+  return source === "all" ? events : events.filter((event) => event.source === source);
+}
+
 export function AdminStatsDashboard({
-  events,
+  events: allEvents,
   filter,
   isLoading,
   onFilterChange,
-  previousEvents,
+  previousEvents: allPreviousEvents,
   products,
   productTypes,
 }: {
@@ -139,6 +151,13 @@ export function AdminStatsDashboard({
   products: Product[];
   productTypes: ProductType[];
 }) {
+  // Web store, 3D shop, or both (events from before the split count as web).
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const events = useMemo(() => bySource(allEvents, sourceFilter), [allEvents, sourceFilter]);
+  const previousEvents = useMemo(
+    () => (allPreviousEvents ? bySource(allPreviousEvents, sourceFilter) : null),
+    [allPreviousEvents, sourceFilter],
+  );
   const eventCounts = useMemo(() => getEventCounts(events), [events]);
   const previousCounts = useMemo(() => (previousEvents ? getEventCounts(previousEvents) : null), [previousEvents]);
   const productRows = useMemo(() => getProductStatsRows(events, products, productTypes), [events, products, productTypes]);
@@ -218,6 +237,19 @@ export function AdminStatsDashboard({
                 }
                 onFilterChange({ mode: tab.mode });
               }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="admin-segmented" aria-label="Nguồn truy cập">
+          {SOURCE_TABS.map((tab) => (
+            <button
+              className={sourceFilter === tab.id ? "active" : ""}
+              key={tab.id}
+              type="button"
+              aria-pressed={sourceFilter === tab.id}
+              onClick={() => setSourceFilter(tab.id)}
             >
               {tab.label}
             </button>

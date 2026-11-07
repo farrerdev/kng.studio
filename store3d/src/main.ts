@@ -3,6 +3,7 @@ import { loadFonts } from "./config/fonts";
 import type { CatalogData } from "../../src/features/catalog/catalogRows";
 import { fetchStorefrontCatalog, readCachedCatalog } from "../../src/features/catalog/storefrontCatalog";
 import { toStorefrontCatalog } from "../../src/features/catalog/useStorefrontCatalog";
+import { setAnalyticsSource } from "../../src/features/analytics/storefrontAnalytics";
 import { toSceneCatalog } from "./data/sceneCatalog";
 import { buildFaq } from "./shop/faq";
 import { SoundBoard } from "./audio/SoundBoard";
@@ -60,6 +61,9 @@ function writeEveningSetting(on: boolean): void {
     /* ignore */
   }
 }
+
+// Stats from here are tagged "3d" (the admin dashboard can split web and 3D).
+setAnalyticsSource("3d");
 
 async function boot(): Promise<void> {
   const stage = document.getElementById("stage");

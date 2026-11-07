@@ -6,6 +6,7 @@ export {
   LEGACY_SITE_VISIT_PRODUCT_ID,
   markAnalyticsOptOutDevice,
   type StorefrontEventRow,
+  type StorefrontEventSource,
   type StorefrontEventType,
 } from "./storefrontAnalytics";
 
@@ -17,25 +18,36 @@ export async function fetchStorefrontStats(range: StorefrontStatsRange): Promise
   if (!supabase) return [];
 
   const rows: StorefrontEventRow[] = [];
+  // Older databases have no `source` column yet: then every row counts as the web store.
+  let columns = "event_type, source, product_id, pattern_id, size_id, created_at";
   for (let page = 0; page < STATS_MAX_PAGES; page += 1) {
     const from = page * STATS_PAGE_SIZE;
-    const result = await supabase
-      .from("storefront_events")
-      .select("event_type, product_id, pattern_id, size_id, created_at")
-      .gte("created_at", range.from)
-      .lt("created_at", range.to)
-      .order("created_at", { ascending: false })
-      .range(from, from + STATS_PAGE_SIZE - 1);
+    let result = await queryPage(columns, range, from);
+    if (result.error && page === 0 && columns.includes("source")) {
+      columns = "event_type, product_id, pattern_id, size_id, created_at";
+      result = await queryPage(columns, range, from);
+    }
 
     if (result.error) throw result.error;
-    const pageRows = (result.data ?? []) as StorefrontEventRow[];
+    const pageRows = (result.data ?? []) as unknown as StorefrontEventRow[];
     rows.push(...pageRows);
     if (pageRows.length < STATS_PAGE_SIZE) break;
   }
 
-  return rows.map((event) =>
-    event.event_type === "product_view" && event.product_id === LEGACY_SITE_VISIT_PRODUCT_ID
+  return rows.map((row) => {
+    const event = { ...row, source: row.source ?? "web" };
+    return event.event_type === "product_view" && event.product_id === LEGACY_SITE_VISIT_PRODUCT_ID
       ? { ...event, event_type: "site_visit", product_id: null }
-      : event,
-  );
+      : event;
+  });
+}
+
+function queryPage(columns: string, range: StorefrontStatsRange, from: number) {
+  return supabase!
+    .from("storefront_events")
+    .select(columns)
+    .gte("created_at", range.from)
+    .lt("created_at", range.to)
+    .order("created_at", { ascending: false })
+    .range(from, from + STATS_PAGE_SIZE - 1);
 }

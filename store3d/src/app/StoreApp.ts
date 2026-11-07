@@ -38,6 +38,7 @@ import { buildFittingRooms } from "../scene/furniture/fittingRooms";
 import { buildShelving } from "../scene/furniture/shelving";
 import { buildWallDecor } from "../scene/furniture/wallDecor";
 import { Fireworks } from "../scene/fireworks";
+import { TapRipple } from "../scene/tapRipple";
 import { productFabric } from "../scene/furniture/productDisplay";
 import { buildSurroundings } from "../scene/surroundings";
 import { animateMarkers, buildZoneMarkers, markerSprite, type ZoneMarker } from "../scene/markers";
@@ -302,7 +303,7 @@ export class StoreApp {
 
     this.dressOwner();
     this.addLights();
-    this.scene.add(this.player.root, this.owner.root, this.cat.root, this.ball.root, this.fireworks.root);
+    this.scene.add(this.player.root, this.owner.root, this.cat.root, this.ball.root, this.fireworks.root, this.ripple.root);
     this.zones = buildZones(shelving.sections);
 
     // Markers show what can be tapped; they are pickable like the furniture they float over.
@@ -374,6 +375,7 @@ export class StoreApp {
   /** 0 = day, 1 = evening; eased towards `eveningTarget`. */
   private evening = 0;
   private readonly fireworks = new Fireworks();
+  private readonly ripple = new TapRipple();
   private eveningTarget = 0;
 
   /** Switches between daylight and the evening look (lights on, dusk sky). */
@@ -432,6 +434,7 @@ export class StoreApp {
       this.updateWalls(dt);
       this.updateBillboards(dt);
       this.fireworks.update(dt, this.evening);
+      this.updateDoorMarkers();
       this.renderer.render(this.scene, this.cameraRig.camera);
       return;
     }
@@ -462,7 +465,9 @@ export class StoreApp {
     this.updateBillboards(dt);
     this.updateZone();
     this.elapsed += dt;
+    this.updateDoorMarkers();
     animateMarkers(this.markers, this.activeZoneKey, this.elapsed);
+    this.ripple.update(dt);
 
     this.renderer.render(this.scene, this.cameraRig.camera);
   }
@@ -689,6 +694,7 @@ export class StoreApp {
       this.goToSpot(zone.id, zone.approach);
     } else if (hit.object.userData.floor) {
       this.pendingOpenKey = null;
+      this.ripple.show(hit.point.x, hit.point.z);
       this.walkRoute({ x: hit.point.x, z: hit.point.z });
     }
   }
@@ -779,6 +785,20 @@ export class StoreApp {
     ]);
   }
 
+
+  /**
+   * The door's dots only appear close to the door (and on the right side of it): elsewhere they
+   * float in the middle of the view and catch taps meant for the shop.
+   */
+  private updateDoorMarkers(): void {
+    const { x, z } = this.player;
+    const outside = z > ROOM.halfDepth;
+    const toDoor = Math.hypot(x, z - ROOM.halfDepth);
+    for (const marker of this.markers) {
+      if (marker.zoneId === "door-out") marker.sprite.visible = !outside && toDoor < 1.05;
+      else if (marker.zoneId === "door-in") marker.sprite.visible = outside && toDoor < 2.0;
+    }
+  }
 
   /** Roll the yarn ball; the guest nudges it when she walks into it. */
   private updateBall(dt: number): void {

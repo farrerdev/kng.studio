@@ -110,6 +110,7 @@ create table if not exists public.storefront_events (
   product_id text,
   pattern_id text,
   size_id text check (size_id is null or size_id in ('1', '2')),
+  source text not null default 'web' check (source in ('web', '3d')),
   created_at timestamptz not null default now()
 );
 
