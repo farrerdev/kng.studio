@@ -16,6 +16,7 @@ import {
 import { ACCENT_LIGHTS, CAT_SEAT, LOUNGE, MIRRORS, PENDANTS, PENDANT_Y, PLANTS, ROOM, RUG } from "../../config/layout";
 import { palette } from "../../config/palette";
 import { mesh, slab, softBox, tagZone } from "../build";
+import { buildLedStrips } from "./ledStrips";
 import { labelTexture, mirrorTexture } from "../canvasArt";
 import type { MaterialLibrary } from "../materials";
 
@@ -26,7 +27,7 @@ export function buildDecor(materials: MaterialLibrary): Group {
   const group = new Group();
   group.name = "decor";
   group.add(buildRug(materials), buildMirrors(materials), buildLounge(materials), buildCatSeat(materials), buildPlants(materials));
-  group.add(buildPendants(materials), buildTrackLights(materials));
+  group.add(buildPendants(materials), buildTrackLights(materials), buildLedStrips());
   return group;
 }
 
