@@ -302,7 +302,13 @@ export class Hud {
     const bar = el("header", "hud-top");
     const left = el("div", "hud-top__actions");
     left.append(iconButton("hud-icon-btn", "menu", "Mở menu sản phẩm", () => this.handlers.openMenu()));
-    left.append(el("span", "hud-brand", "KNG.studio"));
+    // The logo goes to the web store, like on any site (the arrow says it leaves the 3D shop).
+    const brand = el("a", "hud-brand", "KNG.studio");
+    brand.href = shopConfig.sites.store;
+    brand.title = "Xem dạng trang web";
+    brand.setAttribute("aria-label", "KNG.studio – xem dạng trang web");
+    brand.append(icon("external", 13));
+    left.append(brand);
     bar.append(left);
     const right = el("div", "hud-top__actions");
     this.cartButton.type = "button";

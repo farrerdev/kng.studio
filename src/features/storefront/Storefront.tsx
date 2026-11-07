@@ -699,20 +699,15 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
           </section>
         ) : null}
 
-        {/* Invitation to the 3D walk-in shop (home list only; not inside the 3D shop itself). */}
+        {/* Small invitation to tour the 3D shop (home list only; not inside the 3D shop itself). */}
         {!isScene && !selectedProduct ? (
           <a className="store3d-invite" href={shopConfig.sites.store3d}>
-            <span className="store3d-invite-icon" aria-hidden="true">
-              <Box size={20} />
-            </span>
+            <Box size={16} aria-hidden="true" />
             <span className="store3d-invite-text">
-              <strong>Ghé tiệm 3D</strong>
-              <span>Dạo tiệm, xem đồ treo trên kệ như ngoài đời</span>
+              <strong>Tham quan tiệm 3D</strong>
+              <span> · như ghé tiệm thật</span>
             </span>
-            <span className="store3d-invite-cta">
-              Vào tiệm
-              <ArrowRight size={15} aria-hidden="true" />
-            </span>
+            <ArrowRight className="store3d-invite-arrow" size={15} aria-hidden="true" />
           </a>
         ) : null}
 
@@ -759,7 +754,6 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
               onSizeChange={setSelectedSize}
               onImageOpen={setActiveImage}
               onAddToCart={addToCart}
-              view3dHref={isScene ? undefined : `${shopConfig.sites.store3d}/?p=${encodeURIComponent(selectedProduct.id)}`}
               onQuantityChange={updateCartQuantity}
               getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
             />
@@ -792,7 +786,7 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
           {isScene ? (
             <a className="sidebar-site-link" href={webStoreHref}>Xem dạng trang web</a>
           ) : (
-            <a className="sidebar-site-link" href={shopConfig.sites.store3d}>Ghé tiệm 3D</a>
+            <a className="sidebar-site-link" href={shopConfig.sites.store3d}>Tham quan tiệm 3D</a>
           )}
           <details className="sidebar-products-group" open={isScene || undefined}>
             <summary>

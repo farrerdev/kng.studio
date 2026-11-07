@@ -88,6 +88,13 @@ html body,
   padding: 8px 16px;
   border-radius: 999px;
   box-shadow: var(--hud-shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-brand svg {
+  opacity: 0.6;
 }
 
 .hud-icon-btn {
@@ -1040,5 +1047,30 @@ html body,
   from {
     opacity: 0;
     transform: translate(-50%, 8px);
+  }
+}
+
+/* Narrow phones: a slimmer logo pill so the whole top bar fits. */
+@media (max-width: 420px) {
+  .hud-brand {
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    padding: 8px 12px;
+    gap: 4px;
+  }
+
+  .hud-top {
+    left: 12px;
+    right: 12px;
+  }
+
+  .hud-top__actions {
+    gap: 6px;
+  }
+
+  .hud-icon-btn,
+  .hud-cart {
+    width: 36px;
+    height: 36px;
   }
 }

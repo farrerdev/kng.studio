@@ -1,3 +1,4 @@
+import { shopConfig } from "../../../src/config/shop";
 import {
   AmbientLight,
   Clock,
@@ -770,6 +771,10 @@ export class StoreApp {
           { label: "Quy định mua hàng", hint: "bảng trên tường", run: () => this.teleportTo(kind("policy")) },
           { label: "Hỏi shop", hint: "quầy chủ tiệm", run: () => this.teleportTo(kind("counter"), () => this.zoneActions.showOwnerChat()) },
         ],
+      },
+      {
+        title: "Trang web",
+        actions: [{ label: "Xem trang web", hint: "giỏ hàng giữ nguyên", run: () => window.location.assign(shopConfig.sites.store) }],
       },
     ]);
   }
