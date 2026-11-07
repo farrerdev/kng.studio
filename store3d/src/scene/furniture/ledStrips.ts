@@ -5,15 +5,16 @@ import { mesh, slab } from "../build";
 const quiet = { castShadow: false, receiveShadow: false } as const;
 
 /**
- * Warm yellow LED strips tucked under edges and along the ceiling: they glow softly by day and
+ * Warm-white LED strips tucked under edges and along the ceiling: they glow softly by day and
  * light up in the evening (StoreApp lerps `userData.glow`).
  */
 export function buildLedStrips(): Group {
   const group = new Group();
   group.name = "led-strips";
   const led = new MeshStandardMaterial({
-    color: "#FFD27A",
-    emissive: "#FFB238",
+    // Warm white, like a lamp: bright, only a hint of yellow.
+    color: "#FFF8EC",
+    emissive: "#FFEBCB",
     emissiveIntensity: 1.6,
     roughness: 0.4,
     // Full colour: tone mapping would wash the yellow out against the bright linen walls.
@@ -23,9 +24,9 @@ export function buildLedStrips(): Group {
   const t = 0.018; // strip thickness
   const wash = new MeshBasicMaterial({
     map: haloTexture(),
-    color: "#FFB547",
+    color: "#FFE9C8",
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.6,
     depthWrite: false,
     blending: AdditiveBlending,
     side: DoubleSide,

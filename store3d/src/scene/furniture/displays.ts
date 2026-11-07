@@ -17,6 +17,8 @@ import { productFabric } from "./productDisplay";
 export const PODIUM_ZONE = "popular";
 export const SCRUNCHIE_ZONE = "scrunchies";
 export const MANNEQUIN_ZONE = "mannequins";
+/** Height of the mannequin plinths (the window planter outside is ~0.55 m). */
+const PLINTH = 0.5;
 const MANNEQUIN_WHITE = "#F4EFE7";
 const TRIM_CREAM = "#FFFDF7";
 /** Print scale on a mannequin (same as the people in the shop). */
@@ -132,7 +134,9 @@ export function buildMannequins(catalog: StoreCatalog, materials: MaterialLibrar
     // Facing the street, turned slightly towards each other, so passers-by see the outfits.
     stand.rotation.y = index ? -0.3 : 0.3;
     group.add(stand);
-    mesh(new CylinderGeometry(0.24, 0.26, 0.06, 32), oakDeep, [0, 0.03, 0], stand);
+    // A tall round plinth lifts the figure above the window planter, so it shows from the street.
+    mesh(new CylinderGeometry(0.27, 0.29, PLINTH, 40), oakDeep, [0, PLINTH / 2, 0], stand);
+    mesh(new CylinderGeometry(0.25, 0.25, 0.012, 32), materials.surface(palette.linen, { roughness: 0.8 }), [0, PLINTH + 0.006, 0], stand);
     const product = products[index];
     const figure = new HumanFigure({
       skin: MANNEQUIN_WHITE,
@@ -146,7 +150,7 @@ export function buildMannequins(catalog: StoreCatalog, materials: MaterialLibrar
       collar: product ? !/cổ (tròn|v)\b/i.test(product.shortName) : true,
     });
     if (product) figure.wear(productFabric(product, product.inStockPatterns[0], materials, MANNEQUIN_PRINT_REPEAT));
-    figure.root.position.y = 0.06;
+    figure.root.position.y = PLINTH + 0.012;
     stand.add(figure.root);
   });
   tagZone(group, MANNEQUIN_ZONE);
