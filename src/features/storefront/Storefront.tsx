@@ -1,4 +1,4 @@
-import { ArrowRight, Box, ChevronDown, ChevronLeft, ChevronRight, Menu, ShoppingBag, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Menu, ShoppingBag, Sparkles, X } from "lucide-react";
 import { type MutableRefObject, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { getStorefrontSlugFromPath } from "../../app/routes";
 import { shopConfig } from "../../config/shop";
@@ -699,15 +699,17 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
           </section>
         ) : null}
 
-        {/* Small invitation to tour the 3D shop (home list only; not inside the 3D shop itself). */}
+        {/* One-line invitation to tour the 3D shop, on the featured rail's background (home list only, not inside the 3D shop). */}
         {!isScene && !selectedProduct ? (
           <a className="store3d-invite" href={shopConfig.sites.store3d}>
-            <Box size={16} aria-hidden="true" />
+            <Sparkles className="store3d-invite-spark" size={16} aria-hidden="true" />
             <span className="store3d-invite-text">
-              <strong>Tham quan tiệm 3D</strong>
-              <span> · như ghé tiệm thật</span>
+              <strong>Dạo tiệm 3D</strong> – lựa đồ như ở tiệm
             </span>
-            <ArrowRight className="store3d-invite-arrow" size={15} aria-hidden="true" />
+            <span className="store3d-invite-cta">
+              Vào xem
+              <ArrowRight size={14} aria-hidden="true" />
+            </span>
           </a>
         ) : null}
 

@@ -3611,33 +3611,37 @@ body:has(.storefront) {
 
 
 /* Links between the web store and the 3D walk-in shop. */
+/* One line on the same soft band as "Đang được yêu thích", flowing into it. */
 .store3d-invite {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  min-height: 40px;
-  margin: 10px 16px 0;
-  padding: 0 14px;
-  border: 1px solid var(--kng-line-strong);
-  border-radius: var(--kng-radius-pill);
-  background: var(--kng-surface);
+  min-height: 48px;
+  padding: 12px 0 0;
   color: var(--kng-ink);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   line-height: 1.3;
   text-decoration: none;
-  transition: border-color 160ms ease;
 }
 
-.store3d-invite:hover {
-  border-color: var(--kng-ink);
+.store3d-invite::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: var(--kng-soft);
 }
 
-.store3d-invite svg {
+.store3d-invite-spark {
   flex: 0 0 auto;
+  color: var(--kng-ink);
+  animation: store3d-twinkle 2.4s ease-in-out infinite;
 }
 
 .store3d-invite-text {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3645,18 +3649,50 @@ body:has(.storefront) {
 }
 
 .store3d-invite-text strong {
-  font-weight: 700;
+  font-weight: 750;
 }
 
-.store3d-invite-text span {
-  color: var(--kng-ink-soft);
+.store3d-invite-cta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: var(--kng-radius-pill);
+  background: var(--kng-ink);
+  color: var(--kng-surface);
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: transform 160ms ease;
 }
 
-@media (min-width: 961px) {
-  .store3d-invite {
-    width: fit-content;
-    margin: 14px auto 0;
+.store3d-invite:hover .store3d-invite-cta {
+  transform: translateX(2px);
+}
+
+@keyframes store3d-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
   }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82) rotate(-12deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store3d-invite-spark {
+    animation: none;
+  }
+}
+
+/* The featured rail continues the band right under the invitation. */
+.storefront .store3d-invite + .shop-rail-featured {
+  padding-top: 10px;
 }
 
 .storefront-sidebar-nav .sidebar-site-link {
