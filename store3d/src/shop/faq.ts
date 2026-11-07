@@ -37,7 +37,7 @@ export function buildFaq(materials: string[]): FaqEntry[] {
     entries.splice(4, 0, {
       id: "fabric",
       question: "Vải gì vậy?",
-      answer: `Đồ ở tiệm may từ ${fabric}. Vải muslin mềm, thoáng và càng giặt càng mềm.`,
+      answer: `Đồ ở shop may từ ${fabric}. Vải muslin mềm, thoáng và càng giặt càng mềm.`,
     });
   }
   return entries.filter((entry) => entry.answer);

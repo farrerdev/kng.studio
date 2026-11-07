@@ -1,4 +1,5 @@
-import { BoxGeometry, type BufferGeometry, type Material, Mesh, type Object3D } from "three";
+import { BoxGeometry, type BufferGeometry, type Material, Matrix4, Mesh, type Object3D } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 // Tiny helpers that keep the furniture modules declarative.
@@ -82,4 +83,86 @@ export function tagZone(root: Object3D, zoneId: string): void {
   root.traverse((child) => {
     if ((child as Mesh).isMesh) child.userData.zoneId = zoneId;
   });
+}
+
+/**
+ * Draw-call diet: furniture is hundreds of small meshes that never move. Meshes sharing a material
+ * (and the same tap target / floor flag / shadow flags) are baked into one mesh in world space, so
+ * the GPU draws a few dozen batches instead of ~600 meshes. Skipped: anything animated, fading
+ * (occluders), billboards, transparent or specially ordered materials. Returns the merged meshes
+ * (in world coordinates, to add to the scene root); the originals are removed from their parents.
+ * With `space`, batches are built in that object's local coordinates and added to it (used inside
+ * a fading tree or house, which must stay one object).
+ */
+export function mergeStaticMeshes(roots: Object3D[], space?: Object3D): Mesh[] {
+  const buckets = new Map<string, Mesh[]>();
+  const visit = (object: Object3D) => {
+    const data = object.userData;
+    if (data.animated || data.occluder || data.billboard || data.spin) return;
+    const mesh = object as Mesh;
+    if (mesh.isMesh) {
+      const material = mesh.material as Material;
+      const geometry = mesh.geometry;
+      const mergeable =
+        !Array.isArray(mesh.material) &&
+        !material.transparent &&
+        mesh.renderOrder === 0 &&
+        mesh.visible &&
+        geometry.attributes.position !== undefined;
+      if (mergeable) {
+        const attributes = Object.keys(geometry.attributes).sort().join(",");
+        const key = [material.uuid, data.zoneId ?? "", data.floor ? 1 : 0, mesh.castShadow ? 1 : 0, mesh.receiveShadow ? 1 : 0, attributes, geometry.index ? "i" : "n"].join("|");
+        const bucket = buckets.get(key);
+        if (bucket) bucket.push(mesh);
+        else buckets.set(key, [mesh]);
+      }
+    }
+    for (const child of object.children) visit(child);
+  };
+  for (const root of roots) {
+    root.updateMatrixWorld(true);
+    visit(root);
+  }
+
+  const merged: Mesh[] = [];
+  const toSpace = new Matrix4();
+  const spaceInverse = space ? new Matrix4().copy(space.matrixWorld).invert() : null;
+  for (const meshes of buckets.values()) {
+    if (meshes.length < 2) continue;
+    const parts = meshes.map((mesh) => {
+      toSpace.copy(mesh.matrixWorld);
+      if (spaceInverse) toSpace.premultiply(spaceInverse);
+      const part = mesh.geometry.clone().applyMatrix4(toSpace);
+      part.clearGroups();
+      return part;
+    });
+    const geometry = mergeGeometries(parts, false);
+    for (const part of parts) part.dispose();
+    if (!geometry) continue;
+    const first = meshes[0]!;
+    const batch = new Mesh(geometry, first.material);
+    batch.castShadow = first.castShadow;
+    batch.receiveShadow = first.receiveShadow;
+    if (first.userData.zoneId) batch.userData.zoneId = first.userData.zoneId;
+    if (first.userData.floor) batch.userData.floor = true;
+    batch.name = "static-batch";
+    for (const mesh of meshes) mesh.removeFromParent();
+    space?.add(batch);
+    merged.push(batch);
+  }
+  return merged;
+}
+
+/** Bakes each fading object (tree, plant, house) into as few meshes as possible, kept inside it. */
+export function mergeOccluders(roots: Object3D[]): void {
+  const occluders: Object3D[] = [];
+  for (const root of roots) {
+    root.traverse((object) => {
+      if (object.userData.occluder) occluders.push(object);
+    });
+  }
+  for (const occluder of occluders) {
+    occluder.updateMatrixWorld(true);
+    mergeStaticMeshes([...occluder.children], occluder);
+  }
 }

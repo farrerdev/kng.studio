@@ -26,13 +26,13 @@ import { Cat } from "../characters/Cat";
 import { YarnBall } from "../characters/YarnBall";
 import { Player } from "../characters/Player";
 import { ShopOwner } from "../characters/ShopOwner";
-import { ACCENT_LIGHTS, LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM, STREET } from "../config/layout";
+import { ACCENT_LIGHTS, CAT_SEAT, LOUNGE, PENDANT_Y, PENDANTS, PLAYER_START, ROOM, STREET } from "../config/layout";
 import type { StoreCatalog, StoreProduct } from "../data/types";
 import { InputController } from "../input/InputController";
 import { Joystick } from "../input/Joystick";
-import { freezeStatic } from "../scene/build";
+import { freezeStatic, mergeOccluders, mergeStaticMeshes } from "../scene/build";
 import { buildCounter } from "../scene/furniture/counter";
-import { buildDecor } from "../scene/furniture/decor";
+import { buildDecor, CAT_SEAT_ZONE } from "../scene/furniture/decor";
 import { buildMannequins, buildPodium, buildScrunchieStand } from "../scene/furniture/displays";
 import { buildFittingRooms } from "../scene/furniture/fittingRooms";
 import { buildShelving } from "../scene/furniture/shelving";
@@ -51,7 +51,10 @@ import { type Zone, buildZones, zoneAt } from "../world/zones";
 import type { FaqEntry } from "../shop/faq";
 import { describeOwnerChat, describeZone, type ZoneActions } from "./zoneViews";
 
-const MAX_PIXEL_RATIO = 2;
+/** Phones get a lower cap: their screens are dense already, and pixels are what heats them up. */
+const MAX_PIXEL_RATIO = window.matchMedia("(pointer: coarse)").matches ? 1.5 : 2;
+/** Frame budget while nothing moves (see start()). */
+const IDLE_FRAME_MS = 1000 / 30;
 const SKY = "#E9EDEA";
 const DAY_SKY = new Color(SKY);
 /** Print scale on the owner's set (same look as the guest's floral pajamas). */
@@ -70,10 +73,11 @@ const MOON = new Color("#A9B6E0");
  */
 const INTRO = {
   startZ: ROOM.halfDepth + 1.9, // on the pavement, just outside the door
-  walk: [0.6, 3.9],
-  doorOpen: [0.2, 1.0],
-  doorClose: [3.6, 4.4],
-  end: 4.6,
+  // Short and brisk: the doors swing open, she steps in, and the welcome card follows right away.
+  walk: [0.25, 2.2],
+  doorOpen: [0, 0.6],
+  doorClose: [2.0, 2.6],
+  end: 2.3,
 } as const;
 
 /** Does the 2D segment a→b pass through (or start inside) the box grown by `pad`? (slab test) */
@@ -191,9 +195,18 @@ export class StoreApp {
     this.scene.fog = new Fog(SKY, 40, 140);
     this.buildWorld();
     this.input = new InputController(host, {
-      onTap: (x, y) => this.handleTap(x, y),
-      onOrbit: (dx, dy) => this.cameraRig.orbit(dx, dy),
-      onZoom: (factor) => this.cameraRig.zoom(factor),
+      onTap: (x, y) => {
+        this.markActive();
+        this.handleTap(x, y);
+      },
+      onOrbit: (dx, dy) => {
+        this.markActive();
+        this.cameraRig.orbit(dx, dy);
+      },
+      onZoom: (factor) => {
+        this.markActive();
+        this.cameraRig.zoom(factor);
+      },
     });
     this.joystick = new Joystick(hud.root);
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -238,7 +251,7 @@ export class StoreApp {
     const t = intro.time;
     const walk = smoothstep(INTRO.walk[0], INTRO.walk[1], t);
     const walking = t > INTRO.walk[0] && t < INTRO.walk[1];
-    this.player.scriptedStep(PLAYER_START.x, MathUtils.lerp(INTRO.startZ, PLAYER_START.z, walk), Math.PI, walking ? 1.3 : 0, dt);
+    this.player.scriptedStep(PLAYER_START.x, MathUtils.lerp(INTRO.startZ, PLAYER_START.z, walk), Math.PI, walking ? 1.7 : 0, dt);
     this.door?.setOpen(smoothstep(INTRO.doorOpen[0], INTRO.doorOpen[1], t) * (1 - smoothstep(INTRO.doorClose[0], INTRO.doorClose[1], t)));
 
     this.cameraRig.update(dt, this.player);
@@ -247,7 +260,26 @@ export class StoreApp {
 
   start(): void {
     this.clock.start();
-    this.renderer.setAnimationLoop(() => this.frame());
+    let last = 0;
+    this.renderer.setAnimationLoop((time: number) => {
+      // Standing still (no walking, dragging or evening fade): 30 fps is plenty and halves the
+      // GPU work, which keeps phones cool. Anything moving goes back to full rate at once.
+      this.idleFrame = this.isIdle();
+      if (this.idleFrame && time - last < IDLE_FRAME_MS - 4) return;
+      last = time;
+      this.frame();
+    });
+  }
+
+  private lastActiveAt = 0;
+  private idleFrame = false;
+
+  private markActive(): void {
+    this.lastActiveAt = performance.now();
+  }
+
+  private isIdle(): boolean {
+    return !this.intro && !this.player.isMoving && this.evening === this.eveningTarget && performance.now() - this.lastActiveAt > 1500;
   }
 
   dispose(): void {
@@ -290,7 +322,11 @@ export class StoreApp {
       surroundings.group,
     ];
     this.scene.add(room, ...furniture);
-    for (const object of [room, ...furniture]) freezeStatic(object);
+    // Furniture never moves: bake it into a few batches (the room's fading walls stay separate).
+    mergeOccluders(furniture);
+    const batches = mergeStaticMeshes(furniture);
+    if (batches.length) this.scene.add(...batches);
+    for (const object of [room, ...furniture, ...batches]) freezeStatic(object);
 
     this.scene.traverse((object) => {
       if (object.userData.zoneId || object.userData.floor) this.pickables.push(object);
@@ -407,7 +443,11 @@ export class StoreApp {
       light.intensity = lerp(2.4, 11, k);
       light.distance = lerp(6.5, 9.5, k);
     }
-    for (const light of this.streetLights) light.intensity = lerp(0, 7, k);
+    for (const light of this.streetLights) {
+      light.intensity = lerp(0, 7, k);
+      // Off by day: a hidden light costs nothing, a zero-intensity one is still computed per pixel.
+      light.visible = light.intensity > 0.01;
+    }
     // Product spotlights stay on all day; they just matter more after dark.
     for (const light of this.accentLights) light.intensity = lerp(7, 15, k);
     for (const material of this.glowMaterials) material.emissiveIntensity = lerp(material.userData.glow.day, material.userData.glow.night, k);
@@ -425,7 +465,7 @@ export class StoreApp {
   private frame(): void {
     const dt = Math.min(this.clock.getDelta(), 1 / 20);
     if (this.shop.coversScene) return; // nothing visible; also keeps phones cool while shopping
-    this.trackPerformance(dt);
+    if (!this.idleFrame) this.trackPerformance(dt);
 
     if (this.intro) {
       this.updateIntro(dt);
@@ -443,6 +483,7 @@ export class StoreApp {
     const intent = this.shop.isOpen || this.hud.isHelpOpen ? null : this.input.keyboardIntent ?? this.joystick.intent;
     let move: { x: number; z: number } | null = null;
     if (intent) {
+      this.markActive();
       this.pendingOpenKey = null; // steering by hand cancels "open when I get there"
       const heading = this.cameraRig.heading;
       // forward = away from the camera, right = screen right
@@ -598,6 +639,7 @@ export class StoreApp {
       if (z < ROOM.halfDepth - 1.4 || Math.abs(x) > 1.4) this.doorArmed["door-out"] = true;
     }
     let spot = zoneAt(this.zones, x, z);
+    if (spot?.kind === "cat-seat" && this.catNapping) spot = null;
     if ((spot?.kind === "door-in" || spot?.kind === "door-out") && !this.doorArmed[spot.kind] && this.pendingOpenKey !== spot.id) spot = null;
     const nearCat = catClose && (!spot || this.pendingOpenKey === "cat" || this.activeZoneKey === "cat");
     const zone = nearCat ? null : spot;
@@ -643,7 +685,7 @@ export class StoreApp {
       };
       if (Math.hypot(this.cat.x - this.player.x, this.cat.z - this.player.z) < 1.3) pet();
       else {
-        const spot = { x: this.cat.x + 0.55, z: this.cat.z + 0.55, faceX: this.cat.x, faceZ: this.cat.z };
+        const spot = this.catApproach();
         this.player.walkTo({ ...spot, onArrive: pet, onBlocked: () => (this.hopTo(spot), pet()) });
       }
     },
@@ -665,7 +707,7 @@ export class StoreApp {
       this.player.walkTo({ ...front, onArrive: () => this.player.sit(chair), onBlocked: () => this.player.sit(chair) });
     },
     mannequinProducts: () => this.mannequinProducts,
-    catAtHome: () => Math.hypot(this.cat.x - 4.25, this.cat.z - 3.98) < 0.4,
+    catAtHome: () => Math.hypot(this.cat.x - CAT_SEAT.bed.x, this.cat.z - CAT_SEAT.bed.z) < 0.4,
   };
 
   private handleTap(clientX: number, clientY: number): void {
@@ -684,11 +726,12 @@ export class StoreApp {
     if (!hit) return;
     let node: Object3D | null = hit.object;
     while (node && node !== this.cat.root) node = node.parent;
-    if (node === this.cat.root) {
-      this.goToSpot("cat", { x: this.cat.x + 0.6, z: this.cat.z + 0.6, faceX: this.cat.x, faceZ: this.cat.z });
+    const zoneId = hit.object.userData.zoneId as string | undefined;
+    // Min asleep in her bed: the window seat's spot steps aside, a tap there is a tap on her.
+    if (node === this.cat.root || (zoneId === CAT_SEAT_ZONE && this.catNapping)) {
+      this.goToSpot("cat", this.catApproach());
       return;
     }
-    const zoneId = hit.object.userData.zoneId as string | undefined;
     const zone = zoneId ? this.zones.find((z) => z.id === zoneId) : undefined;
     if (zone) {
       this.goToSpot(zone.id, zone.approach);
@@ -766,6 +809,25 @@ export class StoreApp {
     else if (this.catalog.products.some((product) => product.id === productId)) this.shop.open({ kind: "product", productId });
   }
 
+  /** Products either side of this one on the wall (wrapping), for the product page's ‹ ›. */
+  shelfNeighbors(productId: string): { prev: string; next: string } | null {
+    const ids = this.shelfZones().map((zone) => zone.product!.id);
+    const index = ids.indexOf(productId);
+    if (index < 0 || ids.length < 2) return null;
+    return { prev: ids[(index - 1 + ids.length) % ids.length]!, next: ids[(index + 1) % ids.length]! };
+  }
+
+  /** The product page moved on to another product: quietly stand at its shelf behind the page. */
+  standAtProduct(productId: string): void {
+    const shelf = this.shelfZones().find((zone) => zone.product?.id === productId);
+    if (!shelf) return;
+    const { x, z, faceX, faceZ } = shelf.approach;
+    this.player.teleport(x, z, faceX, faceZ);
+    this.cameraRig.setYaw(Math.atan2(x - faceX, z - faceZ));
+    this.cameraRig.snap();
+    this.pendingOpenKey = null;
+  }
+
   /** "Đi tới": only the spots that matter most. */
   private setupQuickActions(): void {
     const kind = (k: Zone["kind"]) => this.zones.find((zone) => zone.kind === k);
@@ -775,7 +837,7 @@ export class StoreApp {
         actions: [
           { label: "Xem hàng", hint: "mẫu đang hot nhất", run: () => this.teleportTo(this.hottestShelf()) },
           { label: "Quy định mua hàng", hint: "bảng trên tường", run: () => this.teleportTo(kind("policy")) },
-          { label: "Hỏi shop", hint: "quầy chủ tiệm", run: () => this.teleportTo(kind("counter"), () => this.zoneActions.showOwnerChat()) },
+          { label: "Hỏi shop", hint: "quầy chủ shop", run: () => this.teleportTo(kind("counter"), () => this.zoneActions.showOwnerChat()) },
         ],
       },
       {
@@ -797,7 +859,21 @@ export class StoreApp {
     for (const marker of this.markers) {
       if (marker.zoneId === "door-out") marker.sprite.visible = !outside && toDoor < 1.05;
       else if (marker.zoneId === "door-in") marker.sprite.visible = outside && toDoor < 2.0;
+      else if (marker.zoneId === CAT_SEAT_ZONE) marker.sprite.visible = !this.catNapping;
     }
+  }
+
+  /** Min is curled up in her bed on the window seat. */
+  private get catNapping(): boolean {
+    return this.zoneActions.catAtHome();
+  }
+
+  /** Where to stand to reach Min: in front of the window seat when she's in bed, else beside her. */
+  private catApproach(): { x: number; z: number; faceX: number; faceZ: number } {
+    const { x, z } = this.cat;
+    return this.catNapping
+      ? { x, z: CAT_SEAT.z0 - 0.5, faceX: x, faceZ: z }
+      : { x: x + 0.6, z: z + 0.6, faceX: x, faceZ: z };
   }
 
   /** Roll the yarn ball; the guest nudges it when she walks into it. */

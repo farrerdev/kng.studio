@@ -68,6 +68,10 @@ export type StorefrontSceneHost = {
   onNotice?: (message: string) => void;
   /** Rendered at the start of the page header, e.g. a "back to the shop" button. */
   headerStart?: ReactNode;
+  /** Products before / after this one on the 3D shop's wall, for the product page's ‹ › buttons. */
+  productNeighbors?: (productId: string) => { prev: string; next: string } | null;
+  /** The product page now shows this product (the 3D shop moves the guest to its shelf). */
+  onProductShown?: (productId: string) => void;
 };
 
 type StorefrontProps = {
@@ -612,6 +616,7 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
     }
     if (trackedProductViewRef.current === selectedProduct.id) return;
     trackedProductViewRef.current = selectedProduct.id;
+    scene?.onProductShown?.(selectedProduct.id);
     void trackStorefrontEvent({ eventType: "product_view", productId: selectedProduct.id });
   }, [selectedProduct]);
 
@@ -633,6 +638,15 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeImage, activeImageIndex, canNavigateLightbox, galleryImages]);
+
+  // 3D shop: ‹ › on the product page step along the wall (wrapping at the ends).
+  const neighborIds = isScene && selectedProduct ? scene?.productNeighbors?.(selectedProduct.id) ?? null : null;
+  const prevProduct = neighborIds ? catalogProducts.find((product) => product.id === neighborIds.prev) : undefined;
+  const nextProduct = neighborIds ? catalogProducts.find((product) => product.id === neighborIds.next) : undefined;
+  const productNavigation =
+    prevProduct && nextProduct && prevProduct.id !== selectedProduct?.id
+      ? { prev: () => openProduct(prevProduct), next: () => openProduct(nextProduct) }
+      : undefined;
 
   // From the 3D shop to the web store: the product being viewed, else the home page.
   const webStoreHref = selectedProduct
@@ -704,7 +718,7 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
           <a className="store3d-invite" href={shopConfig.sites.store3d}>
             <Sparkles className="store3d-invite-spark" size={16} aria-hidden="true" />
             <span className="store3d-invite-text">
-              <strong>Dạo tiệm 3D</strong> – lựa đồ như ở tiệm
+              <strong>Dạo cửa hàng 3D</strong> – lựa đồ tận kệ
             </span>
             <span className="store3d-invite-cta">
               Vào xem
@@ -756,6 +770,7 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
               onSizeChange={setSelectedSize}
               onImageOpen={setActiveImage}
               onAddToCart={addToCart}
+              navigation={productNavigation}
               onQuantityChange={updateCartQuantity}
               getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
             />
@@ -782,13 +797,13 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
         </div>
         <nav className="storefront-sidebar-nav">
           {isScene && isPageOpen ? (
-            <button type="button" onClick={closeScenePage}>Về tiệm 3D</button>
+            <button type="button" onClick={closeScenePage}>Về shop 3D</button>
           ) : null}
           <button type="button" onClick={() => goHomeSection()}>{isScene ? "Tất cả sản phẩm" : "Trang chủ"}</button>
           {isScene ? (
             <a className="sidebar-site-link" href={webStoreHref}>Xem dạng trang web</a>
           ) : (
-            <a className="sidebar-site-link" href={shopConfig.sites.store3d}>Tham quan tiệm 3D</a>
+            <a className="sidebar-site-link" href={shopConfig.sites.store3d}>Dạo cửa hàng 3D</a>
           )}
           <details className="sidebar-products-group" open={isScene || undefined}>
             <summary>

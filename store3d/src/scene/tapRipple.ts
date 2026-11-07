@@ -18,7 +18,7 @@ export class TapRipple {
   constructor() {
     this.root.name = "tap-ripples";
     this.root.userData.animated = true;
-    const geometry = new RingGeometry(0.16, 0.2, 40);
+    const geometry = new RingGeometry(0.075, 0.095, 40);
     for (let i = 0; i < POOL; i += 1) {
       const group = new Group();
       group.visible = false;
@@ -56,7 +56,7 @@ export class TapRipple {
       ripple.rings.forEach((ring, index) => {
         const local = Math.min(Math.max((t - index * 0.18) / (1 - index * 0.18), 0), 1);
         const eased = 1 - (1 - local) ** 3;
-        ring.scale.setScalar(0.5 + eased * (index ? 1.6 : 2.2));
+        ring.scale.setScalar(0.6 + eased * (index ? 1.0 : 1.5));
         ring.material.opacity = local === 0 ? 0 : (1 - local) * 0.9;
       });
       if (t >= 1) ripple.root.visible = false;

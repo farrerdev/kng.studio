@@ -127,7 +127,7 @@ type SourceFilter = "all" | StorefrontEventSource;
 const SOURCE_TABS: Array<{ id: SourceFilter; label: string }> = [
   { id: "all", label: "Tất cả" },
   { id: "web", label: "Web" },
-  { id: "3d", label: "Tiệm 3D" },
+  { id: "3d", label: "Cửa hàng 3D" },
 ];
 
 function bySource(events: StorefrontEventRow[], source: SourceFilter) {

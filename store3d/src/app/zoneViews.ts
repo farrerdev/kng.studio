@@ -46,9 +46,9 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
 
   if (zone === "cat") {
     return {
-      eyebrow: "Mèo của tiệm",
+      eyebrow: "Mèo của shop",
       title: "Min",
-      text: "Bé mèo trắng hay đi một vòng quanh tiệm rồi về nằm bên cửa sổ.",
+      text: "Bé mèo trắng hay đi một vòng quanh shop rồi về nằm bên cửa sổ.",
       actions: [{ label: "Vuốt ve Min", primary: true, run: actions.petCat }],
     };
   }
@@ -65,6 +65,8 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
         text: `${product.price} · ${product.inStockPatterns.length} mẫu còn hàng`,
         rail: { productIds: [product.id] },
         actions: shelfNavigation(zone.id, actions),
+        // Tapping a shelf goes straight to the product page (with ‹ › to step along the wall).
+        open: () => actions.openStore({ kind: "product", productId: product.id }),
       };
     }
     case "popular":
@@ -78,10 +80,10 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
     case "counter":
       return {
         eyebrow: "Quầy thu ngân",
-        title: `${greeting()}, mình là chủ tiệm`,
+        title: `${greeting()}, mình là chủ shop`,
         text: "Hỏi mình về phí ship, giảm giá, size hay đổi hàng nhé.",
         actions: [
-          { label: "Hỏi chủ tiệm", primary: true, run: actions.showOwnerChat },
+          { label: "Hỏi chủ shop", primary: true, run: actions.showOwnerChat },
           {
             label: "Xem tất cả sản phẩm",
             run: () => {
@@ -109,8 +111,8 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
     case "door-in":
       return {
         eyebrow: "KNG.studio",
-        title: "Mời bạn vào tiệm",
-        actions: [{ label: "Vào tiệm", primary: true, run: actions.goInside }],
+        title: "Mời bạn vào shop",
+        actions: [{ label: "Vào shop", primary: true, run: actions.goInside }],
       };
     case "policy":
       return {
@@ -119,7 +121,7 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
         mount: mountPolicyList,
         actions: [
           { label: "Xem đầy đủ", primary: true, run: () => actions.openStore({ kind: "home", sectionId: "policy" }) },
-          { label: "Hỏi chủ tiệm", run: actions.showOwnerChat },
+          { label: "Hỏi chủ shop", run: actions.showOwnerChat },
         ],
       };
     case "scrunchies":
@@ -127,7 +129,6 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
         eyebrow: "Quà tặng",
         title: "Scrunchies tặng kèm",
         text: "Mỗi bộ đồ đều được tặng một dây buộc tóc scrunchies cùng họa tiết.",
-        actions: [{ label: "Xem quy định quà tặng", run: () => actions.openStore({ kind: "home", sectionId: "gift" }) }],
       };
     case "lounge":
       return {
@@ -148,7 +149,7 @@ export function describeZone(zone: Zone | "cat", catalog: StoreCatalog, actions:
       return {
         eyebrow: "Ổ của Min",
         title: actions.catAtHome() ? "Min đang nằm ở đây" : "Min đi dạo rồi",
-        text: actions.catAtHome() ? "Lại gần rồi vuốt ve bé nhé." : "Bé hay đi một vòng quanh tiệm rồi quay về.",
+        text: actions.catAtHome() ? "Lại gần rồi vuốt ve bé nhé." : "Bé hay đi một vòng quanh shop rồi quay về.",
       };
   }
 }
@@ -184,7 +185,7 @@ function mountPolicyList(host: HTMLElement): void {
 /** Owner chat shown in the counter panel. */
 export function describeOwnerChat(actions: ZoneActions): PanelView {
   return {
-    eyebrow: "Chủ tiệm",
+    eyebrow: "Chủ shop",
     title: "Hỏi mình nhé",
     mount: (host) => mountOwnerChat(host, actions.faq(), contactActions),
     actions: [{ label: "‹ Quay lại", run: actions.showCounter }],

@@ -3705,3 +3705,44 @@ body:has(.storefront) {
   font-weight: 620;
   text-decoration: none;
 }
+
+/* Product page top bar: ‹ › (3D shop only) next to the Shopee link. */
+.shop-product-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shop-product-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.shop-product-nav button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--kng-line-strong);
+  border-radius: 50%;
+  background: var(--kng-surface);
+  color: var(--kng-ink);
+  cursor: pointer;
+}
+
+.shop-product-nav button:hover {
+  border-color: var(--kng-ink);
+}
+
+@media (max-width: 420px) {
+  /* Room for ‹ ›: the Shopee link keeps its logo (and its aria-label). */
+  .shop-product-actions:has(.shop-product-nav) .product-shopee-link > span {
+    display: none;
+  }
+
+  .shop-product-topbar .shop-back {
+    white-space: nowrap;
+  }
+}

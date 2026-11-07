@@ -19,7 +19,7 @@ export class ShopOwner {
     longSleeves: true,
     slippers: palette.ink,
   });
-  private readonly tag = nameTag("Chủ tiệm", 0.62);
+  private readonly tag = nameTag("Chủ shop", 0.62);
   private readonly lookPoint = new Vector3();
   private lastWave = -Infinity;
   private time = 0;

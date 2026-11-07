@@ -28,6 +28,8 @@ export type PanelView = {
   /** Custom DOM content (e.g. the shop owner chat), built into a host under the text. */
   mount?: (host: HTMLElement) => void;
   actions?: PanelAction[];
+  /** Opening the spot does this instead of showing the panel (shelves open the product page). */
+  open?: () => void;
 };
 
 export type PanelRail = {
@@ -193,6 +195,10 @@ export class Hud {
   /** Opens the panel for the current spot. Returns false when there is none. */
   openCurrent(): boolean {
     if (!this.currentView) return false;
+    if (this.currentView.open) {
+      this.currentView.open();
+      return true;
+    }
     if (!this.panel.hidden) return true;
     this.reopenChip.hidden = true;
     this.openPanel(this.currentView);
@@ -387,7 +393,7 @@ export class Hud {
     webLink.href = shopConfig.sites.store;
     const actions = el("div", "hud-help__actions");
     actions.append(button("btn btn--primary", "Bắt đầu mua sắm", () => this.toggleHelp(false)), webLink);
-    card.append(el("h2", "hud-title", "Chào bạn ghé tiệm"), list, actions);
+    card.append(el("h2", "hud-title", "Chào bạn ghé shop"), list, actions);
     help.append(card);
     help.addEventListener("click", (event) => {
       if (event.target === help) this.toggleHelp(false);

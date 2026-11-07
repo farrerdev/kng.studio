@@ -2,7 +2,7 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color
 import { STREET } from "../config/layout";
 
 /** Sparks per burst; a rocket's rising trail uses the first one. */
-const SPARKS = 160;
+const SPARKS = 200;
 /** Each spark leaves this many fading dots behind it, so bursts read as crisp streaks. */
 const TRAIL = 3;
 const GRAVITY = 3.2;
@@ -28,9 +28,9 @@ function sparkTexture(): CanvasTexture {
   const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
   // Hard bright core with a thin halo: sharp dots rather than soft blobs.
   gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.28, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.42, "rgba(255,255,255,0.35)");
-  gradient.addColorStop(0.7, "rgba(255,255,255,0.05)");
+  gradient.addColorStop(0.32, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.42, "rgba(255,255,255,0.2)");
+  gradient.addColorStop(0.6, "rgba(255,255,255,0)");
   gradient.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 64, 64);
@@ -50,7 +50,7 @@ export class Fireworks {
   constructor() {
     this.root.name = "fireworks";
     this.root.visible = false;
-    for (let i = 0; i < 6; i += 1) this.pool.push(this.makeBurst());
+    for (let i = 0; i < 12; i += 1) this.pool.push(this.makeBurst());
   }
 
   /** `evening` is 0 (day) … 1 (night); rockets launch only after dark. */
@@ -66,7 +66,7 @@ export class Fireworks {
       if (this.untilNext <= 0) {
         this.launch();
         // Now and then a second one right after, like a real show.
-        this.untilNext = Math.random() < 0.3 ? 0.25 : 1.1 + Math.random() * 1.8;
+        this.untilNext = Math.random() < 0.45 ? 0.15 + Math.random() * 0.2 : 0.5 + Math.random() * 0.9;
       }
     }
     for (const burst of this.pool) if (burst.points.visible) this.step(burst, dt);
@@ -91,7 +91,7 @@ export class Fireworks {
     const trailGeometry = new BufferGeometry();
     trailGeometry.setAttribute("position", new BufferAttribute(new Float32Array(SPARKS * TRAIL * 3), 3));
     const trail = new Points(trailGeometry, material.clone());
-    trail.material.size = 0.6;
+    trail.material.size = 0.75;
     trail.frustumCulled = false;
     points.add(trail); // shown and hidden with its burst
     trail.visible = false;
@@ -114,7 +114,7 @@ export class Fireworks {
     burst.trail.material.color = tone;
     burst.trail.visible = false;
     burst.points.material.opacity = 1;
-    burst.points.material.size = 0.9;
+    burst.points.material.size = 1.2;
     burst.points.geometry.setDrawRange(0, 1);
     burst.points.visible = true;
     this.setAll(burst, burst.origin.x, 0, burst.origin.z);
@@ -167,14 +167,26 @@ export class Fireworks {
     if (life >= LIFE) burst.points.visible = false;
   }
 
-  private explode(burst: Burst): void {
+  private explode(burst: Burst, speed = 10 + Math.random() * 5, inner = false): void {
     burst.burst = true;
     burst.age = 0;
+    burst.points.visible = true;
     burst.points.geometry.setDrawRange(0, SPARKS);
-    burst.points.material.size = 1.4;
+    burst.points.material.opacity = 1;
+    burst.points.material.size = 1.8;
     burst.trail.visible = true;
     this.setAll(burst, burst.origin.x, burst.origin.y, burst.origin.z);
-    const speed = 10 + Math.random() * 5;
+    // Often a smaller sphere of another colour opens inside the first, like a real two-tone shell.
+    if (!inner && Math.random() < 0.45) {
+      const core = this.pool.find((candidate) => !candidate.points.visible);
+      if (core) {
+        core.origin = { ...burst.origin };
+        const tone = new Color(TONES[Math.floor(Math.random() * TONES.length)]!);
+        core.points.material.color = tone;
+        core.trail.material.color = tone;
+        this.explode(core, speed * 0.5, true);
+      }
+    }
     for (let i = 0; i < SPARKS; i += 1) {
       // Even spread over a sphere (golden-spiral), a little jitter in speed.
       const y = 1 - (2 * (i + 0.5)) / SPARKS;

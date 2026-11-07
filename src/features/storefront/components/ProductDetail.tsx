@@ -1,4 +1,4 @@
-import { ChevronLeft, Gift, Minus, Plus, Ruler, Truck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gift, Minus, Plus, Ruler, Truck } from "lucide-react";
 import { useRef, useState } from "react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { trackStorefrontEvent } from "../../analytics/storefrontAnalytics";
@@ -33,6 +33,8 @@ type ProductDetailProps = {
   onAddToCart: (item: CartDraft) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
   getCartItemQuantity: (itemId: string) => number;
+  /** Previous / next product buttons (the 3D shop's wall order); omitted on the website. */
+  navigation?: { prev: () => void; next: () => void };
 };
 
 export function ProductDetail({
@@ -47,6 +49,7 @@ export function ProductDetail({
   onAddToCart,
   onQuantityChange,
   getCartItemQuantity,
+  navigation,
 }: ProductDetailProps) {
   const productTitle = getProductTitle(product, productTypes);
   const productPrice = formatPrice(getProductPrice(product, productTypes));
@@ -78,7 +81,19 @@ export function ProductDetail({
           <ChevronLeft size={18} aria-hidden="true" />
           Tất cả sản phẩm
         </button>
-        <ShopeeProductLink url={product.shopeeUrl} />
+        <div className="shop-product-actions">
+          {navigation ? (
+            <div className="shop-product-nav">
+              <button type="button" aria-label="Mẫu trước" onClick={navigation.prev}>
+                <ChevronLeft size={18} aria-hidden="true" />
+              </button>
+              <button type="button" aria-label="Mẫu tiếp theo" onClick={navigation.next}>
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
+          <ShopeeProductLink url={product.shopeeUrl} />
+        </div>
       </div>
 
       <div className="shop-product-layout">

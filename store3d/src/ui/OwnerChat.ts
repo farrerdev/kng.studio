@@ -26,7 +26,7 @@ export function mountOwnerChat(host: HTMLElement, faq: FaqEntry[], contacts: Pan
       return;
     }
     const typing = el("p", "owner-chat__bubble owner-chat__bubble--owner owner-chat__typing");
-    typing.setAttribute("aria-label", "Chủ tiệm đang trả lời");
+    typing.setAttribute("aria-label", "Chủ shop đang trả lời");
     for (let i = 0; i < 3; i += 1) typing.append(el("span", "owner-chat__dot"));
     log.append(typing);
     scrollDown();

@@ -20,6 +20,10 @@ import type { StoreTarget } from "./types";
 export type ShopHandlers = {
   onStateChange: (state: StorefrontSceneState) => void;
   onNotice: (message: string) => void;
+  /** Wall neighbours for the product page's ‹ › buttons. */
+  productNeighbors: (productId: string) => { prev: string; next: string } | null;
+  /** The product page switched product: move the guest to that shelf behind it. */
+  onProductShown: (productId: string) => void;
 };
 
 export type ShopLayer = {
@@ -43,8 +47,10 @@ export function mountShop(host: HTMLElement, catalog: StorefrontCatalog, handler
       handlers.onStateChange(next);
     },
     onNotice: handlers.onNotice,
+    productNeighbors: (productId) => handlers.productNeighbors(productId),
+    onProductShown: (productId) => handlers.onProductShown(productId),
     headerStart: (
-      <button className="site-menu-button" type="button" aria-label="Về tiệm 3D" onClick={() => controllerRef.current?.closePage()}>
+      <button className="site-menu-button" type="button" aria-label="Về shop 3D" onClick={() => controllerRef.current?.closePage()}>
         <ArrowLeft size={20} aria-hidden="true" />
       </button>
     ),

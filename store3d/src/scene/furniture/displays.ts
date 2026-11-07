@@ -151,6 +151,10 @@ export function buildMannequins(catalog: StoreCatalog, materials: MaterialLibrar
     });
     if (product) figure.wear(productFabric(product, product.inStockPatterns[0], materials, MANNEQUIN_PRINT_REPEAT));
     figure.root.position.y = PLINTH + 0.012;
+    // Mannequins stand still: let them be baked with the rest of the furniture.
+    figure.root.traverse((part) => {
+      delete part.userData.animated;
+    });
     stand.add(figure.root);
   });
   tagZone(group, MANNEQUIN_ZONE);

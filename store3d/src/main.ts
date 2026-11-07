@@ -116,6 +116,8 @@ async function boot(): Promise<void> {
       hud.setCartCount(cartQuantity);
     },
     onNotice: (message) => hud.toast(message),
+    productNeighbors: (productId) => app.shelfNeighbors(productId),
+    onProductShown: (productId) => app.standAtProduct(productId),
   });
 
   const app = new StoreApp(stage, hud, catalog, {
@@ -128,7 +130,7 @@ async function boot(): Promise<void> {
     },
   }, buildFaq((data?.products ?? []).map((product) => product.material)), sounds);
   app.setEvening(evening, true);
-  progress(0.8, "Sắp tới cửa tiệm…");
+  progress(0.8, "Sắp tới cửa hàng…");
   await app.warmUp();
   progress(1);
   app.start();
@@ -158,5 +160,5 @@ async function boot(): Promise<void> {
 
 boot().catch((error: unknown) => {
   console.error("[store3d] failed to start", error);
-  progress(1, "Có lỗi khi mở cửa tiệm. Tải lại trang giúp mình nhé.");
+  progress(1, "Có lỗi khi mở cửa hàng. Tải lại trang giúp mình nhé.");
 });

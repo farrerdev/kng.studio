@@ -96,10 +96,9 @@ export const PLANTS = [
  * the two clothing-wall runs, the podium, the mannequins and the counter.
  */
 export const ACCENT_LIGHTS: ReadonlyArray<{ at: readonly [number, number, number]; aim: readonly [number, number, number]; angle: number }> = [
-  { at: [-3.7, ROOM.height - 0.25, 2.9], aim: [-5.6, 1.4, 2.9], angle: 0.62 },
-  { at: [-3.7, ROOM.height - 0.25, 1.65], aim: [-5.6, 1.4, 1.65], angle: 0.62 },
-  { at: [-3.7, ROOM.height - 0.25, -0.55], aim: [-5.6, 1.4, -0.55], angle: 0.62 },
-  { at: [-3.7, ROOM.height - 0.25, -1.85], aim: [-5.6, 1.4, -1.85], angle: 0.62 },
+  // One wide spot per clothing run (each light costs every pixel on screen, so they are few).
+  { at: [-3.4, ROOM.height - 0.25, 2.28], aim: [-5.6, 1.4, 2.28], angle: 0.85 },
+  { at: [-3.4, ROOM.height - 0.25, -1.2], aim: [-5.6, 1.4, -1.2], angle: 0.85 },
   { at: [-0.25, ROOM.height - 0.25, 1.4], aim: [-0.25, 0.8, 0.15], angle: 0.5 },
   { at: [-3.1, ROOM.height - 0.25, 2.3], aim: [-3.1, 1.3, 3.75], angle: 0.45 },
   { at: [3.6, ROOM.height - 0.25, -2.2], aim: [3.6, 1.0, -3.3], angle: 0.6 },

@@ -543,7 +543,13 @@ html body,
   grid-column: 1;
   display: flex;
   align-items: center;
-  gap: 2px;
+  /* "Back to the shop" and the menu sit apart, so a quick tap doesn't hit the wrong one. */
+  gap: 14px;
+}
+
+.site-header-start > .site-menu-button:first-child {
+  border-radius: 50%;
+  background: var(--kng-soft);
 }
 
 @keyframes scene-page-in {
