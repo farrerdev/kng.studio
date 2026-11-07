@@ -29,6 +29,10 @@ export type FigureStyle = {
   longSleeves: boolean;
   slippers: string;
   apron?: string;
+  /** Shop mannequin: smooth faceless head, no hair; only the outfit is "real". */
+  mannequin?: boolean;
+  /** Peter Pan collar (default on); off for round-neck sets. */
+  collar?: boolean;
 };
 
 const HIP_Y = 0.72;
@@ -86,7 +90,7 @@ export class HumanFigure {
     this.outfit = { top, bottom };
 
     this.buildLegs(bottom, new MeshStandardMaterial({ color: style.slippers, roughness: 0.95 }));
-    this.buildTorso(top, bottom, trim, skin);
+    this.buildTorso(top, bottom, trim, skin, style.collar ?? true);
     this.buildArms(top, skin, style.longSleeves);
     this.buildHead(skin, hair, style);
     if (style.apron) {
@@ -249,7 +253,7 @@ export class HumanFigure {
     }
   }
 
-  private buildTorso(top: MeshStandardMaterial, bottom: MeshStandardMaterial, trim: MeshStandardMaterial, skin: MeshStandardMaterial): void {
+  private buildTorso(top: MeshStandardMaterial, bottom: MeshStandardMaterial, trim: MeshStandardMaterial, skin: MeshStandardMaterial, collar: boolean): void {
     const pelvis = [[0, 0], [0.135, 0], [0.15, 0.06], [0.142, 0.12], [0, 0.14]].map(([r, y]) => new Vector2(r, y));
     mesh(new LatheGeometry(pelvis, 24), bottom, [0, HIP_Y - 0.06, 0], this.body).scale.z = 0.8;
 
@@ -263,7 +267,7 @@ export class HumanFigure {
     hem.scale.y = 0.78;
 
     // Peter Pan collar (cổ sen), the shop's signature, plus three buttons.
-    for (const side of [-1, 1]) {
+    for (const side of collar ? [-1, 1] : []) {
       const leaf = mesh(new SphereGeometry(0.05, 16, 10), trim, [side * 0.042, HIP_Y + 0.385, 0.08], this.body);
       leaf.scale.set(1.15, 0.24, 0.9);
       leaf.rotation.z = side * -0.28;
@@ -294,6 +298,11 @@ export class HumanFigure {
   private buildHead(skin: MeshStandardMaterial, hair: MeshStandardMaterial, style: FigureStyle): void {
     this.head.position.set(0, HIP_Y + 0.62, 0);
     this.body.add(this.head);
+    if (style.mannequin) {
+      // A smooth egg-shaped head, like a boutique mannequin.
+      mesh(new SphereGeometry(0.13, 32, 24), skin, [0, 0, 0], this.head).scale.set(0.9, 1.08, 0.92);
+      return;
+    }
     mesh(new SphereGeometry(0.14, 32, 24), skin, [0, 0, 0], this.head).scale.set(0.96, 1, 0.94);
     this.buildFace(skin, hair);
 

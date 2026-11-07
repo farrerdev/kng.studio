@@ -2,7 +2,9 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color
 import { STREET } from "../config/layout";
 
 /** Sparks per burst; a rocket's rising trail uses the first one. */
-const SPARKS = 140;
+const SPARKS = 160;
+/** Each spark leaves this many fading dots behind it, so bursts read as crisp streaks. */
+const TRAIL = 3;
 const GRAVITY = 3.2;
 /** Seconds a burst glows before it has faded out. */
 const LIFE = 2.6;
@@ -11,6 +13,7 @@ const TONES = ["#FFD27A", "#FF9FB0", "#FFF4E0", "#A8E6CF", "#FFB36B", "#C9B8FF"]
 
 type Burst = {
   points: Points<BufferGeometry, PointsMaterial>;
+  trail: Points<BufferGeometry, PointsMaterial>;
   velocity: Float32Array;
   origin: { x: number; y: number; z: number };
   age: number;
@@ -23,8 +26,11 @@ function sparkTexture(): CanvasTexture {
   canvas.width = canvas.height = 64;
   const ctx = canvas.getContext("2d")!;
   const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  // Hard bright core with a thin halo: sharp dots rather than soft blobs.
   gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.35, "rgba(255,255,255,0.7)");
+  gradient.addColorStop(0.28, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.42, "rgba(255,255,255,0.35)");
+  gradient.addColorStop(0.7, "rgba(255,255,255,0.05)");
   gradient.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 64, 64);
@@ -82,8 +88,15 @@ export class Fireworks {
     const points = new Points(geometry, material);
     points.visible = false;
     points.frustumCulled = false;
+    const trailGeometry = new BufferGeometry();
+    trailGeometry.setAttribute("position", new BufferAttribute(new Float32Array(SPARKS * TRAIL * 3), 3));
+    const trail = new Points(trailGeometry, material.clone());
+    trail.material.size = 0.6;
+    trail.frustumCulled = false;
+    points.add(trail); // shown and hidden with its burst
+    trail.visible = false;
     this.root.add(points);
-    return { points, velocity: new Float32Array(SPARKS * 3), origin: { x: 0, y: 0, z: 0 }, age: 0, burst: false };
+    return { points, trail, velocity: new Float32Array(SPARKS * 3), origin: { x: 0, y: 0, z: 0 }, age: 0, burst: false };
   }
 
   private launch(): void {
@@ -96,9 +109,12 @@ export class Fireworks {
     };
     burst.age = 0;
     burst.burst = false;
-    burst.points.material.color = new Color(TONES[Math.floor(Math.random() * TONES.length)]!);
+    const tone = new Color(TONES[Math.floor(Math.random() * TONES.length)]!);
+    burst.points.material.color = tone;
+    burst.trail.material.color = tone;
+    burst.trail.visible = false;
     burst.points.material.opacity = 1;
-    burst.points.material.size = 1.4;
+    burst.points.material.size = 0.9;
     burst.points.geometry.setDrawRange(0, 1);
     burst.points.visible = true;
     this.setAll(burst, burst.origin.x, 0, burst.origin.z);
@@ -129,8 +145,25 @@ export class Fireworks {
       array[v + 2]! += burst.velocity[v + 2]! * dt;
     }
     positions.needsUpdate = true;
+    // Trail dots sit behind each spark along its motion, fainter the further back.
+    const trailPositions = burst.trail.geometry.getAttribute("position") as BufferAttribute;
+    const trailArray = trailPositions.array as Float32Array;
+    for (let i = 0; i < SPARKS; i += 1) {
+      const v = i * 3;
+      for (let step = 1; step <= TRAIL; step += 1) {
+        const t = (i * TRAIL + step - 1) * 3;
+        const back = step * 0.045;
+        trailArray[t] = array[v]! - burst.velocity[v]! * back;
+        trailArray[t + 1] = array[v + 1]! - burst.velocity[v + 1]! * back;
+        trailArray[t + 2] = array[v + 2]! - burst.velocity[v + 2]! * back;
+      }
+    }
+    trailPositions.needsUpdate = true;
     const fade = 1 - life / LIFE;
-    burst.points.material.opacity = Math.max(0, fade * fade);
+    // Fade out with a little twinkle at the end, like real sparks burning out.
+    const twinkle = fade < 0.45 ? 0.6 + Math.random() * 0.4 : 1;
+    burst.points.material.opacity = Math.max(0, fade * fade * twinkle);
+    burst.trail.material.opacity = burst.points.material.opacity * 0.45;
     if (life >= LIFE) burst.points.visible = false;
   }
 
@@ -138,7 +171,8 @@ export class Fireworks {
     burst.burst = true;
     burst.age = 0;
     burst.points.geometry.setDrawRange(0, SPARKS);
-    burst.points.material.size = 2.2;
+    burst.points.material.size = 1.4;
+    burst.trail.visible = true;
     this.setAll(burst, burst.origin.x, burst.origin.y, burst.origin.z);
     const speed = 10 + Math.random() * 5;
     for (let i = 0; i < SPARKS; i += 1) {

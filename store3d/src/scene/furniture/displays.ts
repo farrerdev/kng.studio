@@ -11,11 +11,16 @@ import type { StoreCatalog, StoreProduct } from "../../data/types";
 import { mesh, softBox, tagZone } from "../build";
 import { labelTexture } from "../canvasArt";
 import type { MaterialLibrary } from "../materials";
-import { productFabric, productGarment } from "./productDisplay";
+import { HumanFigure } from "../../characters/HumanFigure";
+import { productFabric } from "./productDisplay";
 
 export const PODIUM_ZONE = "popular";
 export const SCRUNCHIE_ZONE = "scrunchies";
 export const MANNEQUIN_ZONE = "mannequins";
+const MANNEQUIN_WHITE = "#F4EFE7";
+const TRIM_CREAM = "#FFFDF7";
+/** Print scale on a mannequin (same as the people in the shop). */
+const MANNEQUIN_PRINT_REPEAT = 3;
 
 /** Two-tier round podium showing the five most-loved products, each with a numbered tag. */
 export function buildPodium(catalog: StoreCatalog, materials: MaterialLibrary): Group {
@@ -116,26 +121,33 @@ export function buildScrunchieStand(materials: MaterialLibrary): Group {
 export function buildMannequins(catalog: StoreCatalog, materials: MaterialLibrary): { group: Group; products: StoreProduct[] } {
   const group = new Group();
   group.name = "mannequins";
-  const products = catalog.products.slice(-2).reverse();
+  // Long-pants sets suit a full-length figure; the newest ones go in the window first.
+  const longPants = [...catalog.products].reverse().filter((product) => /quần dài/i.test(product.categoryName));
+  const products = (longPants.length >= MANNEQUINS.length ? longPants : [...catalog.products].reverse()).slice(0, MANNEQUINS.length);
   const oakDeep = materials.surface(palette.oakDeep, { roughness: 0.6 });
-  const brass = materials.brass();
-  const STAND_TOP = 1.86;
 
   MANNEQUINS.forEach((spot, index) => {
     const stand = new Group();
     stand.position.set(spot.x, 0, spot.z);
-    stand.rotation.y = Math.PI + (index ? -0.35 : 0.35);
+    // Facing the street, turned slightly towards each other, so passers-by see the outfits.
+    stand.rotation.y = index ? -0.3 : 0.3;
     group.add(stand);
-    mesh(new CylinderGeometry(0.2, 0.22, 0.03, 24), oakDeep, [0, 0.015, 0], stand);
-    mesh(new CylinderGeometry(0.014, 0.014, STAND_TOP, 8), oakDeep, [0, STAND_TOP / 2, -0.03], stand);
-    mesh(new TorusGeometry(0.02, 0.004, 6, 12, Math.PI), brass, [0, STAND_TOP + 0.01, -0.03], stand).rotation.y = Math.PI / 2;
+    mesh(new CylinderGeometry(0.24, 0.26, 0.06, 32), oakDeep, [0, 0.03, 0], stand);
     const product = products[index];
-    if (product) {
-      const garment = productGarment(product, materials, MANNEQUIN_ZONE);
-      garment.group.scale.setScalar(0.85);
-      garment.group.position.set(0, STAND_TOP - 0.02, 0);
-      stand.add(garment.group);
-    }
+    const figure = new HumanFigure({
+      skin: MANNEQUIN_WHITE,
+      hair: MANNEQUIN_WHITE,
+      hairStyle: "bun",
+      scrunchie: MANNEQUIN_WHITE,
+      outfit: { kind: "plain", top: palette.linen, bottom: palette.linen, trim: TRIM_CREAM },
+      longSleeves: product ? /tay dài/i.test(product.categoryName) : true,
+      slippers: MANNEQUIN_WHITE,
+      mannequin: true,
+      collar: product ? !/cổ (tròn|v)\b/i.test(product.shortName) : true,
+    });
+    if (product) figure.wear(productFabric(product, product.inStockPatterns[0], materials, MANNEQUIN_PRINT_REPEAT));
+    figure.root.position.y = 0.06;
+    stand.add(figure.root);
   });
   tagZone(group, MANNEQUIN_ZONE);
   return { group, products };
