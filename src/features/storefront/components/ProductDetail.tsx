@@ -1,4 +1,4 @@
-import { ChevronLeft, Gift, Minus, Plus, Ruler, Truck } from "lucide-react";
+import { Box, ChevronLeft, Gift, Minus, Plus, Ruler, Truck } from "lucide-react";
 import { useRef, useState } from "react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { trackStorefrontEvent } from "../../analytics/storefrontAnalytics";
@@ -33,6 +33,8 @@ type ProductDetailProps = {
   onAddToCart: (item: CartDraft) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
   getCartItemQuantity: (itemId: string) => number;
+  /** Link to this product's shelf in the 3D shop (omitted inside the 3D shop). */
+  view3dHref?: string;
 };
 
 export function ProductDetail({
@@ -47,6 +49,7 @@ export function ProductDetail({
   onAddToCart,
   onQuantityChange,
   getCartItemQuantity,
+  view3dHref,
 }: ProductDetailProps) {
   const productTitle = getProductTitle(product, productTypes);
   const productPrice = formatPrice(getProductPrice(product, productTypes));
@@ -78,7 +81,16 @@ export function ProductDetail({
           <ChevronLeft size={18} aria-hidden="true" />
           Tất cả sản phẩm
         </button>
-        <ShopeeProductLink url={product.shopeeUrl} />
+        <div className="shop-product-links">
+          {view3dHref ? (
+            <a className="product-3d-link" href={view3dHref} aria-label="Xem mẫu này trong tiệm 3D">
+              <Box size={15} aria-hidden="true" />
+              <span className="product-3d-link-full">Xem trong tiệm 3D</span>
+              <span className="product-3d-link-short">Tiệm 3D</span>
+            </a>
+          ) : null}
+          <ShopeeProductLink url={product.shopeeUrl} />
+        </div>
       </div>
 
       <div className="shop-product-layout">

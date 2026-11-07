@@ -2,6 +2,11 @@ export const shopConfig = {
   brand: "KNG.studio",
   subtitle: "Muslin homewear",
   location: "Đà Nẵng",
+  /** The two ways to visit: the web store and the 3D walk-in shop (they share the cart). */
+  sites: {
+    store: "https://kngstudio.shop",
+    store3d: "https://3d.kngstudio.shop",
+  },
   contacts: {
     facebook: "https://www.facebook.com/p/KNGstudio-61584468240625/",
     instagram: "https://www.instagram.com/kng.stu_/",

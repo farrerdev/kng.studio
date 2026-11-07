@@ -3608,3 +3608,143 @@ body:has(.storefront) {
     animation: none;
   }
 }
+
+
+/* Links between the web store and the 3D walk-in shop. */
+.store3d-invite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--kng-line-strong);
+  border-radius: 16px;
+  background: var(--kng-surface);
+  color: var(--kng-ink);
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.store3d-invite:hover {
+  border-color: var(--kng-ink);
+}
+
+.store3d-invite:active {
+  transform: scale(0.99);
+}
+
+.store3d-invite-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--kng-ink);
+  color: var(--kng-surface);
+}
+
+.store3d-invite-text {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.store3d-invite-text strong {
+  font-family: var(--kng-font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.store3d-invite-text span {
+  color: var(--kng-ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.store3d-invite-cta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (min-width: 961px) {
+  .store3d-invite {
+    max-width: 1180px;
+    margin: 16px auto 0;
+  }
+}
+
+.storefront-sidebar-nav .sidebar-site-link {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid var(--store-line);
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 620;
+  text-decoration: none;
+}
+
+.shop-product-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.storefront .product-3d-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--kng-line-strong);
+  border-radius: var(--kng-radius-pill);
+  background: var(--kng-surface);
+  color: var(--kng-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.storefront .product-3d-link:hover {
+  border-color: var(--kng-ink);
+}
+
+.product-3d-link-short {
+  display: none;
+}
+
+/* Phones: "Tất cả sản phẩm", the 3D link and the Shopee link share one row. */
+@media (max-width: 480px) {
+  .product-3d-link-full {
+    display: none;
+  }
+
+  .product-3d-link-short {
+    display: inline;
+  }
+
+  .shop-product-topbar .shop-back {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* The Shopee link keeps its logo (and its aria-label); the words go, to fit the row. */
+  .shop-product-topbar .product-shopee-link > span {
+    display: none;
+  }
+
+  .shop-product-links {
+    flex-wrap: nowrap;
+  }
+}

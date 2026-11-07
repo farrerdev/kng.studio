@@ -976,3 +976,69 @@ html body,
     opacity: 0;
   }
 }
+
+/* Welcome card actions: start shopping here, or switch to the web store. */
+.hud-help__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hud-help__web {
+  text-decoration: none;
+}
+
+/* Gentle hint on slow phones: the web store is lighter. */
+.hud-slow {
+  position: absolute;
+  left: 50%;
+  bottom: max(96px, calc(env(safe-area-inset-bottom) + 88px));
+  transform: translateX(-50%);
+  width: min(360px, calc(100% - 32px));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 8px;
+  align-items: center;
+  padding: 14px 14px 14px 16px;
+  border-radius: 16px;
+  background: var(--hud-linen);
+  color: var(--hud-ink);
+  box-shadow: 0 10px 30px rgba(60, 45, 30, 0.18);
+  font: 14px/1.45 var(--hud-sans);
+  pointer-events: auto;
+  animation: hud-slow-in 0.25s ease;
+}
+
+.hud-slow p {
+  margin: 0;
+  grid-column: 1 / -1;
+  padding-right: 28px;
+}
+
+.hud-slow .btn {
+  justify-self: start;
+  text-decoration: none;
+}
+
+.hud-slow__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hud-ink);
+  cursor: pointer;
+}
+
+@keyframes hud-slow-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}

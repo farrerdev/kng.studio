@@ -1,3 +1,4 @@
+import { shopConfig } from "../../../src/config/shop";
 import { button, el, icon, iconButton } from "./dom";
 
 export type PanelAction = {
@@ -74,6 +75,9 @@ export class Hud {
   private readonly skipHint: HTMLElement;
   private readonly quickMenu: HTMLElement;
   private toastTimer = 0;
+  /** Runs once when the guest closes the welcome card (e.g. go to the product they came for). */
+  private welcomeThen: (() => void) | null = null;
+  private slowHintShown = false;
 
   constructor(
     readonly root: HTMLElement,
@@ -111,8 +115,22 @@ export class Hud {
   }
 
   /** After the walk-in: the welcome card; its "Bắt đầu mua sắm" tap also starts the music. */
-  showWelcome(): void {
+  showWelcome(then?: () => void): void {
+    this.welcomeThen = then ?? null;
     this.toggleHelp(true);
+  }
+
+  /** Once per visit, on phones that struggle with 3D: offer the plain web store instead. */
+  suggestWebView(): void {
+    if (this.slowHintShown) return;
+    this.slowHintShown = true;
+    const hint = el("div", "hud-slow");
+    hint.setAttribute("role", "status");
+    const close = iconButton("hud-slow__close", "x", "Đóng", () => hint.remove());
+    const link = el("a", "btn btn--primary btn--small", "Xem dạng trang web");
+    link.href = shopConfig.sites.store;
+    hint.append(el("p", "", "Máy hơi chậm khi xem 3D? Bạn có thể xem dạng trang web, giỏ hàng vẫn giữ nguyên."), link, close);
+    this.root.append(hint);
   }
 
   get isHelpOpen(): boolean {
@@ -358,7 +376,12 @@ export class Hud {
     ]) {
       list.append(el("li", "", item));
     }
-    card.append(el("h2", "hud-title", "Chào bạn ghé tiệm"), list, button("btn btn--primary", "Bắt đầu mua sắm", () => this.toggleHelp(false)));
+    // Guests who'd rather shop from a plain list (or have a slow phone) can switch to the web store.
+    const webLink = el("a", "btn hud-help__web", "Xem dạng trang web");
+    webLink.href = shopConfig.sites.store;
+    const actions = el("div", "hud-help__actions");
+    actions.append(button("btn btn--primary", "Bắt đầu mua sắm", () => this.toggleHelp(false)), webLink);
+    card.append(el("h2", "hud-title", "Chào bạn ghé tiệm"), list, actions);
     help.append(card);
     help.addEventListener("click", (event) => {
       if (event.target === help) this.toggleHelp(false);
@@ -372,5 +395,10 @@ export class Hud {
   private toggleHelp(open: boolean): void {
     this.help.hidden = !open;
     if (open) this.help.querySelector("button")?.focus();
+    if (!open && this.welcomeThen) {
+      const then = this.welcomeThen;
+      this.welcomeThen = null;
+      then();
+    }
   }
 }

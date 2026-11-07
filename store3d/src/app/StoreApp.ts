@@ -155,6 +155,7 @@ export class StoreApp {
   private elapsed = 0;
   private pixelRatio: number;
   private frameTimes: number[] = [];
+  private slowWindows = 0;
 
   constructor(
     private readonly host: HTMLElement,
@@ -740,10 +741,22 @@ export class StoreApp {
     this.hud.flash();
     const { x, z, faceX, faceZ } = zone.approach;
     this.player.teleport(x, z, faceX, faceZ);
+    // View from behind her, looking at the spot (the old angle could be out on the street).
+    this.cameraRig.setYaw(Math.atan2(x - faceX, z - faceZ));
     this.cameraRig.snap();
     this.activeZoneKey = null; // re-announce the spot even if she was already there
     this.pendingOpenKey = zone.id;
     this.pendingThen = then ?? null;
+  }
+
+  /**
+   * Arriving from the web store's "Xem trong tiệm 3D": jump to that product's shelf and open it;
+   * products that aren't on the wall open in the shop panel instead.
+   */
+  showProduct(productId: string): void {
+    const shelf = this.shelfZones().find((zone) => zone.product?.id === productId);
+    if (shelf) this.teleportTo(shelf);
+    else if (this.catalog.products.some((product) => product.id === productId)) this.shop.open({ kind: "product", productId });
   }
 
   /** "Đi tới": only the spots that matter most. */
@@ -793,6 +806,10 @@ export class StoreApp {
       this.pixelRatio = Math.max(1, this.pixelRatio - 0.25);
       this.renderer.setPixelRatio(this.pixelRatio);
       this.resize();
+      return;
     }
+    // Still choppy at the lowest resolution: twice in a row, offer the web store.
+    this.slowWindows = average > 1 / 24 ? this.slowWindows + 1 : 0;
+    if (this.slowWindows >= 2) this.hud.suggestWebView();
   }
 }

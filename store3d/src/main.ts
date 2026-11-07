@@ -131,7 +131,15 @@ async function boot(): Promise<void> {
   if (import.meta.env.DEV) Object.assign(window, { __store3d: app, __sounds: sounds });
   // The welcome card's "Bắt đầu mua sắm" is the guest's first tap, which is what lets the music
   // start (browsers block sound until then).
-  app.playIntro(() => hud.showWelcome());
+  // "?p=<product id>" from the web store's "Xem trong tiệm 3D": go to that shelf after the welcome.
+  const params = new URLSearchParams(window.location.search);
+  const wantedProduct = params.get("p");
+  if (wantedProduct) {
+    params.delete("p");
+    const query = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  }
+  app.playIntro(() => hud.showWelcome(wantedProduct ? () => app.showProduct(wantedProduct) : undefined));
   loader?.classList.add("is-done");
   window.setTimeout(() => loader?.remove(), 600);
   if (catalog.status === "unavailable") hud.toast("Chưa tải được sản phẩm, đang hiển thị kệ trống");

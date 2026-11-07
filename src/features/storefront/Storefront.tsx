@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Menu, ShoppingBag, X } from "lucide-react";
+import { ArrowRight, Box, ChevronDown, ChevronLeft, ChevronRight, Menu, ShoppingBag, X } from "lucide-react";
 import { type MutableRefObject, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { getStorefrontSlugFromPath } from "../../app/routes";
 import { shopConfig } from "../../config/shop";
@@ -634,6 +634,10 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeImage, activeImageIndex, canNavigateLightbox, galleryImages]);
 
+  // From the 3D shop to the web store: the product being viewed, else the home page.
+  const webStoreHref = selectedProduct
+    ? `${shopConfig.sites.store}/${getProductSlug(selectedProduct, catalogProductTypes)}`
+    : shopConfig.sites.store;
   const pageClassName = ["page-shell", "storefront", cartQuantity > 0 ? "has-cart-bar" : "", isScene ? "is-scene" : ""]
     .filter(Boolean)
     .join(" ");
@@ -695,6 +699,23 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
           </section>
         ) : null}
 
+        {/* Invitation to the 3D walk-in shop (home list only; not inside the 3D shop itself). */}
+        {!isScene && !selectedProduct ? (
+          <a className="store3d-invite" href={shopConfig.sites.store3d}>
+            <span className="store3d-invite-icon" aria-hidden="true">
+              <Box size={20} />
+            </span>
+            <span className="store3d-invite-text">
+              <strong>Ghé tiệm 3D</strong>
+              <span>Dạo tiệm, xem đồ treo trên kệ như ngoài đời</span>
+            </span>
+            <span className="store3d-invite-cta">
+              Vào tiệm
+              <ArrowRight size={15} aria-hidden="true" />
+            </span>
+          </a>
+        ) : null}
+
 
         {catalogLoadState === "loading" ? <ProductGridSkeleton /> : null}
 
@@ -738,6 +759,7 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
               onSizeChange={setSelectedSize}
               onImageOpen={setActiveImage}
               onAddToCart={addToCart}
+              view3dHref={isScene ? undefined : `${shopConfig.sites.store3d}/?p=${encodeURIComponent(selectedProduct.id)}`}
               onQuantityChange={updateCartQuantity}
               getCartItemQuantity={(itemId) => cartQuantityById.get(itemId) ?? 0}
             />
@@ -767,6 +789,11 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
             <button type="button" onClick={closeScenePage}>Về tiệm 3D</button>
           ) : null}
           <button type="button" onClick={() => goHomeSection()}>{isScene ? "Tất cả sản phẩm" : "Trang chủ"}</button>
+          {isScene ? (
+            <a className="sidebar-site-link" href={webStoreHref}>Xem dạng trang web</a>
+          ) : (
+            <a className="sidebar-site-link" href={shopConfig.sites.store3d}>Ghé tiệm 3D</a>
+          )}
           <details className="sidebar-products-group" open={isScene || undefined}>
             <summary>
               <span>Sản phẩm</span>
