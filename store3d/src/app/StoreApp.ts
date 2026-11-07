@@ -343,7 +343,7 @@ export class StoreApp {
       this.scene.add(light);
       this.pendantLights.push(light);
     }
-    // Accent spots on the products: off by day (daylight is enough), on in the evening.
+    // Accent spots on the products: on all day, stronger in the evening (see applyEvening).
     for (const accent of ACCENT_LIGHTS) {
       const spot = new SpotLight("#FFE6C4", 0, 9, accent.angle, 0.55, 1.1);
       spot.position.set(...accent.at);
@@ -394,13 +394,13 @@ export class StoreApp {
     const sky = this.scene.background as Color;
     sky.copy(DAY_SKY).lerp(EVENING_SKY, k);
     this.scene.fog?.color.copy(sky);
-    this.hemisphere.intensity = lerp(1.5, 1.25, k);
+    this.hemisphere.intensity = lerp(1.5, 1.45, k);
     this.hemisphere.color.copy(DAY_HEMI).lerp(EVENING_HEMI, k);
-    this.ambient.intensity = lerp(0.3, 0.6, k);
+    this.ambient.intensity = lerp(0.3, 0.85, k);
     this.sun.intensity = lerp(1.5, 0.22, k);
     this.sun.color.copy(DAY_SUN).lerp(MOON, k);
     for (const light of this.pendantLights) {
-      light.intensity = lerp(2.4, 9, k);
+      light.intensity = lerp(2.4, 11, k);
       light.distance = lerp(6.5, 9.5, k);
     }
     for (const light of this.streetLights) light.intensity = lerp(0, 7, k);

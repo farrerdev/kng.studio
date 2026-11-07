@@ -66,7 +66,6 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
     const runItems = items.slice(next, next + perRun[runIndex]!);
     next += runItems.length;
     if (!runItems.length) return;
-    buildRunSign(group, runTitle(runItems, runIndex), centerZ, materials);
     const width = length / runItems.length;
     runItems.forEach((product, index) => {
       const zFrom = run.zFrom - width * index;
@@ -85,44 +84,45 @@ export function buildShelving(catalog: StoreCatalog, materials: MaterialLibrary)
     });
   });
 
+  // One big sign over the whole wall, centred above the mirror between the two runs.
+  const wallCenter = (SHELVING.runs[0].zFrom + SHELVING.runs[SHELVING.runs.length - 1]!.zTo) / 2;
+  buildWallSign(group, wallTitle(items), wallCenter, materials);
+
   return { group, sections };
 }
 
-const RUN_SIGN = { y: SHELVING.height + 0.62, width: 2.3, height: 0.62 } as const;
-/** Sign titles when a run mixes categories (front run first). */
-const RUN_TITLES = ["Đồ ngủ muslin", "Mẫu còn hàng"] as const;
+const WALL_SIGN = { y: SHELVING.height + 0.66, width: 2.8, height: 0.7 } as const;
 
-/** What a run holds, for its sign: the category when the run shares one, else the general label. */
-function runTitle(products: Array<StoreProduct | null>, runIndex: number): string {
+/** The category when every product on the wall shares one, else the shop's general label. */
+function wallTitle(products: Array<StoreProduct | null>): string {
   const names = [...new Set(products.filter((product): product is StoreProduct => Boolean(product)).map((product) => product.categoryName))];
-  if (names.length === 1) return names[0]!;
-  return RUN_TITLES[runIndex % RUN_TITLES.length]!;
+  return names.length === 1 ? names[0]! : "Đồ ngủ muslin";
 }
 
-/** Big wall sign above a shelf run, like the podium's "Đang được yêu thích", so guests spot it from afar. */
-function buildRunSign(parent: Group, title: string, centerZ: number, materials: MaterialLibrary): void {
+/** Big wall sign above the clothing wall, like the podium's "Đang được yêu thích", so guests spot it from afar. */
+function buildWallSign(parent: Group, title: string, centerZ: number, materials: MaterialLibrary): void {
   const x = SHELVING.wallX + 0.05;
   const sign = mesh(
-    new PlaneGeometry(RUN_SIGN.width, RUN_SIGN.height),
+    new PlaneGeometry(WALL_SIGN.width, WALL_SIGN.height),
     new MeshBasicMaterial({
       map: labelTexture(title, {
         width: 1024,
-        height: 270,
+        height: 256,
         background: palette.linen,
         border: palette.brass,
         radius: 60,
-        subtitle: "chạm vào từng bộ để xem",
+        subtitle: "mẫu còn hàng · chạm vào từng bộ để xem",
       }),
       transparent: true,
     }),
-    [x, RUN_SIGN.y, centerZ],
+    [x, WALL_SIGN.y, centerZ],
     parent,
     { castShadow: false, receiveShadow: false },
   );
   sign.rotation.y = Math.PI / 2;
   // Two brass rods hold it off the wall.
-  for (const dz of [-RUN_SIGN.width * 0.38, RUN_SIGN.width * 0.38]) {
-    slab(materials.brass(), SHELVING.wallX, x - 0.01, RUN_SIGN.y + RUN_SIGN.height * 0.3, RUN_SIGN.y + RUN_SIGN.height * 0.3 + 0.025, centerZ + dz - 0.012, centerZ + dz + 0.012, parent);
+  for (const dz of [-WALL_SIGN.width * 0.38, WALL_SIGN.width * 0.38]) {
+    slab(materials.brass(), SHELVING.wallX, x - 0.01, WALL_SIGN.y + WALL_SIGN.height * 0.3, WALL_SIGN.y + WALL_SIGN.height * 0.3 + 0.025, centerZ + dz - 0.012, centerZ + dz + 0.012, parent);
   }
 }
 

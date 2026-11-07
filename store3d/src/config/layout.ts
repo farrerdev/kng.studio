@@ -111,6 +111,8 @@ export const PENDANTS = [
   { x: -0.25, z: 0.15 },
   { x: 3.0, z: -2.6 },
   { x: 4.6, z: -2.6 },
+  // Over the tea table, so the lounge is cosy and bright in the evening.
+  { x: 4.45, z: 2.95 },
 ] as const;
 
 export const PLAYER_START = { x: 0, z: 3.3, yaw: Math.PI } as const;
