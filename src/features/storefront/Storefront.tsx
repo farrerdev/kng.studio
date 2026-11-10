@@ -836,6 +836,7 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
           <button type="button" onClick={() => goHomeSection("discount")}>Giảm giá</button>
           <button type="button" onClick={() => goHomeSection("payment")}>Thanh toán</button>
           <button type="button" onClick={() => goHomeSection("returns")}>Đổi hàng</button>
+          <button type="button" onClick={() => goHomeSection("muslin")}>Vải xô muslin</button>
           <button type="button" onClick={() => goHomeSection("care")}>Bảo quản</button>
         </nav>
       </aside>
