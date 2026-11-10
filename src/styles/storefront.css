@@ -1637,12 +1637,9 @@
   transform: rotate(45deg);
 }
 
+/* Jump targets stop below the sticky header; every policy section is covered, new ones included. */
 .storefront #products,
-.storefront #gift,
-.storefront #shipping,
-.storefront #discount,
-.storefront #payment,
-.storefront #returns {
+.storefront .storefront-policy article {
   scroll-margin-top: 82px;
 }
 
