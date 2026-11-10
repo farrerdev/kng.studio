@@ -1,5 +1,11 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import {
+  buildPreviewEntries,
+  fetchPreviewCatalog,
+  getPreviewSignature,
+  renderProductPreviewHtml,
+} from "../lib/productPreview.mjs";
 
 const SITE_URL = "https://kngstudio.shop";
 const DIST_DIR = "dist";
@@ -20,6 +26,31 @@ const productsWithPreview = catalog.products.filter((product) => product.pattern
 writeFileSync(path.join(DIST_DIR, "sitemap.xml"), createSitemap(productsWithPreview, catalog.productTypes));
 
 console.log(`Generated sitemap for ${productsWithPreview.length} dynamic product preview route(s).`);
+
+await writeProductPages();
+
+// One static page per product with its link-preview tags baked in: Vercel serves a file before any
+// rewrite, so guests and crawlers never wait on the preview function. The signature lets
+// api/rebuild-previews tell whether an admin save changed any of these tags.
+async function writeProductPages() {
+  const baseHtml = readFileSync(path.join(DIST_DIR, "index.html"), "utf8");
+  const entries = await buildPreviewEntries(supabaseUrl, await fetchPreviewCatalog(supabaseUrl, supabaseAnonKey));
+  let written = 0;
+  entries.forEach(({ slug, meta }) => {
+    const pageDir = path.join(DIST_DIR, slug);
+    // Never shadow a real folder of the build (assets, images, ...).
+    if (existsSync(pageDir) && !existsSync(path.join(pageDir, ".product-page"))) return;
+    mkdirSync(pageDir, { recursive: true });
+    writeFileSync(path.join(pageDir, "index.html"), renderProductPreviewHtml(baseHtml, meta));
+    writeFileSync(path.join(pageDir, ".product-page"), "");
+    written += 1;
+  });
+  writeFileSync(
+    path.join(DIST_DIR, "preview-signature.json"),
+    JSON.stringify({ signature: getPreviewSignature(entries), pages: entries.length }),
+  );
+  console.log(`Wrote ${written} static product page(s).`);
+}
 
 async function fetchCatalog() {
   const [productTypeRows, productRows, patternRows] = await Promise.all([

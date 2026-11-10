@@ -1,3 +1,4 @@
+import { requestPreviewRebuild } from "./previewRebuild";
 import { isSupabaseConfigured, supabase, supabaseConfig } from "../../lib/supabase";
 import type { Product, ProductImage, ProductType } from "../../types/catalog";
 import {
@@ -187,6 +188,7 @@ export async function patchCatalogProductType({
     p_patch: patch,
   });
   if (result.error) throw result.error;
+  requestPreviewRebuild();
   return cleanupUnreferencedCatalogImages([
     baselineProductType?.coverImage.src !== productType.coverImage.src ? baselineProductType?.coverImage.src : null,
     baselineProductType?.sizeChartImage.src !== productType.sizeChartImage.src
@@ -222,12 +224,14 @@ export async function patchCatalogSortOrder({
     p_product_orders: productOrders,
   });
   if (result.error) throw result.error;
+  requestPreviewRebuild();
 }
 
 export async function deleteCatalogProduct(product: Product) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const result = await supabase.rpc("delete_catalog_product", { p_product_id: product.id });
   if (result.error) throw result.error;
+  requestPreviewRebuild();
   await removeProductPreviewImages(product.id).catch((error) => console.warn("Product preview cleanup failed", error));
   return cleanupUnreferencedCatalogImages([
     product.sizeChartImage.src,
@@ -243,6 +247,7 @@ export async function deleteCatalogProductType(productType: ProductType, replace
     p_replacement_product_type_id: replacementProductTypeId,
   });
   if (result.error) throw result.error;
+  requestPreviewRebuild();
   return cleanupUnreferencedCatalogImages([productType.coverImage.src, productType.sizeChartImage.src]);
 }
 
@@ -327,6 +332,7 @@ export async function patchCatalogProduct({
   });
 
   if (result.error) throw result.error;
+  requestPreviewRebuild();
   if (!baselineProduct) return { deletedCount: 0 } satisfies CatalogImageCleanupResult;
 
   const currentPatterns = new Map(product.patterns.map((pattern) => [pattern.id, pattern]));

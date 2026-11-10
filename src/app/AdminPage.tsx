@@ -33,6 +33,7 @@ import {
 } from "../features/catalog/catalogApi";
 import type { CatalogImageCleanupResult } from "../features/catalog/catalogApi";
 import { syncAllProductPreviewImages, syncProductPreviewImage } from "../features/catalog/productPreviewImage";
+import { requestPreviewRebuild } from "../features/catalog/previewRebuild";
 import { LoadingPanel } from "../shared/components/LoadingPanel";
 import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../shared/utils/image";
 import { moveItem } from "../shared/utils/reorder";
@@ -474,6 +475,7 @@ export default function AdminPage({
     hasSyncedPreviewImagesRef.current = true;
     if (!shouldBackfillPreviewImages()) return;
     void syncAllProductPreviewImages(products).then(({ failedCount }) => {
+      requestPreviewRebuild();
       if (failedCount === 0) markPreviewImagesBackfilled();
     });
   }, [isCatalogLoading, isSignedIn, products]);
