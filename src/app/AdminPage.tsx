@@ -1181,7 +1181,8 @@ export default function AdminPage({
     );
   }
 
-  if (isAuthLoading || isCatalogLoading) {
+  // Only sign-in state gates the page: the tabs show at once and each screen waits for its own data.
+  if (isAuthLoading) {
     return (
       <main className="admin-shell">
         <LoadingPanel variant="admin" />
@@ -1273,7 +1274,7 @@ export default function AdminPage({
         ))}
       </nav>
 
-      {adminScreen === "catalog" ? (
+      {adminScreen === "catalog" && !isCatalogLoading ? (
         <div className="admin-actions admin-actions-secondary admin-catalog-actions">
           {!isHomeSorting && !adminProductTypeSlug ? (
             <div className="admin-view-switch" role="tablist" aria-label="Kiểu xem sản phẩm">
@@ -1302,7 +1303,10 @@ export default function AdminPage({
         </div>
       ) : null}
 
-      {adminScreen === "order" ? (
+      {isCatalogLoading ? (
+        // Every screen reads the catalog (stats needs product names); stats rows load meanwhile.
+        <LoadingPanel variant="admin" />
+      ) : adminScreen === "order" ? (
         <AdminOrderCreator
           orderItems={adminOrderItems}
           onOrderItemsChange={setAdminOrderItems}

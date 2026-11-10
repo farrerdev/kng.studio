@@ -67,6 +67,11 @@ button {
   padding: 64px 0;
 }
 
+/* Under the admin tabs (catalog still loading) the panel only fills the content area. */
+.admin-tabs ~ .loading-panel.admin {
+  min-height: 320px;
+}
+
 .storefront .eyebrow {
   color: var(--store-muted);
   font-size: 0.72rem;
