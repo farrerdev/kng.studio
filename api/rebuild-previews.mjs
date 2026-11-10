@@ -10,6 +10,11 @@ const REQUEST_TIMEOUT_MS = 4000;
 // minute a build takes don't queue a deploy each.
 let lastRequestedSignature = null;
 
+// Setup check that needs no sign-in: says only whether the deploy hook reached this deployment.
+export async function GET() {
+  return json({ hookConfigured: Boolean(process.env.VERCEL_DEPLOY_HOOK_URL) });
+}
+
 export async function POST(request) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL ?? "";
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY ?? "";

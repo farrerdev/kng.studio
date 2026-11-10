@@ -33,7 +33,7 @@ import {
 } from "../features/catalog/catalogApi";
 import type { CatalogImageCleanupResult } from "../features/catalog/catalogApi";
 import { syncAllProductPreviewImages, syncProductPreviewImage } from "../features/catalog/productPreviewImage";
-import { requestPreviewRebuild } from "../features/catalog/previewRebuild";
+import { onPreviewRebuildStatus, requestPreviewRebuild } from "../features/catalog/previewRebuild";
 import { LoadingPanel } from "../shared/components/LoadingPanel";
 import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../shared/utils/image";
 import { moveItem } from "../shared/utils/reorder";
@@ -466,6 +466,20 @@ export default function AdminPage({
       setIsStatsLoading(false);
     }
   };
+
+  // Product pages are rebuilt when a save changed a link preview: say so, and say when it couldn't.
+  useEffect(() => {
+    onPreviewRebuildStatus((status) => {
+      if (status === "rebuild-started") {
+        setAdminMessage("Đang cập nhật thẻ xem trước link sản phẩm, khoảng 1 phút nữa sẽ xong.");
+      } else if (status === "hook-missing") {
+        setAdminMessage("Chưa cập nhật được thẻ xem trước link: server chưa có VERCEL_DEPLOY_HOOK_URL (cần Redeploy sau khi thêm biến).");
+      } else if (status === "error") {
+        setAdminMessage("Chưa cập nhật được thẻ xem trước link, sẽ thử lại ở lần lưu sau.");
+      }
+    });
+    return () => onPreviewRebuildStatus(null);
+  }, []);
 
   // Backfill link-preview images at most once a day (older products, or a failed earlier sync);
   // saving a product already keeps its own preview current.
