@@ -1,8 +1,17 @@
+import type { MouseEvent } from "react";
 import { Instagram, MapPin } from "lucide-react";
+import { needsAppMessageLink, openMessage, type MessageChannel } from "../../../config/messageLinks";
 import { shopConfig } from "../../../config/shop";
 import { FacebookIcon, InstagramBrandIcon, MessengerIcon, ThreadsIcon, ZaloIcon } from "../../../shared/icons/SocialIcons";
 
 export function ContactButtons({ raised = false }: { raised?: boolean }) {
+  // Inside Instagram / Facebook / Threads the plain links stay in the embedded browser.
+  const openInApp = (channel: MessageChannel) => (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!needsAppMessageLink()) return;
+    event.preventDefault();
+    openMessage(channel);
+  };
+
   return (
     <div className={raised ? "contact-buttons raised" : "contact-buttons"} aria-label="Nhắn tin đặt hàng">
       <a
@@ -11,6 +20,7 @@ export function ContactButtons({ raised = false }: { raised?: boolean }) {
         target="_blank"
         rel="noreferrer"
         aria-label="Nhắn tin KNG.studio qua Instagram"
+        onClick={openInApp("instagram")}
       >
         <Instagram size={22} aria-hidden="true" />
         <span>Instagram</span>
@@ -21,6 +31,7 @@ export function ContactButtons({ raised = false }: { raised?: boolean }) {
         target="_blank"
         rel="noreferrer"
         aria-label="Nhắn tin KNG.studio qua Messenger"
+        onClick={openInApp("messenger")}
       >
         <MessengerIcon />
         <span>Messenger</span>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, Info, Instagram, Minus, Plus, Save, ShoppingBag, X } from "lucide-react";
+import { detectInAppBrowser, inAppBrowserLabel } from "../../../config/messageLinks";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { MessengerIcon } from "../../../shared/icons/SocialIcons";
 import { getSupabaseImageSrc } from "../../../shared/utils/image";
@@ -96,6 +97,7 @@ export function CartOverlay({
   const [isDiscountTipOpen, setIsDiscountTipOpen] = useState(false);
   const [selectionDraft, setSelectionDraft] = useState<CartSelectionDraft | null>(null);
   const [sizeLockMessage, setSizeLockMessage] = useState("");
+  const inAppBrowser = detectInAppBrowser();
   if (!isOpen) return null;
   const unavailableItemCount = cartItems.filter((item) => unavailableItemIds.has(item.id)).length;
   const cartQuantity = cartItems.reduce(
@@ -358,6 +360,13 @@ export function CartOverlay({
                       Gửi Messenger
                     </button>
                   </div>
+                  {inAppBrowser ? (
+                    <p className="checkout-step-hint">
+                      Bạn đang xem trong {inAppBrowserLabel[inAppBrowser]}. Nếu khung chat không mở, hãy đóng
+                      trang này (nút ✕ ở góc trên) để quay lại {inAppBrowserLabel[inAppBrowser]} rồi gửi ảnh cho
+                      shop.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </footer>

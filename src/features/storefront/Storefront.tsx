@@ -35,6 +35,7 @@ import { getPopularProducts, getRecommendedProducts } from "./productRecommendat
 import { IMAGE_WIDTHS } from "./storefrontConstants";
 import { getProductGalleryImages, getVisibleProducts } from "./storefrontGallery";
 import type { GalleryImage, ShareChannel } from "./storefrontTypes";
+import { openMessage } from "../../config/messageLinks";
 import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../../shared/utils/image";
 import type { Product, SizeId } from "../../types/catalog";
 
@@ -437,9 +438,8 @@ export function Storefront({ catalog, scene }: StorefrontProps) {
     }
   };
   const openOrderMessage = (channel: ShareChannel) => {
-    const targetUrl = channel === "instagram" ? shopConfig.contacts.instagramMessage : shopConfig.contacts.messenger;
     void trackStorefrontEvent({ eventType: "message_click" });
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    openMessage(channel);
   };
 
   // ---------- 3D shop host ----------

@@ -1,4 +1,4 @@
-import { shopConfig } from "../../../src/config/shop";
+import { openMessage } from "../../../src/config/messageLinks";
 import { POLICY_SECTIONS } from "../../../src/features/storefront/policies";
 import type { StoreCatalog, StoreProduct } from "../data/types";
 import type { FaqEntry } from "../shop/faq";
@@ -28,11 +28,10 @@ export type ZoneActions = {
   catAtHome: () => boolean;
 };
 
-const openLink = (url: string) => () => window.open(url, "_blank", "noopener");
 /** Guests pick the channel they use: Instagram or Messenger. */
 export const contactActions: PanelAction[] = [
-  { label: "Instagram", brand: "instagram", run: openLink(shopConfig.contacts.instagramMessage) },
-  { label: "Messenger", brand: "messenger", run: openLink(shopConfig.contacts.messenger) },
+  { label: "Instagram", brand: "instagram", run: () => openMessage("instagram") },
+  { label: "Messenger", brand: "messenger", run: () => openMessage("messenger") },
 ];
 const offlineText = "Chưa tải được sản phẩm. Kiểm tra mạng rồi tải lại trang nhé.";
 

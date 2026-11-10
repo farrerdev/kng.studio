@@ -1333,6 +1333,12 @@
   line-height: 1.42;
 }
 
+.checkout-step p.checkout-step-hint {
+  margin-top: 8px;
+  color: var(--kng-muted, var(--kng-ink));
+  font-size: 0.76rem;
+}
+
 .cart-capture-button {
   min-height: 44px;
   padding: 0 12px;
