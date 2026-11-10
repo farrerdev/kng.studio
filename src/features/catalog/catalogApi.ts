@@ -286,6 +286,7 @@ export async function patchCatalogProduct({
   setProductField("fit", product.fit, baselineProduct?.fit);
   setProductField("material", product.material, baselineProduct?.material);
   setProductField("shopee_url", currentShopeeUrl, baselineShopeeUrl);
+  setProductField("discount", product.discount ?? 0, baselineProduct?.discount ?? 0);
   setProductField("size_chart_image_src", product.sizeChartImage.src, baselineProduct?.sizeChartImage.src);
   setProductField("size_chart_image_alt", product.sizeChartImage.alt, baselineProduct?.sizeChartImage.alt);
   setProductField("sort_order", sortOrder, baselineSortOrder);

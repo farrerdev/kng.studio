@@ -2678,6 +2678,58 @@ body:has(.storefront) {
   font-weight: 700;
 }
 
+/* After a discounted price (cards, product page, cart): small struck-through list price, then "-4%". */
+.shop-price-list {
+  margin-left: 6px;
+  color: var(--kng-muted);
+  font-size: 0.7em;
+  font-weight: 400;
+}
+
+.shop-card-overlay .shop-price-list {
+  color: inherit;
+  opacity: 0.8;
+  text-shadow: none;
+}
+
+.shop-price-off {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--kng-accent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-shadow: none;
+  vertical-align: middle;
+}
+
+/* Flush in a photo's top-right corner (home cards, cart rows), rounded like that photo; smaller
+   and lighter than the inline label. */
+.shop-price-off.pinned {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 3px 9px 3px 8px;
+  border-radius: 0 var(--kng-radius-lg);
+  font-size: 0.62rem;
+  font-weight: 400;
+}
+
+.cart-image-button {
+  position: relative;
+}
+
+.cart-image-button .shop-price-off.pinned {
+  padding: 1px 6px;
+  border-radius: 0 var(--kng-radius-sm);
+  font-size: 0.58rem;
+}
+
 .shop-card-swatches {
   display: flex;
   align-items: center;

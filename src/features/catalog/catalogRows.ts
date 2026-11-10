@@ -29,6 +29,8 @@ export type ProductRow = {
   fit: string;
   material: string;
   shopee_url?: string | null;
+  /** Missing until the product discount migration is applied. */
+  discount?: number | string | null;
   active?: boolean | null;
   size_chart_image_src: string;
   size_chart_image_alt: string;
@@ -114,6 +116,7 @@ export function mapCatalogRows(rows: CatalogRows): CatalogData {
         fit: product.fit,
         material: product.material,
         shopeeUrl: product.shopee_url ?? "",
+        discount: Math.max(0, Math.round(Number(product.discount) || 0)),
         active: product.active !== false,
         patterns: patternRows
           .filter((pattern) => pattern.product_id === product.id)

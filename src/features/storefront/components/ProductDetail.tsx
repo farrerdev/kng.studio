@@ -2,13 +2,14 @@ import { ChevronLeft, ChevronRight, Gift, Minus, Plus, Ruler, Truck } from "luci
 import { useRef, useState } from "react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import { trackStorefrontEvent } from "../../analytics/storefrontAnalytics";
-import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
+import { getProductDiscount, getProductListPrice, getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
 import { createCartDraft, formatSelectedSize } from "../cart/cartUtils";
 import type { CartDraft } from "../cart/cartTypes";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import type { GalleryImage } from "../storefrontTypes";
 import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../../../shared/utils/image";
 import { formatPrice } from "../../../shared/utils/money";
+import { DiscountMark } from "./DiscountMark";
 import type { Product, ProductImage, ProductType, SizeId } from "../../../types/catalog";
 import { PolicyAccordion } from "./PolicySections";
 import { ShopeeProductLink } from "./ShopeeProductLink";
@@ -53,6 +54,7 @@ export function ProductDetail({
 }: ProductDetailProps) {
   const productTitle = getProductTitle(product, productTypes);
   const productPrice = formatPrice(getProductPrice(product, productTypes));
+  const productListPrice = getProductDiscount(product, productTypes) > 0 ? formatPrice(getProductListPrice(product, productTypes)) : null;
   const galleryTrackRef = useRef<HTMLDivElement | null>(null);
   const [galleryIndex, setGalleryIndex] = useState(0);
 
@@ -121,7 +123,10 @@ export function ProductDetail({
         <div className="shop-buybox">
           <header className="shop-buybox-head">
             <h2>{productTitle}</h2>
-            <strong>{productPrice}</strong>
+            <strong>
+              {productPrice}
+              <DiscountMark price={productPrice} listPrice={productListPrice} />
+            </strong>
             {product.material.trim() || product.fit.trim() ? (
               <p>{[product.material.trim(), product.fit.trim()].filter(Boolean).join(" · ")}</p>
             ) : null}

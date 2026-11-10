@@ -1,9 +1,11 @@
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+import { formatPrice } from "../../../shared/utils/money";
 import type { Product, ProductType } from "../../../types/catalog";
+import { getProductPrice } from "../../catalog/catalogUtils";
 import { CART_STORAGE_KEY } from "../storefrontConstants";
 import { loadStoredCartItems } from "./cartStorage";
 import type { CartItem } from "./cartTypes";
-import { createCartDraft, createCartItemId } from "./cartUtils";
+import { createCartDraft, createCartItemId, getCartListPrice } from "./cartUtils";
 import { readSharedCart, serializeLines, type SharedCartLine, toSharedLines, writeSharedCart } from "./sharedCart";
 
 const UPDATED_AT_KEY = "kng.studio.cart.updatedAt";
@@ -101,6 +103,24 @@ export function useStoredCart(catalog: CatalogInput): [CartItem[], Dispatch<SetS
     if (pending.length === pendingRef.current.length) return;
     pendingRef.current = pending;
     setCartItems((current) => [...current, ...items]);
+  }, [catalogReady, productTypes, products]);
+
+  // Stored lines keep the price they were added at; follow the catalog when a price or discount changes.
+  useEffect(() => {
+    if (!catalogReady) return;
+    setCartItems((current) => {
+      let changed = false;
+      const next = current.map((item) => {
+        const product = products.find((candidate) => candidate.id === item.productId);
+        if (!product) return item;
+        const price = formatPrice(getProductPrice(product, productTypes));
+        const listPrice = getCartListPrice(product, productTypes);
+        if (price === item.price && listPrice === item.listPrice) return item;
+        changed = true;
+        return { ...item, price, listPrice };
+      });
+      return changed ? next : current;
+    });
   }, [catalogReady, productTypes, products]);
 
   // Coming back to this tab: pick up changes made on the other site (or another tab) meanwhile.

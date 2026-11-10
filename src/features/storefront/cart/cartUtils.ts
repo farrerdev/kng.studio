@@ -1,7 +1,7 @@
 import { sizeOptions } from "../../../data/mockCatalog";
 import { formatPrice, getPriceValue } from "../../../shared/utils/money";
 import type { Product, ProductPattern, ProductType, SizeId } from "../../../types/catalog";
-import { getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
+import { getProductDiscount, getProductListPrice, getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
 import { MULTI_SET_DISCOUNT, SHIPPING_FEE } from "../storefrontConstants";
 import type { CartDraft, CartItem } from "./cartTypes";
 
@@ -19,8 +19,14 @@ export function createCartDraft(product: Product, pattern: ProductPattern, sizeI
     productName: getProductTitle(product, productTypes),
     patternName: pattern.name,
     price: formatPrice(getProductPrice(product, productTypes)),
+    listPrice: getCartListPrice(product, productTypes),
     image: pattern.image,
   };
+}
+
+/** The list price to strike through in the cart, or undefined when the product has no discount. */
+export function getCartListPrice(product: Product, productTypes: ProductType[]) {
+  return getProductDiscount(product, productTypes) > 0 ? formatPrice(getProductListPrice(product, productTypes)) : undefined;
 }
 
 export function formatSelectedSize(sizeId: SizeId) {

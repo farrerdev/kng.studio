@@ -1,3 +1,4 @@
+import { formatMoney, getPriceValue } from "../../shared/utils/money";
 import type { Product, ProductImage, ProductType } from "../../types/catalog";
 
 export function getProductType(product: Product, productTypes: ProductType[]) {
@@ -15,8 +16,22 @@ export function getProductDisplayName(product: Product) {
   return product.name.trim() || "Mẫu";
 }
 
-export function getProductPrice(product: Product, productTypes: ProductType[]) {
+/** The product type's price, before this product's own discount. */
+export function getProductListPrice(product: Product, productTypes: ProductType[]) {
   return getProductType(product, productTypes)?.price ?? product.price;
+}
+
+/** This product's own discount in đồng, never more than its list price. */
+export function getProductDiscount(product: Product, productTypes: ProductType[]) {
+  const listValue = getPriceValue(getProductListPrice(product, productTypes));
+  return Math.min(Math.max(0, product.discount ?? 0), listValue);
+}
+
+/** What the guest pays for one set: the list price minus this product's discount. */
+export function getProductPrice(product: Product, productTypes: ProductType[]) {
+  const listPrice = getProductListPrice(product, productTypes);
+  const discount = getProductDiscount(product, productTypes);
+  return discount > 0 ? formatMoney(getPriceValue(listPrice) - discount) : listPrice;
 }
 
 export function getAvailablePatternCount(product: Product) {

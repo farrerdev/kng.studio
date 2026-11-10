@@ -9,6 +9,8 @@ export type CartItem = {
   productName: string;
   patternName: string;
   price: string;
+  /** Price before the product's own discount; only set while the product is discounted. */
+  listPrice?: string;
   image: ProductImage;
 };
 

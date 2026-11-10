@@ -10,6 +10,7 @@ import type { GalleryImage, ShareChannel } from "../storefrontTypes";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import { formatSelectedSize } from "./cartUtils";
 import type { CartItem } from "./cartTypes";
+import { DiscountBadge, DiscountMark } from "../components/DiscountMark";
 
 function formatCartSize(sizeId: SizeId) {
   const size = sizeOptions.find((option) => option.id === sizeId);
@@ -212,6 +213,7 @@ export function CartOverlay({
                         loading="lazy"
                         decoding="async"
                       />
+                      {isUnavailable ? null : <DiscountBadge price={item.price} listPrice={item.listPrice} />}
                     </button>
                     <div className="cart-row-info">
                       <h3>{item.productName}</h3>
@@ -227,6 +229,7 @@ export function CartOverlay({
                       {isUnavailable ? <span className="cart-stock-status">Hết hàng · Không tính vào thanh toán</span> : null}
                       <strong className={isUnavailable ? "cart-item-price unavailable" : "cart-item-price"}>
                         {isUnavailable ? <del>{item.price}</del> : item.price}
+                        {isUnavailable ? null : <DiscountMark price={item.price} listPrice={item.listPrice} label={false} />}
                       </strong>
                       <div className="cart-row-actions">
                         <div className="cart-quantity" aria-label={`Số lượng ${item.patternName}`}>
@@ -426,7 +429,10 @@ export function CartOverlay({
               </button>
               <div>
                 <h3>{editingItem.productName}</h3>
-                <strong>{editingItem.price}</strong>
+                <strong>
+                  {editingItem.price}
+                  <DiscountMark price={editingItem.price} listPrice={editingItem.listPrice} />
+                </strong>
                 <p>{editingPattern?.name || "Chưa chọn họa tiết"} · {formatCartSize(selectionDraft.sizeId)}</p>
               </div>
             </div>

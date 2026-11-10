@@ -36,6 +36,8 @@ export type Product = {
   fit: string;
   material: string;
   shopeeUrl?: string;
+  /** Đồng taken off the product type's price for this product only (0 or missing = no discount). */
+  discount?: number;
   /** false = hidden from the storefront by the admin (independent of stock). */
   active?: boolean;
   patterns: ProductPattern[];

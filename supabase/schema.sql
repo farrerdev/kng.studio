@@ -27,6 +27,9 @@ alter table public.products
 alter table public.products
   add column if not exists shopee_url text not null default '';
 
+alter table public.products
+  add column if not exists discount integer not null default 0;
+
 alter table public.product_types
   add column if not exists cover_image_src text not null default '',
   add column if not exists cover_image_alt text not null default '',

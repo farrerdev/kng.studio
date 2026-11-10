@@ -14,13 +14,15 @@ import { sizeOptions } from "../../../data/mockCatalog";
 import {
   getAvailablePatternCount,
   getProductCoverImage,
+  getProductDiscount,
+  getProductListPrice,
   getProductPrice,
   getProductSlug,
   getProductTitle,
   isProductInStock,
 } from "../../catalog/catalogUtils";
 import { IMAGE_WIDTHS } from "../../storefront/storefrontConstants";
-import { formatPrice } from "../../../shared/utils/money";
+import { formatMoney, formatPrice, getPriceValue } from "../../../shared/utils/money";
 import { copyTextToClipboard } from "../../../shared/utils/clipboard";
 import { getSupabaseImageSrc } from "../../../shared/utils/image";
 import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from "../../../types/catalog";
@@ -665,6 +667,21 @@ function AdminProductDetail({
           <label>
             <span>Chất liệu</span>
             <input value={product.material} onChange={(event) => onUpdateProduct(product.id, { material: event.target.value })} />
+          </label>
+          <label>
+            <span>Giảm giá riêng (đ)</span>
+            <input
+              inputMode="numeric"
+              value={product.discount ? formatMoney(product.discount) : ""}
+              placeholder="Để trống nếu không giảm"
+              aria-describedby="product-discount-help"
+              onChange={(event) => onUpdateProduct(product.id, { discount: getPriceValue(event.target.value) })}
+            />
+            <small id="product-discount-help">
+              {getProductDiscount(product, productTypes) > 0
+                ? `Khách thấy ${formatPrice(getProductPrice(product, productTypes))} thay cho ${formatPrice(getProductListPrice(product, productTypes))}.`
+                : "Trừ vào giá của loại sản phẩm, chỉ áp dụng cho sản phẩm này."}
+            </small>
           </label>
           <label className="full-row">
             <span>Mô tả form dáng</span>

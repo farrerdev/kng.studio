@@ -1,7 +1,8 @@
-import { getProductCoverImage, getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
+import { getProductCoverImage, getProductDiscount, getProductListPrice, getProductPrice, getProductTitle } from "../../catalog/catalogUtils";
 import { preloadImage, SmoothImage } from "../../../shared/components/SmoothImage";
 import { getSupabaseImageSrc, getSupabaseImageSrcSet } from "../../../shared/utils/image";
 import { formatPrice } from "../../../shared/utils/money";
+import { DiscountBadge, DiscountMark } from "./DiscountMark";
 import type { Product, ProductType } from "../../../types/catalog";
 import { IMAGE_WIDTHS } from "../storefrontConstants";
 import { getProductHeroImage, PRODUCT_HERO_SIZES } from "./ProductDetail";
@@ -47,6 +48,13 @@ export function ShopProductCard({
   const extraSwatches = inStockPatterns.length - MAX_SWATCHES;
 
   const price = formatPrice(getProductPrice(product, productTypes));
+  const listPrice = getProductDiscount(product, productTypes) > 0 ? formatPrice(getProductListPrice(product, productTypes)) : null;
+  const priceLabel = (
+    <strong className="shop-card-price">
+      {price}
+      <DiscountMark price={price} listPrice={listPrice} label={false} />
+    </strong>
+  );
 
   if (variant === "overlay") {
     return (
@@ -65,6 +73,7 @@ export function ShopProductCard({
             alt={coverImage.alt}
             priority={priority}
           />
+          <DiscountBadge price={price} listPrice={listPrice} />
           {rank ? (
             <span className="shop-card-top" aria-label={`Top ${rank}`}>
               #{rank}
@@ -72,7 +81,7 @@ export function ShopProductCard({
           ) : null}
           <span className="shop-card-caption">
             <span className="shop-card-title">{productTitle}</span>
-            <strong className="shop-card-price">{price}</strong>
+            {priceLabel}
           </span>
         </span>
       </button>
@@ -95,6 +104,7 @@ export function ShopProductCard({
           alt={coverImage.alt}
           priority={priority}
         />
+        <DiscountBadge price={price} listPrice={listPrice} />
         {rank ? (
           <span className="shop-card-rank" aria-label={`Top ${rank}`}>
             {rank}
@@ -103,7 +113,7 @@ export function ShopProductCard({
       </span>
       <span className="shop-card-body">
         <span className="shop-card-title">{productTitle}</span>
-        <strong className="shop-card-price">{price}</strong>
+        {priceLabel}
         {inStockPatterns.length > 0 ? (
           <span className="shop-card-swatches" aria-label={`${inStockPatterns.length} họa tiết`}>
             {inStockPatterns.slice(0, MAX_SWATCHES).map((pattern) => (
