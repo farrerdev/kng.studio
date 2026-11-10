@@ -164,6 +164,11 @@ function mountPolicyList(host: HTMLElement): void {
     title.textContent = section.title;
     card.append(title);
     if (section.items) {
+      if (section.intro) {
+        const intro = document.createElement("p");
+        intro.textContent = section.intro;
+        card.append(intro);
+      }
       const ul = document.createElement("ul");
       for (const item of section.items) {
         const li = document.createElement("li");

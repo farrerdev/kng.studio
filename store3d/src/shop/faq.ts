@@ -1,6 +1,6 @@
 import { shopConfig } from "../../../src/config/shop";
 import { sizeOptions } from "../../../src/data/mockCatalog";
-import { POLICY_SECTIONS } from "../../../src/features/storefront/policies";
+import { FABRIC_SECTION_ID, POLICY_SECTIONS } from "../../../src/features/storefront/policies";
 
 // What the shop owner can answer: only information the storefront already publishes (policies,
 // sizes, materials from the catalog, contacts). Answers are built from that data, never written
@@ -16,7 +16,9 @@ export type FaqEntry = {
 function policyText(id: string): string {
   const section = POLICY_SECTIONS.find((candidate) => candidate.id === id);
   if (!section) return "";
-  return section.items ? section.items.map((item) => `• ${item}`).join("\n") : section.body;
+  if (!section.items) return section.body;
+  const list = section.items.map((item) => `• ${item}`).join("\n");
+  return section.intro ? `${section.intro}\n${list}` : list;
 }
 
 export function buildFaq(materials: string[]): FaqEntry[] {
@@ -30,6 +32,7 @@ export function buildFaq(materials: string[]): FaqEntry[] {
     { id: "order", question: "Đặt hàng thế nào?", answer: "Bạn thêm mẫu vào giỏ, mở giỏ hàng rồi bấm \"Xem ảnh đơn hàng\" để lưu ảnh đơn. Sau đó gửi ảnh cho shop qua Instagram hoặc Messenger để shop xác nhận nhé." },
     { id: "payment", question: "Thanh toán thế nào?", answer: policyText("payment") },
     { id: "returns", question: "Đổi hàng được không?", answer: policyText("returns") },
+    { id: FABRIC_SECTION_ID, question: "Vải xô muslin là gì?", answer: policyText(FABRIC_SECTION_ID) },
     { id: "care", question: "Giặt, bảo quản sao?", answer: policyText("care") },
     { id: "contact", question: "Liên hệ shop ở đâu?", answer: `${shopConfig.brand} ở ${shopConfig.location}. Bạn nhắn shop qua Instagram hoặc Messenger nhé, mình trả lời sớm nhất có thể.` },
   ];

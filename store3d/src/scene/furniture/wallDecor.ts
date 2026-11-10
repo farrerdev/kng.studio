@@ -10,7 +10,7 @@ import {
   Vector2,
 } from "three";
 import { shopConfig } from "../../../../src/config/shop";
-import { POLICY_SECTIONS } from "../../../../src/features/storefront/policies";
+import { FABRIC_SECTION_ID, POLICY_SECTIONS } from "../../../../src/features/storefront/policies";
 import { SERIF } from "../../config/fonts";
 import { CONSOLE, COUNTER, LOUNGE, POLICY_BOARD, ROOM, WALL_FRAMES } from "../../config/layout";
 import { palette } from "../../config/palette";
@@ -49,7 +49,8 @@ function policyTexture(): CanvasTexture {
   const serif = SERIF;
   const sans = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   const left = POLICY_SECTIONS.filter((section) => section.body);
-  const right = POLICY_SECTIONS.filter((section) => section.items);
+  // The board lists shopping rules; the fabric explainer lives in the panel and the owner's answers.
+  const right = POLICY_SECTIONS.filter((section) => section.items && section.id !== FABRIC_SECTION_ID);
   const margin = 70;
   const gutter = 56;
   const column = (width - margin * 2 - gutter) / 2;

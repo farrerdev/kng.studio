@@ -13,11 +13,14 @@ export function PolicySections({ className, includeIds = false }: PolicySections
         <article id={includeIds ? section.id : undefined} key={section.id}>
           <h3>{section.title}</h3>
           {section.items ? (
-            <ul>
-              {section.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            <>
+              {section.intro ? <p>{section.intro}</p> : null}
+              <ul>
+                {section.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </>
           ) : (
             <p>{section.body}</p>
           )}
@@ -35,11 +38,14 @@ export function PolicyAccordion() {
         <details key={section.id}>
           <summary>{section.title}</summary>
           {section.items ? (
-            <ul>
-              {section.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            <>
+              {section.intro ? <p>{section.intro}</p> : null}
+              <ul>
+                {section.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </>
           ) : (
             <p>{section.body}</p>
           )}

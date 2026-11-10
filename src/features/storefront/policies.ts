@@ -12,8 +12,13 @@ export type PolicySection =
       id: string;
       title: string;
       body?: never;
+      /** Optional lead-in sentence above the list. */
+      intro?: string;
       items: string[];
     };
+
+/** The fabric explainer: informative rather than a rule, so the 3D shop's rules board skips it. */
+export const FABRIC_SECTION_ID = "muslin";
 
 export const POLICY_SECTIONS: PolicySection[] = [
   {
@@ -45,6 +50,17 @@ export const POLICY_SECTIONS: PolicySection[] = [
       "Với sản phẩm không ưng ý hoặc không vừa, khách có thể đổi sang sản phẩm khác giá thấp hơn hoặc bằng giá sản phẩm cũ trong vòng 3 ngày kể từ ngày nhận hàng.",
       "Khách hàng chịu 1 đầu phí vận chuyển đổi hàng, KNG hỗ trợ 1 đầu vận chuyển gửi lại.",
       "Lưu ý: shop chỉ hỗ trợ đổi 1 lần duy nhất.",
+    ],
+  },
+  {
+    id: FABRIC_SECTION_ID,
+    title: "Vải xô muslin là gì?",
+    intro: "Đây là vải 100% cotton, dệt 2 lớp, với các đặc điểm:",
+    items: [
+      "Thoáng khí và siêu nhẹ: cấu trúc dệt thưa giúp không khí lưu thông dễ dàng, mang lại cảm giác mát mẻ.",
+      "Thấm hút tốt: hút ẩm nhanh, rất phù hợp với khí hậu nhiệt đới.",
+      "Mềm mại: êm dịu với làn da và mềm hơn sau mỗi lần giặt.",
+      "Lành tính: dịu nhẹ, không gây kích ứng, là lựa chọn phổ biến cho trẻ sơ sinh và da nhạy cảm.",
     ],
   },
   {
