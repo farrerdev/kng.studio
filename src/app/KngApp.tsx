@@ -46,7 +46,7 @@ function AdminRoot() {
         setCatalogProductTypes(isSupabaseConfigured ? catalog.productTypes : fallbackCatalog.productTypes);
         setCatalogProducts(isSupabaseConfigured ? catalog.products : fallbackCatalog.products);
         setCurrentShopInfoImage(isSupabaseConfigured ? catalog.shopInfoImage : fallbackCatalog.shopInfoImage);
-        setCatalogStatus(isSupabaseConfigured ? "Đã tải dữ liệu thật." : "Đang dùng mock data.");
+        setCatalogStatus(isSupabaseConfigured ? "" : "Đang dùng mock data.");
         setCatalogLoadState("ready");
       })
       .catch(() => {

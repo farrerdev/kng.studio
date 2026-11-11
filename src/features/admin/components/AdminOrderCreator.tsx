@@ -127,9 +127,7 @@ function ProductPicker({
                   <span>
                     <strong>{getProductTitle(product, productTypes)}</strong>
                     <small>
-                      {availableCount > 0
-                        ? `${availableCount} hoạ tiết còn ${formatSelectedSize(selectedSizeId)}`
-                        : `Hết ${formatSelectedSize(selectedSizeId)}`}
+                      {availableCount} hoạ tiết còn {formatSelectedSize(selectedSizeId)}
                     </small>
                   </span>
                   {isSelected ? <Check size={16} aria-hidden="true" /> : null}
@@ -179,12 +177,18 @@ export function AdminOrderCreator({ orderItems, onOrderItemsChange, products, pr
       productTypes
         .map((productType) => ({
           productType,
-          products: products.filter((product) => product.productTypeId === productType.id && product.patterns.length > 0),
+          // Only what can be sold in the chosen size: sold-out products stay out of the picker.
+          products: products.filter(
+            (product) =>
+              product.productTypeId === productType.id &&
+              product.patterns.some((pattern) => pattern.availableSizes.includes(selectedSizeId)),
+          ),
         }))
         .filter((group) => group.products.length > 0),
-    [productTypes, products],
+    [productTypes, products, selectedSizeId],
   );
-  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? productGroups[0]?.products[0] ?? null;
+  const pickableProducts = productGroups.flatMap((group) => group.products);
+  const selectedProduct = pickableProducts.find((product) => product.id === selectedProductId) ?? pickableProducts[0] ?? null;
   const selectedPatterns = selectedProduct?.patterns.filter((pattern) => pattern.availableSizes.includes(selectedSizeId)) ?? [];
 
   const orderQuantity = getCartQuantity(orderItems);
@@ -310,7 +314,7 @@ export function AdminOrderCreator({ orderItems, onOrderItemsChange, products, pr
             })}
           </div>
         ) : (
-          <p className="admin-order-empty">Sản phẩm này chưa có hoạ tiết còn {formatSelectedSize(selectedSizeId)}.</p>
+          <p className="admin-order-empty">Không có sản phẩm nào còn {formatSelectedSize(selectedSizeId)}.</p>
         )}
       </div>
 
@@ -379,6 +383,26 @@ export function AdminOrderCreator({ orderItems, onOrderItemsChange, products, pr
                 <dd>{formatMoney(getOrderTotal(orderItems))}</dd>
               </div>
             </dl>
+            {/* Copy the message first, then save the image: both are ready to send in one go. */}
+            <div className="admin-order-message">
+              <textarea
+                ref={messageRef}
+                value={orderMessage}
+                readOnly
+                rows={5}
+                aria-label="Tin nhắn gửi khách"
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <button className="admin-button ghost" type="button" onClick={copyOrderMessage}>
+                {copyState === "copied" ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
+                {copyState === "copied" ? "Đã copy" : "Copy tin nhắn"}
+              </button>
+              {copyState === "failed" ? (
+                <p className="admin-order-empty" role="status">
+                  Không copy tự động được, tin nhắn đã được bôi đen, hãy copy thủ công.
+                </p>
+              ) : null}
+            </div>
             <button className="admin-button primary" type="button" disabled={isOrderImagePreparing} onClick={createOrderImage}>
               <ImageDown size={17} aria-hidden="true" />
               {isOrderImagePreparing ? "Đang tạo ảnh..." : "Tạo ảnh đơn"}
@@ -386,22 +410,6 @@ export function AdminOrderCreator({ orderItems, onOrderItemsChange, products, pr
           </>
         )}
       </div>
-
-      {orderMessage ? (
-        <div className="admin-card admin-order-message">
-          <h3>Tin nhắn gửi khách</h3>
-          <textarea ref={messageRef} value={orderMessage} readOnly rows={7} onFocus={(event) => event.currentTarget.select()} />
-          <button className="admin-button primary" type="button" onClick={copyOrderMessage}>
-            {copyState === "copied" ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
-            {copyState === "copied" ? "Đã copy" : "Copy tin nhắn"}
-          </button>
-          {copyState === "failed" ? (
-            <p className="admin-order-empty" role="status">
-              Không copy tự động được, tin nhắn đã được bôi đen, hãy copy thủ công.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
 
       {orderImage ? (
         <OrderImagePreview

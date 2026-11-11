@@ -411,29 +411,6 @@ button {
   text-align: left;
 }
 
-.admin-product-copy-link {
-  flex: 0 0 auto;
-  width: 34px;
-  min-height: 34px;
-  border-radius: 8px;
-  color: var(--muted);
-}
-
-.admin-product-link-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.admin-product-copy-link.shopee:not(:disabled) {
-  color: #ee4d2d;
-}
-
-.admin-product-copy-link.copied {
-  border-color: var(--accent);
-  color: var(--accent-strong);
-}
-
 .product-type-open-button span {
   display: grid;
   gap: 3px;
@@ -1019,11 +996,6 @@ button {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 650;
-}
-
-.admin-add-product-button {
-  width: calc(100% - 20px);
-  margin: 0 10px 10px;
 }
 
 .admin-product-master-card span {
@@ -1917,6 +1889,11 @@ button {
   font-size: 1rem;
 }
 
+.admin-order-message {
+  display: grid;
+  gap: 10px;
+}
+
 .admin-order-message textarea {
   resize: vertical;
   line-height: 1.5;
@@ -2483,16 +2460,6 @@ button {
   line-height: 1;
 }
 
-.admin-actions-secondary.admin-catalog-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: -4px 0 12px;
-}
-
-.admin-catalog-actions > .admin-button,
-.admin-catalog-actions .admin-sort-actions {
-  width: auto;
-}
 
 @media (max-width: 480px) {
   .admin-tab {
@@ -2978,231 +2945,6 @@ button {
   }
 }
 
-/* Catalog view switch: Danh sách | Tồn kho nhanh. */
-.admin-view-switch {
-  display: inline-flex;
-  margin-right: auto;
-  border: 1px solid var(--ink);
-}
-
-.admin-view-switch button {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  background: #ffffff;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.admin-view-switch button + button {
-  border-left: 1px solid var(--ink);
-}
-
-.admin-view-switch button.active {
-  background: var(--ink);
-  color: #ffffff;
-}
-
-.admin-actions-secondary.admin-catalog-actions {
-  align-items: center;
-  gap: 10px;
-}
-
-/* Quick stock list. */
-.admin-quick-stock {
-  display: grid;
-  gap: 18px;
-}
-
-.admin-quick-stock-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 18px;
-}
-
-.admin-search {
-  display: flex;
-  flex: 1 1 260px;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--muted);
-}
-
-.admin-search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.9rem;
-  outline: 0;
-}
-
-.admin-checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-  font-size: 0.84rem;
-}
-
-.admin-quick-stock-hint {
-  margin: -8px 0 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.admin-quick-stock-group {
-  display: grid;
-  gap: 10px;
-}
-
-.admin-quick-stock-group > h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.admin-quick-stock-product {
-  border: 1px solid var(--line);
-  background: #ffffff;
-}
-
-.admin-quick-stock-product.hidden {
-  background: var(--soft);
-}
-
-.admin-quick-stock-product header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-.admin-quick-stock-product header strong {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 0.88rem;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.admin-quick-stock-product.hidden header strong {
-  color: var(--muted);
-}
-
-.admin-saving-dot {
-  color: var(--muted);
-  font-size: 0.74rem;
-}
-
-.admin-quick-stock-product ul {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.admin-quick-stock-product li {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-}
-
-.admin-quick-stock-product li + li {
-  border-top: 1px solid var(--line);
-}
-
-.admin-quick-stock-product li img,
-.admin-quick-stock-thumb {
-  display: block;
-  width: 36px;
-  height: 36px;
-  object-fit: cover;
-  background: var(--soft);
-}
-
-.admin-quick-stock-name {
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 0.86rem;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.admin-quick-stock-sizes {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.admin-quick-stock-sizes button {
-  min-width: 44px;
-  min-height: 34px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-decoration: line-through;
-  cursor: pointer;
-}
-
-.admin-quick-stock-sizes button.on {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: #ffffff;
-  text-decoration: none;
-}
-
-.admin-quick-stock-sizes button:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-
-.admin-switch.small {
-  width: 42px;
-  height: 24px;
-}
-
-.admin-switch.small span {
-  width: 16px;
-  height: 16px;
-}
-
-.admin-switch.small.on span {
-  transform: translateX(18px);
-}
-
-@media (min-width: 900px) {
-  .admin-quick-stock-group {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-
-  .admin-quick-stock-group > h3 {
-    grid-column: 1 / -1;
-  }
-}
-
 /* Narrow screens: keep the 2×2 pattern actions inside the row. */
 @media (max-width: 640px) {
   .pattern-row {
@@ -3220,106 +2962,174 @@ button {
   }
 }
 
-/* Quick-stock filter: one button beside search; panel with size status + product type. */
-.admin-quick-stock-tools {
-  flex-wrap: nowrap;
+
+/* Product row actions: small icon + text buttons on their own line under each product. */
+.admin-product-master-card.compact > .admin-product-row-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 0 10px;
 }
 
-.admin-filter {
-  position: relative;
-  flex: 0 0 auto;
+/* Buttons share the full row so each is a wider tap target on phones. */
+.admin-product-row-actions > .admin-chip-button {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: 34px;
 }
 
-.admin-icon-filter {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+.admin-chip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 5px;
   border: 1px solid var(--line);
   background: #ffffff;
   color: var(--ink);
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 650;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.admin-icon-filter:hover {
+.admin-chip-button:hover:not(:disabled) {
   border-color: var(--ink);
 }
 
-/* Active filter: solid ink so it is obvious the list is filtered. */
-.admin-icon-filter.active {
+.admin-chip-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-chip-button.shopee:not(:disabled) {
+  color: #ee4d2d;
+}
+
+.admin-chip-button.copied {
   border-color: var(--ink);
   background: var(--ink);
   color: #ffffff;
 }
 
-.admin-icon-filter.active::after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 9px;
-  height: 9px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: var(--rose);
-}
-
-.admin-filter-title {
-  margin: 0 0 4px;
-  padding: 0 8px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.admin-filter-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 35;
+/* Pattern & size popup: the product detail's pattern section on its own, saved with "Lưu". */
+.admin-pattern-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
   display: grid;
-  gap: 2px;
-  width: min(280px, calc(100vw - 32px));
-  max-height: min(70vh, 520px);
-  overflow-y: auto;
-  padding: 10px 6px;
+  place-items: center;
+  padding: 16px;
+  background: rgba(17, 17, 17, 0.42);
+  animation: adminPopupFade 180ms ease both;
+}
+
+.admin-pattern-popup.closing {
+  pointer-events: none;
+  animation: adminPopupFade 190ms ease reverse both;
+}
+
+.admin-pattern-popup-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(640px, 100%);
+  max-height: min(100%, 860px);
   border: 1px solid var(--ink);
   background: #ffffff;
-  box-shadow: 0 12px 32px rgba(17, 17, 17, 0.14);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
 }
 
-
-
-.admin-filter-panel > button {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+.admin-pattern-popup-panel > header,
+.admin-pattern-popup-panel > footer {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 8px;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.admin-pattern-popup-panel > header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-pattern-popup-panel > header strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-pattern-popup-panel > footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+}
+
+.admin-pattern-popup-panel > footer .admin-button {
+  min-width: 92px;
+}
+
+.admin-pattern-popup-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-pattern-popup-body > .admin-card {
   border: 0;
-  background: transparent;
+}
+
+@keyframes adminPopupFade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-pattern-popup {
+    align-items: end;
+    padding: 0;
+  }
+
+  .admin-pattern-popup-panel {
+    max-height: 92dvh;
+    border-width: 1px 0 0;
+  }
+}
+
+/* Product list tabs: Đang bán | Ẩn / hết hàng. */
+.admin-list-tabs {
+  display: flex;
+  border: 1px solid var(--ink);
+}
+
+.admin-list-tabs button {
+  flex: 1;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  background: #ffffff;
   color: var(--ink);
   font: inherit;
-  font-size: 0.88rem;
-  text-align: left;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
-.admin-filter-panel > button:hover,
-.admin-filter-panel > button.selected {
-  background: var(--soft);
+.admin-list-tabs button + button {
+  border-left: 1px solid var(--ink);
 }
 
-.admin-filter-panel > button.selected {
-  font-weight: 700;
+.admin-list-tabs button.active {
+  background: var(--ink);
+  color: #ffffff;
 }
-
-.admin-filter-panel small {
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-

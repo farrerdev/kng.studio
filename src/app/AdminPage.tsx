@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, Eye, LogOut, RotateCcw, Save, ShoppingBag, X } from "lucide-react";
+import { ArrowUpDown, BarChart3, ClipboardList, Eye, LogOut, RotateCcw, Save, ShoppingBag, X } from "lucide-react";
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { ADMIN_SCREEN_PATHS, type AdminScreen, getAdminProductTypeSlugFromPath, getAdminScreenFromPath } from "./routes";
 import {
@@ -14,7 +14,6 @@ import {
 } from "../features/analytics/statsFilters";
 import { AdminOrderCreator } from "../features/admin/components/AdminOrderCreator";
 import { AdminProductManager } from "../features/admin/components/AdminProductManager";
-import { AdminQuickStock } from "../features/admin/components/AdminQuickStock";
 import { AdminStatsDashboard } from "../features/admin/components/AdminStatsDashboard";
 import { getProductTitle, getProductTypeSlug } from "../features/catalog/catalogUtils";
 import type { CartItem } from "../features/storefront/cart/cartTypes";
@@ -87,6 +86,8 @@ type AdminHomeSortSession = {
   products: Product[];
 };
 type AdminProductDetailOrigin = "home" | "type";
+// "patterns" opens only the pattern & size section as a popup over the list; same edit session and save.
+type AdminProductDetailMode = "full" | "patterns";
 type AdminClosingDetail = "productType" | "product" | null;
 
 const PREVIEW_BACKFILL_STORAGE_KEY = "kng.studio.preview-backfill-at";
@@ -134,9 +135,6 @@ export default function AdminPage({
   const [statsFilter, setStatsFilter] = useState<StorefrontStatsFilter>(DEFAULT_STOREFRONT_STATS_FILTER);
   const [adminOrderItems, setAdminOrderItems] = useState<CartItem[]>(() => loadAdminOrderDraft());
   const adminOrderQuantity = adminOrderItems.reduce((total, item) => total + item.quantity, 0);
-  // Quick stock is what the admin opens most, so it is the default view of the products tab.
-  const [catalogView, setCatalogView] = useState<"list" | "stock">("stock");
-  const [savingProductIds, setSavingProductIds] = useState<ReadonlySet<string>>(() => new Set());
   const [storefrontEvents, setStorefrontEvents] = useState<StorefrontEventRow[]>([]);
   const [previousStorefrontEvents, setPreviousStorefrontEvents] = useState<StorefrontEventRow[] | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
@@ -151,6 +149,7 @@ export default function AdminPage({
   const [adminTypeEditSession, setAdminTypeEditSession] = useState<AdminEditSession | null>(null);
   const [adminProductEditSession, setAdminProductEditSession] = useState<AdminEditSession | null>(null);
   const [adminProductDetailOrigin, setAdminProductDetailOrigin] = useState<AdminProductDetailOrigin | null>(null);
+  const [adminProductDetailMode, setAdminProductDetailMode] = useState<AdminProductDetailMode>("full");
   const [closingAdminDetail, setClosingAdminDetail] = useState<AdminClosingDetail>(null);
   const [previewImage, setPreviewImage] = useState<GalleryImage | null>(null);
   const [homeSortSession, setHomeSortSession] = useState<AdminHomeSortSession | null>(null);
@@ -329,10 +328,15 @@ export default function AdminPage({
     window.scrollTo({ top: 0 });
   };
 
-  const selectAdminProduct = (productId: string | null, origin: AdminProductDetailOrigin = "home") => {
+  const selectAdminProduct = (
+    productId: string | null,
+    origin: AdminProductDetailOrigin = "home",
+    mode: AdminProductDetailMode = "full",
+  ) => {
     setClosingAdminDetail(null);
     if (productId) {
       rememberAdminDetailScroll();
+      setAdminProductDetailMode(mode);
     }
     setExpandedProductId(productId);
     if (productId) {
@@ -739,6 +743,7 @@ export default function AdminPage({
     setExpandedProductId(id);
     setAdminProductTypeSlug(getProductTypeSlug(productType));
     setAdminProductDetailOrigin(selectedAdminProductType ? "type" : "home");
+    setAdminProductDetailMode("full");
     setClosingAdminDetail(null);
     startAdminProductEditSession(id, true, baselineProductTypes, baselineProducts);
   };
@@ -824,59 +829,6 @@ export default function AdminPage({
           ? { ...product, modelImages: product.modelImages.filter((image) => image.id !== imageId) }
           : product,
       ),
-    );
-  };
-
-  // Quick-stock edits save one product immediately (only the changed fields are sent) and roll back on error.
-  const saveProductInstantly = async (previousProduct: Product, nextProduct: Product, successMessage: string) => {
-    const productType = productTypes.find((type) => type.id === nextProduct.productTypeId);
-    if (!productType) return;
-    const sortOrder = products.findIndex((product) => product.id === nextProduct.id);
-    onProductsChange((currentProducts) => currentProducts.map((product) => (product.id === nextProduct.id ? nextProduct : product)));
-    setSavingProductIds((current) => new Set(current).add(nextProduct.id));
-    try {
-      await patchCatalogProduct({
-        product: nextProduct,
-        baselineProduct: previousProduct,
-        productType,
-        sortOrder,
-        baselineSortOrder: sortOrder,
-      });
-      setAdminMessage(`${successMessage} · ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`);
-    } catch (error) {
-      onProductsChange((currentProducts) =>
-        currentProducts.map((product) => (product.id === previousProduct.id ? previousProduct : product)),
-      );
-      setSaveState({ status: "error", message: error instanceof Error ? error.message : "Không lưu được thay đổi tồn kho." });
-    } finally {
-      setSavingProductIds((current) => {
-        const next = new Set(current);
-        next.delete(nextProduct.id);
-        return next;
-      });
-    }
-  };
-
-  const quickToggleSize = (product: Product, patternId: string, sizeId: SizeId) => {
-    const pattern = product.patterns.find((current) => current.id === patternId);
-    if (!pattern) return;
-    const isOn = pattern.availableSizes.includes(sizeId);
-    const availableSizes = isOn
-      ? pattern.availableSizes.filter((current) => current !== sizeId)
-      : [...pattern.availableSizes, sizeId].sort();
-    const nextProduct = {
-      ...product,
-      patterns: product.patterns.map((current) => (current.id === patternId ? { ...current, availableSizes } : current)),
-    };
-    void saveProductInstantly(product, nextProduct, `${pattern.name || "Hoạ tiết"} · Size ${sizeId}: ${isOn ? "hết hàng" : "còn hàng"}`);
-  };
-
-  const quickToggleActive = (product: Product) => {
-    const nextProduct = { ...product, active: product.active === false };
-    void saveProductInstantly(
-      product,
-      nextProduct,
-      `${getProductTitle(product, productTypes)}: ${nextProduct.active ? "đang hiển thị" : "đã ẩn"}`,
     );
   };
 
@@ -1004,6 +956,8 @@ export default function AdminPage({
         baselineProductTypes: productTypes,
         baselineProducts: products,
       });
+      // The popup is a quick edit: once saved it is done, so it closes back to the list.
+      if (adminProductDetailMode === "patterns") leaveAdminProductDetail();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không lưu được sản phẩm.";
       setAdminMessage(message);
@@ -1290,35 +1244,6 @@ export default function AdminPage({
         ))}
       </nav>
 
-      {adminScreen === "catalog" && !isCatalogLoading ? (
-        <div className="admin-actions admin-actions-secondary admin-catalog-actions">
-          {!isHomeSorting && !adminProductTypeSlug ? (
-            <div className="admin-view-switch" role="tablist" aria-label="Kiểu xem sản phẩm">
-              <button type="button" role="tab" aria-selected={catalogView === "list"} className={catalogView === "list" ? "active" : undefined} onClick={() => setCatalogView("list")}>
-                Danh sách
-              </button>
-              <button type="button" role="tab" aria-selected={catalogView === "stock"} className={catalogView === "stock" ? "active" : undefined} onClick={() => setCatalogView("stock")}>
-                Tồn kho nhanh
-              </button>
-            </div>
-          ) : null}
-          {catalogView === "stock" && !adminProductTypeSlug ? null : isHomeSorting ? (
-            <div className="admin-sort-actions">
-              <button className="admin-button ghost" type="button" disabled={isBusy} onClick={cancelHomeSorting}>
-                Huỷ
-              </button>
-              <button className="admin-button primary" type="button" disabled={isBusy || !hasHomeReorderChanges} onClick={saveHomeSorting}>
-                Lưu
-              </button>
-            </div>
-          ) : (
-            <button className="admin-button ghost" type="button" disabled={isBusy} onClick={startHomeSorting}>
-              Sắp xếp trang chủ
-            </button>
-          )}
-        </div>
-      ) : null}
-
       {isCatalogLoading ? (
         // Every screen reads the catalog (stats needs product names); stats rows load meanwhile.
         <LoadingPanel variant="admin" />
@@ -1338,16 +1263,6 @@ export default function AdminPage({
           onFilterChange={setStatsFilter}
           products={products}
           productTypes={productTypes}
-        />
-      ) : catalogView === "stock" && !adminProductTypeSlug ? (
-        <AdminQuickStock
-          products={products}
-          productTypes={productTypes}
-          savingProductIds={savingProductIds}
-          statusMessage={adminMessage}
-          disabled={isBusy}
-          onToggleSize={quickToggleSize}
-          onToggleActive={quickToggleActive}
         />
       ) : (
         <>
@@ -1388,6 +1303,25 @@ export default function AdminPage({
             onReorderProductType={reorderProductType}
             onReorderProductWithinType={reorderProductWithinType}
             onSelectProductFromHome={(productId) => selectAdminProduct(productId, "home")}
+            onEditProductPatterns={(productId) => selectAdminProduct(productId, "home", "patterns")}
+            productDetailMode={adminProductDetailMode}
+            sortActions={
+              isHomeSorting ? (
+                <div className="admin-sort-actions">
+                  <button className="admin-button small ghost" type="button" disabled={isBusy} onClick={cancelHomeSorting}>
+                    Huỷ
+                  </button>
+                  <button className="admin-button small primary" type="button" disabled={isBusy || !hasHomeReorderChanges} onClick={saveHomeSorting}>
+                    Lưu
+                  </button>
+                </div>
+              ) : (
+                <button className="admin-button small ghost" type="button" disabled={isBusy} onClick={startHomeSorting}>
+                  <ArrowUpDown size={15} aria-hidden="true" />
+                  Sắp xếp trang chủ
+                </button>
+              )
+            }
             onSetPatternAsCover={setPatternAsCover}
             onSaveProductDetail={saveAdminProductDetail}
             onSaveTypeDetail={saveAdminTypeDetail}

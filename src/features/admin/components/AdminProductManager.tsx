@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
   Check,
   ChevronLeft,
   Link2,
+  type LucideIcon,
+  MessageSquareText,
   Plus,
+  Shirt,
   ShoppingBag,
   Star,
   Trash2,
+  X,
 } from "lucide-react";
 import { sizeOptions } from "../../../data/mockCatalog";
 import {
@@ -29,6 +33,7 @@ import type { Product, ProductImage, ProductPattern, ProductType, SizeId } from 
 import type { GalleryImage } from "../../storefront/storefrontTypes";
 import { AdminImageActionField } from "./AdminImageActionField";
 import { getShopeeUrl } from "../../catalog/shopeeUrl";
+import { createPriceLinkMessage } from "../priceLinkMessage";
 
 type AdminProductManagerProps = {
   adminMessage: string;
@@ -55,6 +60,7 @@ type AdminProductManagerProps = {
   onBackFromProductDetail: () => void;
   onBackFromTypeDetail: () => void;
   onCloseProductType: () => void;
+  onEditProductPatterns: (productId: string) => void;
   onOpenProductType: (productType: ProductType) => void;
   onPreviewImage: (image: GalleryImage) => void;
   onRemoveModelImage: (productId: string, imageId: string) => void;
@@ -76,7 +82,10 @@ type AdminProductManagerProps = {
   onUpdateProductType: (productTypeId: string, patch: Partial<ProductType>) => void;
   onUploadImage: (file: File, folder: string, onUploaded: (url: string) => void) => void;
   onUploadImages: (files: File[], folder: string, onUploaded: (urls: string[]) => void) => void;
+  productDetailMode: "full" | "patterns";
   productTypeCount: number;
+  /** "Sắp xếp trang chủ" (or its Huỷ / Lưu pair), shown beside the list heading. */
+  sortActions: ReactNode;
 };
 
 export function AdminProductManager({
@@ -104,6 +113,7 @@ export function AdminProductManager({
   onBackFromProductDetail,
   onBackFromTypeDetail,
   onCloseProductType,
+  onEditProductPatterns,
   onOpenProductType,
   onPreviewImage,
   onRemoveModelImage,
@@ -125,15 +135,19 @@ export function AdminProductManager({
   onUpdateProductType,
   onUploadImage,
   onUploadImages,
+  productDetailMode,
   productTypeCount,
+  sortActions,
 }: AdminProductManagerProps) {
   const selectedProduct = products.find((product) => product.id === expandedProductId) ?? null;
 
   return (
     <>
-      <div className="admin-status-row">
-        <p className="admin-status-text">{adminMessage}</p>
-      </div>
+      {adminMessage ? (
+        <div className="admin-status-row">
+          <p className="admin-status-text">{adminMessage}</p>
+        </div>
+      ) : null}
 
       <div className="admin-product-list-full">
         <AdminProductTypeList
@@ -144,10 +158,12 @@ export function AdminProductManager({
           isHomeSorting={isHomeSorting}
           onAddProduct={onAddProduct}
           onAddProductType={onAddProductType}
+          onEditProductPatterns={onEditProductPatterns}
           onOpenProductType={onOpenProductType}
           onReorderProductType={onReorderProductType}
           onReorderProductWithinType={onReorderProductWithinType}
           onSelectProduct={onSelectProductFromHome}
+          sortActions={sortActions}
         />
       </div>
 
@@ -189,7 +205,49 @@ export function AdminProductManager({
         <div className="admin-detail-overlay type-detail closing" aria-hidden="true" />
       ) : null}
 
-      {isProductDetailVisible && selectedProduct ? (
+      {isProductDetailVisible && selectedProduct && productDetailMode === "patterns" ? (
+        // Backdrop tap = Huỷ (asks first when there are unsaved changes).
+        <div
+          className={`admin-pattern-popup${isProductDetailClosing ? " closing" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Hoạ tiết và size ${getProductTitle(selectedProduct, productTypes)}`}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) onBackFromProductDetail();
+          }}
+        >
+          <div className="admin-pattern-popup-panel">
+            <header>
+              <strong>{getProductTitle(selectedProduct, productTypes)}</strong>
+              <button className="icon-button" type="button" aria-label="Đóng" onClick={onBackFromProductDetail}>
+                <X size={17} aria-hidden="true" />
+              </button>
+            </header>
+            <div className="admin-pattern-popup-body">
+              <AdminPatternEditor
+                product={selectedProduct}
+                onReorderPattern={onReorderPattern}
+                onAddPatterns={onAddPatterns}
+                onPreviewImage={onPreviewImage}
+                onRemovePattern={onRemovePattern}
+                onSetPatternAsCover={onSetPatternAsCover}
+                onTogglePatternSize={onTogglePatternSize}
+                onUpdatePattern={onUpdatePattern}
+                onUploadImage={onUploadImage}
+                onUploadImages={onUploadImages}
+              />
+            </div>
+            <footer>
+              <button className="admin-button ghost" type="button" onClick={onBackFromProductDetail}>
+                Huỷ
+              </button>
+              <button className="admin-button primary" type="button" disabled={isSavingDetail || !hasProductDetailChanges} onClick={onSaveProductDetail}>
+                Lưu
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : isProductDetailVisible && selectedProduct ? (
         <div className={`admin-detail-overlay product-detail-overlay${isProductDetailClosing ? " closing" : ""}`} role="dialog" aria-modal="true">
           <div className="admin-detail-topbar">
             <button className="admin-button ghost" type="button" onClick={onBackFromProductDetail}>
@@ -222,7 +280,7 @@ export function AdminProductManager({
             />
           </div>
         </div>
-      ) : isProductDetailClosing ? (
+      ) : isProductDetailClosing && productDetailMode === "full" ? (
         <div className="admin-detail-overlay product-detail-overlay closing" aria-hidden="true" />
       ) : null}
     </>
@@ -236,18 +294,22 @@ function getStorefrontProductUrl(product: Product, productTypes: ProductType[]) 
   return `${window.location.origin}/${getProductSlug(product, productTypes)}`;
 }
 
-function CopyProductLinkButton({
-  label,
-  source = "website",
-  url,
+// Small icon + text button that copies `value` and briefly confirms it.
+function CopyChipButton({
+  Icon,
+  className = "",
+  emptyTitle,
+  text,
+  value,
 }: {
-  label: string;
-  source?: "website" | "Shopee";
-  url: string;
+  Icon: LucideIcon;
+  className?: string;
+  emptyTitle: string;
+  text: string;
+  value: string;
 }) {
   const [isCopied, setIsCopied] = useState(false);
   const resetTimeoutRef = useRef<number | null>(null);
-  const isShopee = source === "Shopee";
 
   useEffect(
     () => () => {
@@ -257,8 +319,8 @@ function CopyProductLinkButton({
   );
 
   const handleCopy = async () => {
-    if (!url) return;
-    const copied = await copyTextToClipboard(url);
+    if (!value) return;
+    const copied = await copyTextToClipboard(value);
     if (!copied) return;
     setIsCopied(true);
     if (resetTimeoutRef.current !== null) window.clearTimeout(resetTimeoutRef.current);
@@ -270,23 +332,14 @@ function CopyProductLinkButton({
 
   return (
     <button
-      className={`icon-button admin-product-copy-link${isShopee ? " shopee" : ""}${isCopied ? " copied" : ""}`}
+      className={`admin-chip-button ${className}${isCopied ? " copied" : ""}`}
       type="button"
-      disabled={!url}
-      title={url ? `Copy link ${source}: ${url}` : `Chưa có link ${source}`}
-      aria-label={isCopied ? `Đã copy link ${source} của ${label}` : `Copy link ${source} của ${label}`}
-      onClick={(event) => {
-        event.stopPropagation();
-        void handleCopy();
-      }}
+      disabled={!value}
+      title={value || emptyTitle}
+      onClick={() => void handleCopy()}
     >
-      {isCopied ? (
-        <Check size={15} aria-hidden="true" />
-      ) : isShopee ? (
-        <ShoppingBag size={15} aria-hidden="true" />
-      ) : (
-        <Link2 size={15} aria-hidden="true" />
-      )}
+      {isCopied ? <Check size={14} aria-hidden="true" /> : <Icon size={14} aria-hidden="true" />}
+      {isCopied ? "Đã copy" : text}
     </button>
   );
 }
@@ -299,10 +352,12 @@ function AdminProductTypeList({
   products,
   onAddProduct,
   onAddProductType,
+  onEditProductPatterns,
   onOpenProductType,
   onReorderProductType,
   onReorderProductWithinType,
   onSelectProduct,
+  sortActions,
 }: Pick<
   AdminProductManagerProps,
   | "hiddenDraftProductId"
@@ -312,32 +367,53 @@ function AdminProductTypeList({
   | "products"
   | "onAddProduct"
   | "onAddProductType"
+  | "onEditProductPatterns"
   | "onOpenProductType"
   | "onReorderProductType"
   | "onReorderProductWithinType"
+  | "sortActions"
 > & {
   onSelectProduct: (productId: string) => void;
 }) {
   const visibleProductTypes = productTypes.filter((productType) => productType.id !== hiddenDraftProductTypeId);
   const visibleProducts = products.filter((product) => product.id !== hiddenDraftProductId);
-  const hiddenOutOfStockCount = visibleProducts.filter((product) => !isProductInStock(product)).length;
+  // Hidden and sold-out products get their own tab so the selling list stays short.
+  const [listTab, setListTab] = useState<"selling" | "off">("selling");
+  const isOffShelf = (product: Product) => product.active === false || !isProductInStock(product);
+  const offShelfCount = visibleProducts.filter(isOffShelf).length;
+  // Sorting moves products among all their siblings, so it always shows the whole list.
+  const activeTab = isHomeSorting ? null : listTab;
 
   return (
     <>
       <section className="admin-panel-heading flat">
-        <div>
-          <h2>Loại sản phẩm ({visibleProductTypes.length})</h2>
-          <p>
-            {visibleProducts.length} sản phẩm · {hiddenOutOfStockCount} đang bị ẩn do hết hàng. Tap loại hoặc sản phẩm để sửa.
-          </p>
-        </div>
+        <h2>Loại sản phẩm ({visibleProductTypes.length})</h2>
+        {sortActions}
       </section>
+
+      {activeTab ? (
+        <div className="admin-list-tabs" role="tablist" aria-label="Lọc sản phẩm">
+          <button type="button" role="tab" aria-selected={activeTab === "selling"} className={activeTab === "selling" ? "active" : undefined} onClick={() => setListTab("selling")}>
+            Đang bán ({visibleProducts.length - offShelfCount})
+          </button>
+          <button type="button" role="tab" aria-selected={activeTab === "off"} className={activeTab === "off" ? "active" : undefined} onClick={() => setListTab("off")}>
+            Ẩn / hết hàng ({offShelfCount})
+          </button>
+        </div>
+      ) : null}
+
+      {activeTab === "off" && offShelfCount === 0 ? <p className="admin-type-empty-text">Không có sản phẩm nào đang ẩn hoặc hết hàng.</p> : null}
 
       <div className="admin-product-type-sections">
         {visibleProductTypes.map((productType, index) => {
           const typeProducts = products.filter(
-            (product) => product.productTypeId === productType.id && product.id !== hiddenDraftProductId,
+            (product) =>
+              product.productTypeId === productType.id &&
+              product.id !== hiddenDraftProductId &&
+              (!activeTab || isOffShelf(product) === (activeTab === "off")),
           );
+          // The off-shelf tab lists only the types that have such products.
+          if (activeTab === "off" && typeProducts.length === 0) return null;
           return (
             <section className="admin-product-type-section" key={productType.id}>
               <div className="product-type-header">
@@ -355,6 +431,17 @@ function AdminProductTypeList({
                     </span>
                   </span>
                 </button>
+                {activeTab === "selling" ? (
+                  <button
+                    className="icon-button"
+                    type="button"
+                    title="Thêm sản phẩm"
+                    aria-label={`Thêm sản phẩm vào ${productType.name || "loại này"}`}
+                    onClick={() => onAddProduct(productType.id)}
+                  >
+                    <Plus size={17} aria-hidden="true" />
+                  </button>
+                ) : null}
                 {isHomeSorting ? (
                   <div className="reorder-controls" aria-label="Sắp xếp loại sản phẩm">
                     <button
@@ -411,16 +498,30 @@ function AdminProductTypeList({
                           </span>
                         </button>
                         {!isHomeSorting ? (
-                          <div className="admin-product-link-actions" aria-label={`Link ${getProductTitle(product, productTypes)}`}>
-                            <CopyProductLinkButton
-                              label={getProductTitle(product, productTypes)}
-                              url={getStorefrontProductUrl(product, productTypes)}
+                          <div className="admin-product-row-actions" aria-label={`Thao tác nhanh ${getProductTitle(product, productTypes)}`}>
+                            <CopyChipButton
+                              Icon={ShoppingBag}
+                              className="shopee"
+                              text="Shopee"
+                              emptyTitle="Chưa có link Shopee"
+                              value={getShopeeUrl(product.shopeeUrl) ?? ""}
                             />
-                            <CopyProductLinkButton
-                              label={getProductTitle(product, productTypes)}
-                              source="Shopee"
-                              url={getShopeeUrl(product.shopeeUrl) ?? ""}
+                            <CopyChipButton
+                              Icon={Link2}
+                              text="Web"
+                              emptyTitle="Chưa có link website (hết hàng)"
+                              value={getStorefrontProductUrl(product, productTypes)}
                             />
+                            <CopyChipButton
+                              Icon={MessageSquareText}
+                              text="Giá & link"
+                              emptyTitle="Sản phẩm đang ẩn hoặc hết hàng"
+                              value={createPriceLinkMessage(product, productTypes)}
+                            />
+                            <button className="admin-chip-button" type="button" onClick={() => onEditProductPatterns(product.id)}>
+                              <Shirt size={14} aria-hidden="true" />
+                              Tồn kho
+                            </button>
                           </div>
                         ) : null}
                         {isHomeSorting ? (
@@ -450,20 +551,16 @@ function AdminProductTypeList({
                   })}
                 </div>
               ) : (
-                <p className="admin-type-empty-text">Chưa có sản phẩm trong loại này.</p>
+                <p className="admin-type-empty-text">
+                  {activeTab === "selling" ? "Không có sản phẩm đang bán trong loại này." : "Chưa có sản phẩm trong loại này."}
+                </p>
               )}
-              {!isHomeSorting ? (
-                <button className="admin-button small full-width admin-add-product-button" type="button" onClick={() => onAddProduct(productType.id)}>
-                  <Plus size={16} aria-hidden="true" />
-                  Thêm sản phẩm
-                </button>
-              ) : null}
             </section>
           );
         })}
       </div>
 
-      {!isHomeSorting ? (
+      {activeTab === "selling" ? (
         <button className="admin-button primary full-width" type="button" onClick={onAddProductType}>
           <Plus size={16} aria-hidden="true" />
           Thêm loại
